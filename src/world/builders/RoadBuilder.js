@@ -24,8 +24,9 @@ export const RoadBuilder = {
       const spec = roadClass(r.c);
       const hw = spec.width / 2;
       if (cfg.sidewalks && spec.sidewalk > 0) ribbon(sidewalk, r.p, hw + spec.sidewalk, LIFT - 0.02, { uScale: 3, vScale: 3, ground });
-      ribbon(surfaces[spec.surface || 'asphalt'], r.p, hw, LIFT, { uScale: 12, vScale: 12, ground });
-      if (!cfg.markings || spec.surface) continue;
+      const surface = r.s || spec.surface || 'asphalt'; // r.s: superficie real marcada en el pipeline (adoquín del parque)
+      ribbon(surfaces[surface], r.p, hw, LIFT, { uScale: surface === 'brick' ? 4 : 12, vScale: surface === 'brick' ? 4 : 12, ground });
+      if (!cfg.markings || surface !== 'asphalt') continue;
       if (MAJOR.has(r.c)) {
         dashes(yellow, r.p, 0.09, LIFT + 0.01, 1e6, 0, 0.18);
         dashes(yellow, r.p, 0.09, LIFT + 0.01, 1e6, 0, -0.18);

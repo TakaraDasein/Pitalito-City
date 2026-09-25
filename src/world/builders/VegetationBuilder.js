@@ -30,8 +30,8 @@ function broadleaf() {
 function saman() {
   const trunk = paint(new THREE.CylinderGeometry(0.04, 0.07, 0.55, 6).translate(0, 0.27, 0), '#5a4330');
   const branches = [0, 2.1, 4.2].map((a) => paint(new THREE.CylinderGeometry(0.015, 0.025, 0.45, 4).rotateZ(0.9).rotateY(a).translate(Math.cos(a) * 0.15, 0.62, -Math.sin(a) * 0.15), '#5a4330'));
-  const canopy = [[0, 0.85, 0, 1, 0.16], [0.4, 0.8, 0.35, 0.6, 0.14], [-0.45, 0.8, -0.3, 0.6, 0.14], [0.3, 0.92, -0.4, 0.5, 0.12]]
-    .map(([x, y, z, r, ry]) => paint(new THREE.IcosahedronGeometry(1, 0).scale(r, ry, r).translate(x, y, z), '#47782c'));
+  const canopy = [[0, 0.78, 0, 0.95, 0.3], [0.45, 0.72, 0.35, 0.6, 0.26], [-0.45, 0.72, -0.3, 0.62, 0.26], [0.3, 0.88, -0.4, 0.5, 0.22], [-0.3, 0.86, 0.45, 0.5, 0.22]]
+    .map(([x, y, z, r, ry]) => paint(new THREE.IcosahedronGeometry(1, 1).scale(r, ry, r).translate(x, y, z), '#47782c'));
   return mergeGeometries([trunk, ...branches, ...canopy]);
 }
 

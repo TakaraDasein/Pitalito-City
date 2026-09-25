@@ -14,6 +14,7 @@
 | Meta & WRI Canopy Height | Altura de dosel a 1 m → árboles | CC BY 4.0 | `fetch-rasters.mjs` | `data/raw/chm.tif` |
 | JRC GHSL GHS-BUILT-H 2018 | Altura media de edificios (~90 m) | CC BY 4.0 | `fetch-rasters.mjs` | `data/raw/ghsl_h.tif` |
 | Esri World Imagery | Suelo del juego (en vivo) y color de techos (z17, en el pipeline) | Términos de Esri, atribución obligatoria | en vivo / `fetch-rasters.mjs` | `data/raw/imagery.tif` |
+| Capturas de Street View (aportadas por el usuario, may 2025) | Referencia visual del parque, la iglesia y las calles vecinas | © Google — **solo referencia, no se versionan** | — | — |
 | Wikimedia Commons | Referencias fotográficas de hitos, vehículos, guadua | CC BY / CC BY-SA / dominio público (por archivo) | `fetch-references.mjs` | `assets/references/` (sí versionado) |
 | ambientCG | Texturas PBR (asfalto, andén, pasto, pañete, teja, tierra) | CC0 | `fetch-references.mjs` | `public/textures/` (sí versionado) |
 
@@ -41,6 +42,10 @@ determinista y rápido, así que se puede iterar sobre `build-world.mjs` sin vol
 3. **Edificios** → fusión por prioridad OSM > Google > Microsoft. Se descarta un candidato si su centroide cae dentro
    de uno ya aceptado, si su geometría es corrupta (> 600 m) o si **invade el eje de una vía vehicular** (1.262 casos:
    aleros, toldos o errores de detección que bloqueaban el tránsito).
+   **Despeje de calzadas:** cada punto del borde de una huella que quede dentro de la calzada de una vía vehicular
+   (media calzada + 0,8 m de andén) empuja su arista hacia afuera, perpendicular a la vía. Si la huella se deforma o
+   pierde > 45 % del área se descarta. Resultado: de 4.710 edificios invadiendo vías a 1 (6.030 recortados, 354
+   descartados).
 4. **Color de techo** → mediana de la imagen z17 en el centroide y en un punto interior por cada vértice (a 55 % del centro).
 5. **Altura** → GHSL en el centroide × `WORLD.heightScale` × (0,8–1,2 por edificio); mínimo 3,2 m.
 6. **Árboles** → segmentación de copas sobre el dosel suavizado: máximos locales de mayor a menor, cada uno crece por
@@ -55,17 +60,21 @@ determinista y rápido, así que se puede iterar sobre `build-world.mjs` sin vol
 |---|---|---|
 | Suelo (calles, patios, canchas, ríos, vegetación baja) | Imagen satelital | **Real** (≈ 0,6 m/px cerca) |
 | Relieve y montañas del valle | Copernicus corregido | **Real** (25–30 m) |
-| Huellas de 21.767 edificios | OSM + Google + Microsoft | **Real** |
+| Huellas de 21.508 edificios | OSM + Google + Microsoft, recortadas para despejar calzadas | **Real** |
 | Color del techo | Satélite | **Real** |
 | Altura de cada edificio | GHSL por celda × calibración | Estimado a partir de datos |
 | 21.527 árboles (posición, altura, copa) | Dosel Meta/WRI | **Real** |
-| Trazado y nombre de 1.777 vías | OSM | **Real** (ancho estimado por tipo) |
+| Trazado y nombre de 1.849 vías | OSM | **Real** (ancho estimado por tipo) |
+| Adoquín de la Carrera 4 y la Calle 6 junto al parque | Fotos a nivel de calle | Real (observado) |
+| 99 semáforos | OSM `highway=traffic_signals` | **Real** (esquina del poste y ciclo estimados) |
 | Forma del techo (lámina 1–2 aguas / terraza con tanque) | Forma y tamaño de la huella | Estimado |
 | Fachadas (ventanas, avisos, portones, balcones, color) | Procedural con paleta de fotos | Estimado |
 | Postes de energía y cables | Cada ~32 m (`WORLD.powerLines`) | Estimado |
 | Forma del árbol (palma / samán / frondoso) | Proporción altura/copa | Estimado |
-| Parque Principal (bolardos, letrero 200) | Fotos | Modelado a mano |
-| Iglesia y Torre San Antonio | Fotos + polígono OSM + satélite | Modelado a mano |
+| Parque Principal: adoquín con retícula, bolardos, prado de la Calle 6, muro de la Cra 4, mariposa, letrero YO ❤ PITALITO, estructura de concreto | Fotos may 2025 | Modelado a mano |
+| Palmas, bancas y sombrillas del parque | Patrón de las fotos | Estimado (posición) |
+| Fuente del parque | Existe (noticia de su restauración), sin foto de su diseño | **Pendiente** — no se modela sin referencia |
+| Iglesia San Antonio (nave de ladrillo a la vista, frente blanco) y Torre San Antonio en la esquina de la Calle 5 | Fotos may 2025 + polígono OSM + satélite | Modelado a mano |
 | Tráfico | Simulado sobre el grafo real | Simulado |
 
 Apagados por no tener datos: relleno procedural de manzanas (`proceduralFill: false`), demarcación y andenes

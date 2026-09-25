@@ -103,6 +103,8 @@ export class Menus {
 
   closeAll() {
     this.stack = [];
+    // sin esto el foco queda en un botón oculto y Enter/Espacio en la partida lo activarían
+    if (this.root.contains(document.activeElement)) document.activeElement.blur();
     for (const s of Object.values(this.screens)) s.classList.remove('open');
   }
 

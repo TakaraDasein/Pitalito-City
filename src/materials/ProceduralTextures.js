@@ -266,3 +266,87 @@ export function glowSprite() {
   ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 128);
   return toTexture(c, { repeat: false });
 }
+
+// Ladrillo a la vista de la Iglesia San Antonio (fotos a nivel de calle, may 2025): ocre claro, juntas
+// gruesas y manchas de humedad. 2 m × 2 m por repetición.
+export function exposedBrick() {
+  const S = 512;
+  const [c, ctx] = canvas(S, S);
+  const rand = rng(21);
+  ctx.fillStyle = '#8a7258'; ctx.fillRect(0, 0, S, S); // mortero
+  const bw = 64, bh = 20;
+  for (let row = 0; row * bh < S; row++) {
+    const off = (row % 2) * (bw / 2);
+    for (let x = -bw; x < S + bw; x += bw) {
+      const l = 44 + rand() * 14, sat = 30 + rand() * 14, hue = 24 + rand() * 10;
+      ctx.fillStyle = `hsl(${hue},${sat}%,${l}%)`;
+      ctx.fillRect(x + off + 2, row * bh + 2, bw - 4, bh - 4);
+    }
+  }
+  // humedad y hollín (más oscuro abajo y bajo las cornisas)
+  for (let i = 0; i < 26; i++) {
+    const x = rand() * S, w = 20 + rand() * 80;
+    const g = ctx.createLinearGradient(0, 0, 0, S);
+    g.addColorStop(0, 'rgba(40,30,20,0)'); g.addColorStop(1, `rgba(40,30,20,${0.08 + rand() * 0.12})`);
+    ctx.fillStyle = g; ctx.fillRect(x, 0, w, S);
+  }
+  return toTexture(c);
+}
+
+// Adoquín rojo del Parque Principal con franjas de concreto gris formando una retícula (fotos may 2025).
+// Una repetición = 6 m: franja gris de 0,5 m en el borde y adoquín en trabazón adentro.
+export function parkPaving() {
+  const S = 1024;
+  const [c, ctx] = canvas(S, S);
+  const rand = rng(8);
+  ctx.fillStyle = '#6e3322'; ctx.fillRect(0, 0, S, S);
+  const bw = 34, bh = 17;
+  for (let row = 0; row * bh < S; row++) {
+    const off = (row % 2) * (bw / 2);
+    for (let x = -bw; x < S + bw; x += bw) {
+      const r = 150 + rand() * 45, g = 62 + rand() * 26, b = 44 + rand() * 18;
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.fillRect(x + off + 1.5, row * bh + 1.5, bw - 3, bh - 3);
+    }
+  }
+  // franja de concreto (0,5 m de 6 m ≈ 85 px) en dos bordes → retícula al repetir
+  const band = 85;
+  for (const [x, y, w, h] of [[0, 0, S, band / 2], [0, S - band / 2, S, band / 2], [0, 0, band / 2, S], [S - band / 2, 0, band / 2, S]]) {
+    ctx.fillStyle = '#8f8b84'; ctx.fillRect(x, y, w, h);
+  }
+  for (let i = 0; i < 1500; i++) {
+    ctx.fillStyle = `rgba(0,0,0,${rand() * 0.08})`;
+    ctx.fillRect(rand() * S, rand() * S, 2 + rand() * 6, 2 + rand() * 6);
+  }
+  return toTexture(c);
+}
+
+// Letrero "YO ❤ PITALITO" (letras blancas, corazón rojo) sobre fondo transparente.
+export function yoPitalito() {
+  const [c, ctx] = canvas(2048, 384);
+  ctx.clearRect(0, 0, 2048, 384);
+  ctx.font = '900 300px "Arial Black", "Arial", sans-serif';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#f4f4f0';
+  ctx.fillText('YO', 10, 320);
+  const hx = 520, hy = 175;
+  ctx.fillStyle = '#c1121f';
+  ctx.beginPath();
+  ctx.moveTo(hx, hy + 130);
+  ctx.bezierCurveTo(hx - 170, hy + 10, hx - 110, hy - 120, hx, hy - 40);
+  ctx.bezierCurveTo(hx + 110, hy - 120, hx + 170, hy + 10, hx, hy + 130);
+  ctx.fill();
+  ctx.fillStyle = '#f4f4f0';
+  ctx.fillText('PITALITO', 700, 320);
+  return toTexture(c, { repeat: false });
+}
+
+// Tablero verde "MACIZO COLOMBIANO"
+export function macizoBoard() {
+  const [c, ctx] = canvas(512, 160);
+  ctx.fillStyle = '#1f6b4a'; ctx.fillRect(0, 0, 512, 160);
+  ctx.strokeStyle = '#e8efe9'; ctx.lineWidth = 6; ctx.strokeRect(8, 8, 496, 144);
+  ctx.fillStyle = '#f4f4f0'; ctx.textAlign = 'center'; ctx.font = 'bold 52px "Arial Narrow", Arial, sans-serif';
+  ctx.fillText('MACIZO', 256, 70); ctx.fillText('COLOMBIANO', 256, 128);
+  return toTexture(c, { repeat: false });
+}

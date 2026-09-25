@@ -21,6 +21,7 @@ import { RoadBuilder } from '../world/builders/RoadBuilder.js';
 import { BuildingBuilder } from '../world/builders/BuildingBuilder.js';
 import { VegetationBuilder, wind } from '../world/builders/VegetationBuilder.js';
 import { PowerLineBuilder } from '../world/builders/PowerLineBuilder.js';
+import { TrafficSignalBuilder } from '../world/builders/TrafficSignalBuilder.js';
 import { WeatherSystem } from '../systems/WeatherSystem.js';
 import { WORLD } from '../config/world.config.js';
 import { StreetLightBuilder } from '../world/builders/StreetLightBuilder.js';
@@ -115,7 +116,7 @@ export class Game {
       scene: this.scene, assets: this.assets, materials: this.materials, collision: this.collision,
       manifest: this.manifest, events: this.events, terrain: this.terrain,
       builders: real
-        ? [RoadBuilder, BuildingBuilder, VegetationBuilder, ...(WORLD.powerLines ? [PowerLineBuilder] : [])]
+        ? [RoadBuilder, BuildingBuilder, VegetationBuilder, TrafficSignalBuilder, ...(WORLD.powerLines ? [PowerLineBuilder] : [])]
         : [AreaBuilder, RoadBuilder, BuildingBuilder, VegetationBuilder, StreetLightBuilder],
     });
 
@@ -342,6 +343,17 @@ export class Game {
     this.setState('playing');
   }
 
+  // Depuración: cámara fija en (x, z) a `h` m sobre el suelo mirando a (tx, tz) (reproducir encuadres de fotos).
+  // El jugador se lleva al mismo punto para que se carguen los tiles. `null` vuelve a la cámara normal.
+  debugLook(x, z, tx, tz, h = 1.7) {
+    if (x === null) { this.debugCam = null; return; }
+    this.player.place(x, z, this.player.heading);
+    this.player.object.visible = false;
+    this.debugCam = { abs: [x, z, tx, tz, h] };
+    this.menus.closeAll();
+    this.setState('playing');
+  }
+
   play() {
     this.audio.start();
     this.cameraSys.initialized = false;
@@ -374,6 +386,7 @@ export class Game {
     this.streamer.update(dt, p.x, p.z);
     this.ground?.update(dt, p.x, p.z);
     wind.uniforms.uTime.value = this.time;
+    TrafficSignalBuilder.update(this.time);
     wind.uniforms.uWind.value = 0.5 + this.env.wet * 0.9;
     this.weather.update(sim, this.camera);
     this.env.update(sim, this.state === 'menu' ? new THREE.Vector3(...(this.manifest.landmarks.parquePrincipal?.c ? [this.manifest.landmarks.parquePrincipal.c[0], p.y, this.manifest.landmarks.parquePrincipal.c[1]] : [p.x, p.y, p.z])) : p.object.position, this.camera);
@@ -387,6 +400,10 @@ export class Game {
       const cy = this.terrain.height(c[0], c[1]);
       this.camera.position.set(c[0] + Math.sin(a) * 95, cy + 42, c[1] + Math.cos(a) * 95);
       this.camera.lookAt(c[0], cy + 8, c[1] + 25);
+    } else if (this.debugCam?.abs) {
+      const [x, z, tx, tz, h] = this.debugCam.abs;
+      this.camera.position.set(x, this.terrain.height(x, z) + h, z);
+      this.camera.lookAt(tx, this.terrain.height(tx, tz) + h + 2, tz);
     } else if (this.debugCam) {
       const a = p.heading + this.debugCam.angle, d = this.debugCam.dist;
       this.camera.position.set(p.x + Math.sin(a) * d, p.y + 1.6, p.z + Math.cos(a) * d);

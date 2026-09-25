@@ -31,7 +31,7 @@ const ghsl = optRaster('data/raw/ghsl_h.tif');
 const tiles = new Map();
 const getTile = (tx, tz) => {
   const k = tileKey(tx, tz);
-  if (!tiles.has(k)) tiles.set(k, { x: tx, z: tz, roads: [], buildings: [], areas: [], water: [], trees: [] });
+  if (!tiles.has(k)) tiles.set(k, { x: tx, z: tz, roads: [], buildings: [], areas: [], water: [], trees: [], signals: [] });
   return tiles.get(k);
 };
 
@@ -65,6 +65,22 @@ const nameId = (n) => {
   return nameIndex.get(n);
 };
 
+// Calles de adoquín alrededor del Parque Principal (confirmadas en fotos a nivel de calle, may 2025):
+// solo los tramos de estas vías que bordean el parque. La Calle 5 junto a la iglesia es asfalto.
+const PARK_ID = 380471083;
+const BRICK_STREETS = new Set(['Carrera 4', 'Calle 6']);
+const parkEl = osm.elements.find((e) => e.id === PARK_ID);
+const parkPoly = parkEl ? project(parkEl.geometry).slice(0, -2) : null;
+const nearPark = (x, z) => {
+  if (!parkPoly) return false;
+  if (pointInPolygon(x, z, parkPoly)) return true;
+  for (let i = 0; i < parkPoly.length; i += 2) {
+    const j = (i + 2) % parkPoly.length;
+    if (distToSegment(x, z, parkPoly[i], parkPoly[i + 1], parkPoly[j], parkPoly[j + 1]).d < 9) return true;
+  }
+  return false;
+};
+
 let roadCount = 0;
 for (const e of osm.elements) {
   const t = e.tags || {};
@@ -85,7 +101,7 @@ for (const e of osm.elements) {
   // Segmentos para la rejilla de conflictos
   const half = spec.width / 2 + spec.sidewalk;
   for (let i = 0; i < pts.length - 2; i += 2) {
-    const s = { ax: pts[i], az: pts[i + 1], bx: pts[i + 2], bz: pts[i + 3], half };
+    const s = { ax: pts[i], az: pts[i + 1], bx: pts[i + 2], bz: pts[i + 3], half, hw: spec.width / 2, veh: isDrivable(cls) && cls !== 'service' && cls !== 'track' };
     roadGrid.add(s, { minX: Math.min(s.ax, s.bx) - half, maxX: Math.max(s.ax, s.bx) + half, minZ: Math.min(s.az, s.bz) - half, maxZ: Math.max(s.az, s.bz) + half });
   }
 
@@ -98,11 +114,16 @@ for (const e of osm.elements) {
       const t0 = s / steps, t1 = (s + 1) / steps;
       const x0 = ax + (bx - ax) * t0, z0 = az + (bz - az) * t0;
       const x1 = ax + (bx - ax) * t1, z1 = az + (bz - az) * t1;
-      pieces.push({ x0, z0, x1, z1, tile: tileKey(...tileOf((x0 + x1) / 2, (z0 + z1) / 2)), vertexEnd: s === steps - 1 });
+      const brick = BRICK_STREETS.has(t.name) && nearPark((x0 + x1) / 2, (z0 + z1) / 2);
+      pieces.push({ x0, z0, x1, z1, brick, tile: tileKey(...tileOf((x0 + x1) / 2, (z0 + z1) / 2)) + (brick ? '|b' : '') });
     }
   }
   let run = null;
-  const flush = () => { if (run && run.p.length >= 4) getTile(...run.tile.split('_').map(Number)).roads.push({ c: cls, n, p: run.p.map(r1) }); };
+  const flush = () => {
+    if (!run || run.p.length < 4) return;
+    const [key, flag] = run.tile.split('|');
+    getTile(...key.split('_').map(Number)).roads.push({ c: cls, n, p: run.p.map(r1), ...(flag === 'b' ? { s: 'brick' } : {}) });
+  };
   for (const pc of pieces) {
     if (!run || run.tile !== pc.tile) { flush(); run = { tile: pc.tile, p: [pc.x0, pc.z0] }; }
     run.p.push(pc.x1, pc.z1); // puntos cada ≤10 m: la calzada sigue el relieve
@@ -290,6 +311,56 @@ function crossesRoad(p, b) {
   }
   return false;
 }
+// Despeje de calzadas: ninguna huella puede quedar dentro de la calzada de una vía vehicular (+ margen de andén).
+// Cada punto del borde que invade empuja su arista hacia afuera, perpendicular a la vía. Si la huella queda
+// deformada (cambia de orientación) o pierde más del 45 % de su área, se descarta.
+const CLEAR_MARGIN = 0.8;
+let trimmed = 0, droppedByTrim = 0;
+function clearRoads(p) {
+  const out = p.slice();
+  const n = out.length / 2;
+  let moved = false;
+  for (let iter = 0; iter < 5; iter++) {
+    let any = false;
+    const push = new Float64Array(out.length);
+    const cnt = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      const ax = out[i * 2], az = out[i * 2 + 1], bx = out[j * 2], bz = out[j * 2 + 1];
+      const L = Math.hypot(bx - ax, bz - az), steps = Math.max(1, Math.ceil(L / 0.8));
+      const eb = { minX: Math.min(ax, bx) - 8, maxX: Math.max(ax, bx) + 8, minZ: Math.min(az, bz) - 8, maxZ: Math.max(az, bz) + 8 };
+      const near = [...roadGrid.query(eb)].filter((sg) => sg.veh);
+      if (!near.length) continue;
+      for (let k = 0; k <= steps; k++) {
+        const t = k / steps, x = ax + (bx - ax) * t, z = az + (bz - az) * t;
+        for (const sg of near) {
+          const q = distToSegment(x, z, sg.ax, sg.az, sg.bx, sg.bz);
+          const need = sg.hw + CLEAR_MARGIN - q.d;
+          if (need <= 0.05) continue;
+          let nx = x - q.cx, nz = z - q.cz;
+          const nl = Math.hypot(nx, nz);
+          if (nl < 1e-3) { nx = -(sg.bz - sg.az); nz = sg.bx - sg.ax; } // punto sobre el eje: normal de la vía
+          const l2 = Math.hypot(nx, nz) || 1;
+          nx /= l2; nz /= l2;
+          // repartir el empuje entre los extremos de la arista según la posición del punto
+          for (const [vi, w] of [[i, 1 - t], [j, t]]) {
+            if (w < 0.05) continue;
+            push[vi * 2] += nx * need * w; push[vi * 2 + 1] += nz * need * w; cnt[vi] += w;
+          }
+          any = true;
+        }
+      }
+    }
+    if (!any) break;
+    moved = true;
+    for (let i = 0; i < n; i++) if (cnt[i] > 0) { out[i * 2] += push[i * 2] / cnt[i] * 1.05; out[i * 2 + 1] += push[i * 2 + 1] / cnt[i] * 1.05; }
+  }
+  if (!moved) return p;
+  const a0 = polygonArea(p), a1 = polygonArea(out);
+  if (Math.sign(a0) !== Math.sign(a1) || Math.abs(a1) < Math.abs(a0) * 0.55 || Math.abs(a1) < 12) return null;
+  return out;
+}
+
 const accepted = new Grid(30);
 const sourceCount = {};
 for (const c of candidates) {
@@ -305,12 +376,16 @@ for (const c of candidates) {
   if (dup) continue;
   // huellas detectadas automáticamente que invaden el eje de una vía vehicular (aleros, toldos, errores)
   if (c.source !== 'osm' && crossesRoad(p, b)) { rejectedOnRoad++; continue; }
+  const cleared = clearRoads(p);
+  if (!cleared) { droppedByTrim++; continue; }
+  if (cleared !== p) { trimmed++; p = cleared; }
   if (addBuilding(p, c)) {
     accepted.add({ p, cx, cz }, b);
     sourceCount[c.source] = (sourceCount[c.source] || 0) + 1;
   }
 }
-console.log('  edificios por fuente:', sourceCount, '· descartados por invadir vías:', rejectedOnRoad);
+console.log('  edificios por fuente:', sourceCount, '· descartados por cruzar el eje de una vía:', rejectedOnRoad,
+  '· recortados para despejar la calzada:', trimmed, '· descartados al recortar:', droppedByTrim);
 const realBuildings = allBuildings.length;
 
 // ───────────────────────────── Relleno procedural de manzanas ─────────────────────────────
@@ -488,6 +563,15 @@ if (dem) {
   terrainMeta = { file: 'terrain.bin', size: N, cell, min: -radius, scale: 0.1, baseElevation: Math.round(base) };
 }
 
+// ───────────────────────────── Semáforos (OSM highway=traffic_signals) ─────────────────────────────
+let signalCount = 0;
+for (const e of osm.elements) {
+  if (e.type !== 'node' || e.tags?.highway !== 'traffic_signals') continue;
+  const [x, z] = projection.toWorld(e.lat, e.lon);
+  getTile(...tileOf(x, z)).signals.push(r1(x), r1(z));
+  signalCount++;
+}
+
 // ───────────────────────────── POIs ─────────────────────────────
 const pois = [];
 for (const e of osm.elements) {
@@ -562,7 +646,7 @@ const manifest = {
   terrain: terrainMeta,
   imagery: WORLD.imagery,
   landmarks,
-  stats: { roads: roadCount, realBuildings, generatedBuildings: fillCount, trees: treeCount, buildingSource, tiles: tiles.size },
+  stats: { roads: roadCount, signals: signalCount, realBuildings, generatedBuildings: fillCount, trees: treeCount, buildingSource, tiles: tiles.size },
   attribution: ['© OpenStreetMap contributors (ODbL)', buildingSource === 'overture' ? 'Overture Maps Foundation' : null,
     WORLD.imagery.attribution, 'Relieve: Copernicus GLO-30 (ESA)', 'Árboles: Meta/WRI Canopy Height (CC BY 4.0)'].filter(Boolean),
 };

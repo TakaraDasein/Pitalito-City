@@ -1,7 +1,7 @@
 # Pitalito City
 
 Juego web de mundo abierto ambientado en **Pitalito, Huila (Colombia)**, recorrible en carro. El mundo se
-reconstruye con **datos geográficos reales**: calles de OpenStreetMap, ~21.800 huellas de edificios, ~21.500 árboles
+reconstruye con **datos geográficos reales**: calles de OpenStreetMap, ~21.500 huellas de edificios, ~21.500 árboles
 medidos desde satélite, el relieve del Valle de Laboyos y el suelo en imagen satelital. Arrancás en el Parque
 Principal José Hilario López, frente a la Torre San Antonio.
 
@@ -49,7 +49,7 @@ hora, cámara, mapa y pausa. Gamepad: RT acelera, LT frena, stick izquierdo gira
 ## Qué incluye
 
 - **Mundo real**: suelo satelital sobre relieve Copernicus, edificios de OSM + Google + Microsoft con el color real
-  de su techo, árboles con su posición y tamaño medidos, 1.777 vías con nombre. Lo estimado (fachadas, forma de
+  de su techo, árboles con su posición y tamaño medidos, 1.849 vías con nombre y 99 semáforos reales. Lo estimado (fachadas, forma de
   techos, postes) está declarado en [docs/DATOS.md](docs/DATOS.md#qué-es-real-y-qué-es-estimado).
 - **6 vehículos** modelados sobre fotos: Jeep Willys, taxi, camioneta de platón, chiva, motocarro y moto.
 - **Juego**: tráfico IA, GPS con rutas por las calles reales, minimapa, placa de calle con la nomenclatura oficial

@@ -46,7 +46,12 @@ export class MaterialLibrary {
     this.m.asphalt = onceStencil(flat({ ...pbr(asphalt), color: '#8c8c8c', normalScale: new THREE.Vector2(0.6, 0.6), transparent: op < 1, opacity: op }));
     this.m.sidewalk = flat({ ...pbr(sidewalk), color: '#d9d2c7' });
     this.m.dirt = onceStencil(flat({ ...pbr(ground), color: '#c9b48a', transparent: op < 1, opacity: op }));
-    this.m.brick = onceStencil(flat({ map: P.brickPaving(), color: '#ffffff', roughness: 0.85, transparent: op < 1, opacity: op }));
+    // Calles de adoquín alrededor del parque: casi opacas (el adoquín es real y la foto satelital lo ve borroso)
+    this.m.brick = onceStencil(flat({ map: P.brickPaving(), color: '#ffffff', roughness: 0.85, transparent: true, opacity: 0.93 }));
+    const paving = P.parkPaving();
+    paving.repeat.set(1 / 6, 1 / 6);
+    this.m.parkPaving = flat({ map: paving, color: '#ffffff', roughness: 0.8 });
+    this.m.lawn = flat({ ...pbr(grass), color: '#8cc063' });
     this.m.marking = flat({ color: '#f2f2f2', roughness: 0.6 });
     this.m.markingYellow = flat({ color: '#f2c230', roughness: 0.6 });
     this.m.water = flat({ color: '#3f7fa6', roughness: 0.08, metalness: 0.3, transparent: true, opacity: 0.92 });
@@ -87,6 +92,10 @@ export class MaterialLibrary {
     this.m.whitewash = new THREE.MeshStandardMaterial({ ...pbr(plaster), color: '#fbfaf6', roughness: 0.85 });
     this.m.trimRed = new THREE.MeshStandardMaterial({ color: '#a8322b', roughness: 0.7 });
     this.m.concrete = new THREE.MeshStandardMaterial({ color: '#b9b4ab', roughness: 0.9 });
+    this.m.concreteDark = new THREE.MeshStandardMaterial({ color: '#6b6862', roughness: 0.95 });
+    const eb = P.exposedBrick();
+    eb.repeat.set(0.5, 0.5);
+    this.m.exposedBrick = new THREE.MeshStandardMaterial({ map: eb, roughness: 0.92 });
     this.m.darkMetal = new THREE.MeshStandardMaterial({ color: '#2a2d30', roughness: 0.5, metalness: 0.6 });
     this.m.wood = new THREE.MeshStandardMaterial({ color: '#7b4b2a', roughness: 0.8 });
     this.m.glass = new THREE.MeshStandardMaterial({ color: '#1d2a36', roughness: 0.1, metalness: 0.8 });
@@ -95,7 +104,7 @@ export class MaterialLibrary {
     this.m.taillight = new THREE.MeshStandardMaterial({ color: '#8b0000', emissive: '#ff2020', emissiveIntensity: 0.2 });
     this.nightMaterials.push(this.m.lampGlow);
 
-    this.tex = { clock: P.clockFace(), bicentenario: P.bicentenarioSign(), chiva: P.chivaPanels(), glow: P.glowSprite() };
+    this.tex = { clock: P.clockFace(), bicentenario: P.bicentenarioSign(), chiva: P.chivaPanels(), glow: P.glowSprite(), yoPitalito: P.yoPitalito(), macizo: P.macizoBoard() };
     this.tex.flag = await this.assets.texture('textures/decals/flag-pitalito.png', { repeat: false });
     this.tex.escudo = await this.assets.texture('textures/decals/escudo-pitalito.png', { repeat: false });
   }

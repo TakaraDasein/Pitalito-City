@@ -6,7 +6,7 @@
 
 ## Qué funciona hoy
 
-- Mundo de Pitalito reconstruido con datos reales: 21.767 edificios, 21.527 árboles, 1.777 vías con nombre, relieve
+- Mundo de Pitalito reconstruido con datos reales: 21.508 edificios (sin invadir calzadas), 21.527 árboles, 1.849 vías con nombre, 99 semáforos, relieve
   de ±12 km (montañas del Valle de Laboyos) y suelo satelital en tres niveles de detalle.
 - Arranque en el Parque Principal José Hilario López, frente a la Iglesia y la Torre San Antonio (modeladas a mano).
 - 6 vehículos modelados sobre fotos (Jeep Willys, taxi, camioneta de platón, chiva, motocarro, moto), con física
@@ -35,6 +35,10 @@
 | 2026-09-24 | Vehículos por perfil extruido (carkit) en vez de GLTF | Control total, sin binarios, citan su foto de referencia |
 | 2026-09-24 | Tráfico con detalle bajo y materiales fusionados | De 14–31 a 6–13 draw calls por vehículo |
 | 2026-09-24 | Menús de guadua generados en SVG | Nítidos a cualquier resolución, sin imágenes |
+| 2026-09-24 | Afinar parque e iglesia con fotos a nivel de calle (may 2025) | El parque y la iglesia no se parecían: la nave es de ladrillo, la torre está en la esquina de la Calle 5, el piso tiene retícula |
+| 2026-09-24 | Despeje de calzadas en el pipeline | 4.710 huellas invadían las vías; el usuario pidió "carreteras libres de casas o tiendas" |
+| 2026-09-24 | Semáforos desde OSM | Dato real disponible y visibles en las fotos |
+| 2026-09-24 | Fuente del parque pendiente | Existe, pero no hay foto de su diseño; no se inventa |
 | 2026-09-24 | HUD en café y guadua + barra de controles en pantalla | Pedido del usuario: cambiar vehículo y clima sin teclado, estética unificada |
 
 ## Limitaciones conocidas
@@ -44,7 +48,8 @@
 - Alturas por celda de 90 m, no por edificio; fachadas y forma de techos estimadas.
 - Algunas huellas de Microsoft son manzanas enteras.
 - Vías: ancho estimado por tipo; sin andenes ni demarcación.
-- Sin peatones, semáforos ni reglas de tránsito para la IA (no respeta prelación en cruces).
+- Sin peatones. Los semáforos existen (99, de OSM) pero la IA aún no los respeta ni la prelación en cruces.
+- **Fuente del Parque Principal sin modelar:** falta una foto de su diseño y ubicación.
 - La imagen satelital depende del servicio de Esri en vivo; sin conexión el suelo queda gris verdoso.
 - Sin controles táctiles; en celular solo se puede navegar menús.
 - No hay pruebas automatizadas de lógica; la verificación es visual (VERIFICACION.md).
@@ -53,7 +58,8 @@
 
 **Siguiente (alto valor, bajo riesgo)**
 - Medir fps en 2–3 GPUs y ajustar presets.
-- Peatones en andenes y en el parque; semáforos en troncales y prelación básica en cruces.
+- Modelar la fuente del parque en cuanto haya una foto de referencia.
+- Peatones en andenes y en el parque; que la IA respete semáforos y prelación en cruces.
 - Hitos: Alcaldía "La Chapolera", Terminal de Transportes, Villa Olímpica, Gemelas Danzantes.
 
 **Después**

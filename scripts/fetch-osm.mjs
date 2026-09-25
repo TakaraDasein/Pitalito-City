@@ -21,6 +21,7 @@ const query = `
   node["shop"](${s},${w},${n},${e});
   node["tourism"](${s},${w},${n},${e});
   node["natural"="tree"](${s},${w},${n},${e});
+  node["highway"="traffic_signals"](${s},${w},${n},${e});
   node["place"](${s},${w},${n},${e});
 );
 out body geom;

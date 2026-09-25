@@ -32,6 +32,10 @@ Resumen operativo. Las reglas completas están en [docs/REGLAS.md](docs/REGLAS.m
 
 ## Trampas conocidas
 
+- Algunos dispositivos aparecen como gamepad con botones "presionados" desde el inicio (abrían el mapa solos):
+  `InputSystem` solo acepta mapeo estándar y toma la primera lectura como referencia.
+- Las huellas de edificios se recortan contra las calzadas en `build-world.mjs` (`clearRoads`); si se cambian anchos
+  en `roads.config.js`, regenerar con `npm run data:build`.
 - En Chromium sin GPU las transiciones CSS de `transform` pueden no avanzar (el panel de ayuda parece no abrir):
   es del entorno de prueba, no del juego.
 - Playwright: `#app` no es "visible" (hijos `position: fixed`); esperar con `state: 'attached'`.

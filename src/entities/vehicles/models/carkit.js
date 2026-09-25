@@ -252,7 +252,8 @@ export function bakeStatic(group, { flatten = false } = {}) {
   const keep = [];
   group.traverse((o) => {
     if (!o.isMesh) return;
-    if (Array.isArray(o.material)) { keep.push(o); return; }
+    // se conservan: multimaterial, instancias y capas con orden de dibujo propio (suelos superpuestos)
+    if (Array.isArray(o.material) || o.isInstancedMesh || o.renderOrder !== 0) { keep.push(o); return; }
     const m = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
     let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
     g.applyMatrix4(m);

@@ -38,3 +38,19 @@ export function frameGroup(frame) {
   g.rotation.y = frame.angle;
   return g;
 }
+
+// UV en metros por proyección según la normal (caja): las texturas de ladrillo/adoquín mantienen su escala real
+// en cualquier pieza. Con `repeat = 1/tamaño` en la textura se fija cuántos metros cubre una repetición.
+export function worldUV(geo) {
+  const pos = geo.attributes.position, nor = geo.attributes.normal;
+  const uv = new Float32Array(pos.count * 2);
+  for (let i = 0; i < pos.count; i++) {
+    const nx = Math.abs(nor.getX(i)), ny = Math.abs(nor.getY(i)), nz = Math.abs(nor.getZ(i));
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    if (ny >= nx && ny >= nz) uv.set([x, z], i * 2);
+    else if (nx >= nz) uv.set([z, y], i * 2);
+    else uv.set([x, y], i * 2);
+  }
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  return geo;
+}

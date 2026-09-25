@@ -32,8 +32,20 @@ export class InputSystem {
     // Suavizado de dirección con teclado (evita volantazos digitales)
     let steer = this.controls.steer + (steerKey - this.controls.steer) * Math.min(1, dt * (steerKey ? 6 : 10));
 
-    const pad = navigator.getGamepads?.().find((p) => p);
-    if (pad) {
+    // Solo mandos con mapeo estándar. Al detectarse uno se toma su estado inicial como referencia (algunos
+    // dispositivos reportan botones "presionados" desde el inicio) y no se usa hasta que el jugador lo toque.
+    const pad = navigator.getGamepads?.().find((p) => p && p.mapping === 'standard');
+    if (pad && this.padId !== pad.id + pad.index) {
+      this.padId = pad.id + pad.index;
+      this.padActive = false;
+      this.padPrev = pad.buttons.map((b) => b.pressed);
+      this.padAxes0 = pad.axes.slice();
+    }
+    if (pad && !this.padActive) {
+      this.padActive = pad.buttons.some((b, i) => b.pressed !== this.padPrev[i]) || pad.axes.some((a, i) => Math.abs(a - this.padAxes0[i]) > 0.3);
+      if (this.padActive) this.padPrev = pad.buttons.map((b) => b.pressed);
+    }
+    if (pad && this.padActive) {
       const dead = (v) => (Math.abs(v) < 0.12 ? 0 : v);
       const stick = dead(pad.axes[0] || 0);
       if (stick) steer = stick;

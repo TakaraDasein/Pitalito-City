@@ -26,6 +26,8 @@
 3. La atribución de la imagen satelital debe verse en pantalla mientras se juega (`#hud-attr`).
 4. Referencias CC BY / CC BY-SA: conservar `assets/references/CREDITS.md` actualizado (lo regenera `refs:fetch`).
 5. No usar marcas registradas en la interfaz (el juego se llama "Pitalito", no "GTA").
+6. Capturas de Google Street View u otras fuentes con derechos: se pueden **mirar** como referencia (citarlas en la
+   cabecera del módulo con fecha y calle) pero **nunca** guardarlas en el repositorio.
 
 ## 3. Coordenadas y unidades
 
