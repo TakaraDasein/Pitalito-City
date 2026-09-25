@@ -1,0 +1,67 @@
+# Estado del proyecto
+
+> Qué hay hoy, por qué se decidió así, qué falla y qué sigue. Actualizar al cerrar cada etapa de trabajo.
+
+**Versión:** 0.3.0 · **Última actualización:** 2026-09-24
+
+## Qué funciona hoy
+
+- Mundo de Pitalito reconstruido con datos reales: 21.767 edificios, 21.527 árboles, 1.777 vías con nombre, relieve
+  de ±12 km (montañas del Valle de Laboyos) y suelo satelital en tres niveles de detalle.
+- Arranque en el Parque Principal José Hilario López, frente a la Iglesia y la Torre San Antonio (modeladas a mano).
+- 6 vehículos modelados sobre fotos (Jeep Willys, taxi, camioneta de platón, chiva, motocarro, moto), con física
+  arcade, pendientes reales, suspensión visual y garaje 3D para elegir, pintar y cambiar la placa.
+- Tráfico IA por el carril derecho, GPS con A*, minimapa, mapa interactivo con buscador y viaje rápido.
+- Menús en estilo guadua (principal, pausa, opciones, créditos), presets de calidad, ciclo día/noche, lluvia.
+- Verificado en Chromium con render por software (sin GPU). **Fps reales en GPU: pendiente de medir.**
+
+## Bitácora de decisiones
+
+| Fecha | Decisión | Motivo |
+|---|---|---|
+| 2026-09-24 | three.js + Vite, JavaScript plano | Mundo generado por datos; publicación web simple (ver TECNOLOGIAS.md) |
+| 2026-09-24 | Streaming por tiles de 250 m + LOD de toda la ciudad | 1.100+ tiles; solo se construye el entorno del jugador |
+| 2026-09-24 | v0.1: calles OSM + edificios Overture + relleno procedural de manzanas | Primera versión rápida |
+| 2026-09-24 | **v0.2: se abandona lo procedural; todo con datos reales** | El usuario reportó que "muchas zonas no coinciden con la vegetación, los lugares…" |
+| 2026-09-24 | Datos abiertos en vez de Google Photorealistic 3D Tiles | Sin cuentas ni costos; elegido por el usuario |
+| 2026-09-24 | Huellas: OSM > Google Open Buildings > Microsoft | Overture solo traía ~60 % de los techos visibles en el satélite |
+| 2026-09-24 | Descartar huellas que invaden el eje de las vías | 1.262 huellas bloqueaban calles (aleros, errores de detección) |
+| 2026-09-24 | Alturas GHSL × 1,6 | GHSL subestima; calibrado con fotos del parque (ver DATOS.md) |
+| 2026-09-24 | Árboles por segmentación de copas | Los máximos locales simples partían un árbol grande en muchos pequeños |
+| 2026-09-24 | Parque sin jardineras, monumento ni faroles inventados | Solo lo confirmado por fotos: bolardos y letrero "200" |
+| 2026-09-24 | v0.3: presets de calidad, PostFX, PMREM, clima | Plan de mejora gráfica |
+| 2026-09-24 | Sombras estabilizadas en vez de sombras en cascada (CSM) | CSM exige preparar cada material; se priorizó robustez |
+| 2026-09-24 | Vehículos por perfil extruido (carkit) en vez de GLTF | Control total, sin binarios, citan su foto de referencia |
+| 2026-09-24 | Tráfico con detalle bajo y materiales fusionados | De 14–31 a 6–13 draw calls por vehículo |
+| 2026-09-24 | Menús de guadua generados en SVG | Nítidos a cualquier resolución, sin imágenes |
+
+## Limitaciones conocidas
+
+- **Rendimiento en GPU real sin medir.** Presupuesto en REGLAS.md; medir con la tecla B.
+- El suelo satelital se ve borroso a ras de calle (0,6 m/px); el detalle procedural lo mitiga, no lo resuelve.
+- Alturas por celda de 90 m, no por edificio; fachadas y forma de techos estimadas.
+- Algunas huellas de Microsoft son manzanas enteras.
+- Vías: ancho estimado por tipo; sin andenes ni demarcación.
+- Sin peatones, semáforos ni reglas de tránsito para la IA (no respeta prelación en cruces).
+- La imagen satelital depende del servicio de Esri en vivo; sin conexión el suelo queda gris verdoso.
+- Sin controles táctiles; en celular solo se puede navegar menús.
+- No hay pruebas automatizadas de lógica; la verificación es visual (VERIFICACION.md).
+
+## Hoja de ruta
+
+**Siguiente (alto valor, bajo riesgo)**
+- Medir fps en 2–3 GPUs y ajustar presets.
+- Peatones en andenes y en el parque; semáforos en troncales y prelación básica en cruces.
+- Hitos: Alcaldía "La Chapolera", Terminal de Transportes, Villa Olímpica, Gemelas Danzantes.
+
+**Después**
+- Misiones sobre el GPS existente (carreras de taxi, entregas de café, rutas de chiva).
+- Controles táctiles.
+- Mover la construcción de tiles a un Web Worker.
+- Pruebas unitarias del pipeline (`src/geo/`, fusión de edificios, segmentación de copas).
+
+**Investigación**
+- Alturas por edificio con Google Open Buildings 2.5D (requiere Earth Engine).
+- Fachadas reales desde fotos a nivel de calle (Mapillary, CC BY-SA).
+- Fuente satelital con licencia que permita guardarla en el repositorio (para jugar sin conexión).
+- Multijugador por WebSocket (el estado del vehículo ya es serializable).

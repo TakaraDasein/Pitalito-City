@@ -1,0 +1,8 @@
+node_modules/
+dist/
+# Datos crudos descargados (se regeneran con npm run data:fetch)
+data/raw/
+# Capturas de verificación (npm run shot)
+screenshots/
+.DS_Store
+*.log

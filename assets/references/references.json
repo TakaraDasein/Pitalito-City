@@ -1,0 +1,255 @@
+[
+  {
+    "file": "landmarks/parque-principal/parque-principal-pitalito.jpg",
+    "category": "landmarks/parque-principal",
+    "usedFor": "Parque Principal José Hilario López: trazado, árboles, bancas, kiosco",
+    "title": "Parque Principal Pitalito.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Parque_Principal_Pitalito.jpg",
+    "author": "Daalecura",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  {
+    "file": "landmarks/parque-principal/pitalito-parque-central.jpg",
+    "category": "landmarks/parque-principal",
+    "usedFor": "Parque Principal José Hilario López: trazado, árboles, bancas, kiosco",
+    "title": "Pitalito Parque Central.JPG",
+    "source": "https://commons.wikimedia.org/wiki/File:Pitalito_Parque_Central.JPG",
+    "author": "Cristian Andrés Gómez Urbano",
+    "license": "Public domain"
+  },
+  {
+    "file": "landmarks/parque-principal/parque-central-3-pitalito.jpg",
+    "category": "landmarks/parque-principal",
+    "usedFor": "Parque Principal José Hilario López: trazado, árboles, bancas, kiosco",
+    "title": "Parque Central 3 (Pitalito).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Parque_Central_3_(Pitalito).jpg",
+    "author": "Walteralvira",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  {
+    "file": "landmarks/catedral/torre-san-antonio.jpg",
+    "category": "landmarks/catedral",
+    "usedFor": "Catedral San Antonio de Padua: torre, fachada blanca, remates",
+    "title": "Torre San Antonio.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Torre_San_Antonio.jpg",
+    "author": "Daalecura",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  {
+    "file": "landmarks/alcaldia/alcaldia-de-pitalito.jpg",
+    "category": "landmarks/alcaldia",
+    "usedFor": "Alcaldía Municipal \"La Chapolera\"",
+    "title": "Alcaldía de Pitalito.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Alcald%C3%ADa_de_Pitalito.jpg",
+    "author": "Criango92",
+    "license": "Public domain"
+  },
+  {
+    "file": "city/panoramas/panoramica-pitalito.jpg",
+    "category": "city/panoramas",
+    "usedFor": "Paleta de color de la ciudad, alturas típicas, cielo y montañas del Valle de Laboyos",
+    "title": "Panoramica pitalito.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Panoramica_pitalito.jpg",
+    "author": "Criango92",
+    "license": "Public domain"
+  },
+  {
+    "file": "city/panoramas/amanecer-en-pitalito-huila.jpg",
+    "category": "city/panoramas",
+    "usedFor": "Paleta de color de la ciudad, alturas típicas, cielo y montañas del Valle de Laboyos",
+    "title": "Amanecer en Pitalito, Huila.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Amanecer_en_Pitalito,_Huila.jpg",
+    "author": "Eduin1221",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  {
+    "file": "city/panoramas/el-valle-de-laboyos-pitalito-huila-colombia.jpg",
+    "category": "city/panoramas",
+    "usedFor": "Paleta de color de la ciudad, alturas típicas, cielo y montañas del Valle de Laboyos",
+    "title": "El Valle de Laboyos, Pitalito - Huila - Colombia.JPG",
+    "source": "https://commons.wikimedia.org/wiki/File:El_Valle_de_Laboyos,_Pitalito_-_Huila_-_Colombia.JPG",
+    "author": "Dhg94",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  {
+    "file": "city/panoramas/paisaje-de-pitalito-a-la-laguna-rio-magdalena-panoramio.jpg",
+    "category": "city/panoramas",
+    "usedFor": "Paleta de color de la ciudad, alturas típicas, cielo y montañas del Valle de Laboyos",
+    "title": "Paisaje de Pitalito a la Laguna(Rio Magdalena) - panoramio.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Paisaje_de_Pitalito_a_la_Laguna(Rio_Magdalena)_-_panoramio.jpg",
+    "author": "Felipe Narvaez",
+    "license": "CC BY 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/3.0"
+  },
+  {
+    "file": "nature/cafe/finca-cafetera-en-pitalito-huila-colombia.jpg",
+    "category": "nature/cafe",
+    "usedFor": "Vegetación periférica y fincas cafeteras",
+    "title": "Finca cafetera en Pitalito, Huila, Colombia.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Finca_cafetera_en_Pitalito,_Huila,_Colombia.jpg",
+    "author": "Jhysus",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  {
+    "file": "vehicles/chiva/bus-chiva-tradicional.jpg",
+    "category": "vehicles/chiva",
+    "usedFor": "Chiva (bus escalera): colores, bancas, parrilla de techo",
+    "title": "Bus chiva tradicional.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Bus_chiva_tradicional.jpg",
+    "author": "https://www.flickr.com/people/pat_ossa/",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0"
+  },
+  {
+    "file": "vehicles/chiva/chiva-rural-en-colombia.jpg",
+    "category": "vehicles/chiva",
+    "usedFor": "Chiva (bus escalera): colores, bancas, parrilla de techo",
+    "title": "Chiva rural en Colombia.JPG",
+    "source": "https://commons.wikimedia.org/wiki/File:Chiva_rural_en_Colombia.JPG",
+    "author": "C arango",
+    "license": "Public domain"
+  },
+  {
+    "file": "vehicles/chiva/colombian-chiva-explained.jpg",
+    "category": "vehicles/chiva",
+    "usedFor": "Chiva (bus escalera): colores, bancas, parrilla de techo",
+    "title": "Colombian chiva explained.svg",
+    "source": "https://commons.wikimedia.org/wiki/File:Colombian_chiva_explained.svg",
+    "author": "Camilo Sanchez",
+    "license": "CC BY 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/3.0"
+  },
+  {
+    "file": "vehicles/willys/jeep-willys-colombia-bogota-01.jpg",
+    "category": "vehicles/willys",
+    "usedFor": "Jeep Willys (vehículo del jugador por defecto)",
+    "title": "Jeep-willys-colombia-bogota-01.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Jeep-willys-colombia-bogota-01.jpg",
+    "author": "Willysalberto",
+    "license": "Public domain"
+  },
+  {
+    "file": "vehicles/willys/jeep-willys-transporte-en-colombia.jpg",
+    "category": "vehicles/willys",
+    "usedFor": "Jeep Willys (vehículo del jugador por defecto)",
+    "title": "Jeep willys transporte en Colombia.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Jeep_willys_transporte_en_Colombia.jpg",
+    "author": "Franciscokarriere",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  {
+    "file": "vehicles/willys/jeeps-willys-in-cocora-valley-colombia.jpg",
+    "category": "vehicles/willys",
+    "usedFor": "Jeep Willys (vehículo del jugador por defecto)",
+    "title": "Jeeps Willys in Cocora Valley, Colombia.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Jeeps_Willys_in_Cocora_Valley,_Colombia.jpg",
+    "author": "Bernard Gagnon",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  {
+    "file": "vehicles/taxi/taxi-skitching-y-universitaria-de-colombia-el-la-carrera-septima.jpg",
+    "category": "vehicles/taxi",
+    "usedFor": "Taxi amarillo colombiano",
+    "title": "Taxi, Skitching, y Universitaria de Colombia el la Carrera Séptima.JPG",
+    "source": "https://commons.wikimedia.org/wiki/File:Taxi,_Skitching,_y_Universitaria_de_Colombia_el_la_Carrera_S%C3%A9ptima.JPG",
+    "author": "Peter Angritt",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  {
+    "file": "identity/flag-of-pitalito-huila.jpg",
+    "category": "identity",
+    "usedFor": "Bandera, escudo y placas de nomenclatura (HUD, banderas del parque)",
+    "title": "Flag of Pitalito (Huila).svg",
+    "source": "https://commons.wikimedia.org/wiki/File:Flag_of_Pitalito_(Huila).svg",
+    "author": "Original: Judith y Saúl Carvajal Carvajal Vector:  Ivanics",
+    "license": "Public domain"
+  },
+  {
+    "file": "identity/escudo-de-pitalito-huila.jpg",
+    "category": "identity",
+    "usedFor": "Bandera, escudo y placas de nomenclatura (HUD, banderas del parque)",
+    "title": "Escudo de Pitalito (Huila).svg",
+    "source": "https://commons.wikimedia.org/wiki/File:Escudo_de_Pitalito_(Huila).svg",
+    "author": "Jose Collazos",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  {
+    "file": "identity/placa-nomenclatura-pitalito.jpg",
+    "category": "identity",
+    "usedFor": "Bandera, escudo y placas de nomenclatura (HUD, banderas del parque)",
+    "title": "Placa nomenclatura Pitalito.svg",
+    "source": "https://commons.wikimedia.org/wiki/File:Placa_nomenclatura_Pitalito.svg",
+    "author": "Jose Collazos",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  {
+    "file": "ui/guadua/guadua-angustifolia-11274473695.jpg",
+    "category": "ui/guadua",
+    "usedFor": "Estilo de los menús: culmos con nudos, tono verde-amarillo seco, uniones y barandas de guadua",
+    "title": "Guadua angustifolia (11274473695).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Guadua_angustifolia_(11274473695).jpg",
+    "author": "Dick Culbert from Gibsons, B.C., Canada",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0"
+  },
+  {
+    "file": "ui/guadua/guadua-angustifolia-the-giant-neotropical-bamboo-11274476235.jpg",
+    "category": "ui/guadua",
+    "usedFor": "Estilo de los menús: culmos con nudos, tono verde-amarillo seco, uniones y barandas de guadua",
+    "title": "Guadua angustifolia, the Giant Neotropical Bamboo (11274476235).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Guadua_angustifolia,_the_Giant_Neotropical_Bamboo_(11274476235).jpg",
+    "author": "Dick Culbert from Gibsons, B.C., Canada",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0"
+  },
+  {
+    "file": "ui/guadua/guadua-macana-barandas.jpg",
+    "category": "ui/guadua",
+    "usedFor": "Estilo de los menús: culmos con nudos, tono verde-amarillo seco, uniones y barandas de guadua",
+    "title": "Guadua macana barandas.JPG",
+    "source": "https://commons.wikimedia.org/wiki/File:Guadua_macana_barandas.JPG",
+    "author": "Czuarq",
+    "license": "CC BY 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/3.0"
+  },
+  {
+    "file": "ui/guadua/casa-ojeda-guadua.jpg",
+    "category": "ui/guadua",
+    "usedFor": "Estilo de los menús: culmos con nudos, tono verde-amarillo seco, uniones y barandas de guadua",
+    "title": "Casa Ojeda guadua.JPG",
+    "source": "https://commons.wikimedia.org/wiki/File:Casa_Ojeda_guadua.JPG",
+    "author": "Czuarq",
+    "license": "Public domain"
+  },
+  {
+    "file": "ui/guadua/guadua-furniture-2005-06-16.jpg",
+    "category": "ui/guadua",
+    "usedFor": "Estilo de los menús: culmos con nudos, tono verde-amarillo seco, uniones y barandas de guadua",
+    "title": "Guadua furniture 2005-06-16.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Guadua_furniture_2005-06-16.jpg",
+    "author": "",
+    "license": "CC BY 2.5",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.5"
+  },
+  {
+    "file": "culture/gemelas-danzantes-pitalito-huila.jpg",
+    "category": "culture",
+    "usedFor": "Escultura \"Gemelas Danzantes\" y ambiente cultural",
+    "title": "Gemelas Danzantes Pitalito Huila.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Gemelas_Danzantes_Pitalito_Huila.jpg",
+    "author": "Karokunst",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  }
+]

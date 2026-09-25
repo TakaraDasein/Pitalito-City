@@ -1,0 +1,118 @@
+/* Menús en estilo guadua — referencias: assets/references/ui/guadua/
+   Guadua seca (arena con nudos oscuros) por defecto; guadua viva (verde) para lo seleccionado. */
+:root {
+  --gd-light: #ecd9a8;
+  --gd: #cdae70;
+  --gd-dark: #8a6a3a;
+  --gd-node: #5a3f20;
+  --gd-green: #5f8f2f;
+  --gd-green-light: #9cc25a;
+  --gd-green-dark: #2c4a17;
+  --gd-ink: #24180b;
+  --gd-bone: #f6eed9;
+  --gd-terracota: #b5553c;
+  --gd-shadow: 0 18px 40px rgba(20, 12, 4, .55);
+}
+
+#menus { position: fixed; inset: 0; pointer-events: none; z-index: 20; font-family: var(--font-ui); }
+#menus .screen {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-start;
+  padding: clamp(16px, 5vw, 72px); pointer-events: auto; opacity: 0; visibility: hidden; transition: opacity .35s, visibility .35s;
+}
+#menus .screen.open { opacity: 1; visibility: visible; transition: opacity .35s, visibility 0s; } /* visible al instante: permite enfocar */
+#menus .screen.dim { background: linear-gradient(90deg, rgba(20, 13, 5, .78) 0%, rgba(20, 13, 5, .35) 55%, rgba(20, 13, 5, 0) 100%); }
+
+/* Esterilla: tiras de guadua abiertas y tejidas */
+.esterilla {
+  position: relative; color: var(--gd-ink);
+  background:
+    repeating-linear-gradient(0deg, rgba(60, 40, 15, .10) 0 2px, transparent 2px 23px),
+    repeating-linear-gradient(90deg, #dcc38c 0 13px, #b7985c 13px 14px, #e6d19c 14px 27px, #a88849 27px 28px, #d4b97f 28px 41px, #9f7f42 41px 42px);
+  box-shadow: var(--gd-shadow), inset 0 0 60px rgba(90, 60, 20, .35);
+  border-radius: 4px;
+}
+.guadua-frame-layer { position: absolute; inset: 0; pointer-events: none; }
+.guadua-frame-layer > svg { position: absolute; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .45)); }
+
+/* Título */
+.gd-title { font-family: var(--font-display); font-weight: 400; margin: 0; line-height: .9; color: var(--gd-bone);
+  font-size: clamp(56px, 11vw, 132px); letter-spacing: .02em;
+  text-shadow: 0 4px 0 var(--gd-node), 0 8px 24px rgba(0, 0, 0, .6); }
+.gd-sub { color: var(--gd-light); letter-spacing: .38em; text-transform: uppercase; font-size: 13px; margin: 10px 0 0; font-weight: 600; }
+.gd-panel { padding: 30px 30px 26px; width: min(380px, 100%); }
+.gd-panel h2 { font-family: var(--font-display); font-weight: 400; font-size: 34px; margin: 0 0 16px; letter-spacing: .03em; color: var(--gd-ink); }
+.gd-stack { display: flex; flex-direction: column; gap: 12px; }
+
+/* Botón = tramo de culmo (seco); seleccionado = guadua viva */
+.culm-btn {
+  --c0: #6b4f2a; --c1: #eedcaa; --c2: #cdae70; --c3: #9c7a44; --c4: #5a4124; --node: rgba(90, 63, 32, .9);
+  position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; min-height: 50px; padding: 0 26px; border: 0; border-radius: 999px; cursor: pointer;
+  font-family: var(--font-display); font-size: 24px; letter-spacing: .06em; color: var(--gd-ink); text-align: left;
+  text-shadow: 0 1px 0 rgba(255, 245, 210, .6);
+  background:
+    linear-gradient(90deg, transparent 0 16px, var(--node) 16px 20px, rgba(255, 240, 200, .5) 20px 22px, transparent 22px calc(100% - 22px), var(--node) calc(100% - 22px) calc(100% - 18px), rgba(255, 240, 200, .5) calc(100% - 18px) calc(100% - 16px), transparent calc(100% - 16px)),
+    linear-gradient(180deg, var(--c0) 0%, var(--c1) 20%, var(--c2) 50%, var(--c3) 82%, var(--c4) 100%);
+  box-shadow: 0 5px 0 rgba(40, 26, 10, .55), 0 10px 18px rgba(0, 0, 0, .35);
+  transition: transform .12s, filter .12s;
+}
+.culm-btn small { font-family: var(--font-ui); font-size: 12px; letter-spacing: .08em; opacity: .75; font-weight: 600; }
+.culm-btn:hover, .culm-btn:focus-visible, .culm-btn.selected {
+  --c0: #22380f; --c1: #b5d672; --c2: #6f9f36; --c3: #3e6a1f; --c4: #1b2e0c; --node: rgba(22, 40, 10, .95);
+  color: #f4f9e6; text-shadow: 0 1px 0 rgba(0, 0, 0, .5); outline: none;
+}
+.culm-btn:focus-visible { box-shadow: 0 0 0 3px var(--gd-bone), 0 5px 0 rgba(40, 26, 10, .55); }
+.culm-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(40, 26, 10, .55); }
+.culm-btn.small { min-height: 38px; font-size: 18px; padding: 0 28px; width: auto; }
+.culm-btn[disabled] { filter: grayscale(.7) brightness(.8); cursor: not-allowed; }
+
+/* Opciones */
+.gd-field { display: grid; gap: 8px; margin-bottom: 16px; }
+.gd-field > span { font-weight: 800; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; }
+.gd-seg { display: flex; flex-wrap: wrap; gap: 8px; }
+.gd-seg .culm-btn { flex: 1; justify-content: center; }
+.gd-range { -webkit-appearance: none; appearance: none; width: 100%; height: 14px; border-radius: 999px; background:
+  linear-gradient(180deg, #5a4124, #9c7a44 40%, #6b4f2a); box-shadow: inset 0 2px 4px rgba(0, 0, 0, .5); }
+.gd-range::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+  background: radial-gradient(circle at 50% 50%, #1a1108 0 28%, #b8965a 30% 55%, #d9bf86 57% 100%); border: 2px solid #5a3f20; }
+.gd-range::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
+  background: radial-gradient(circle at 50% 50%, #1a1108 0 28%, #b8965a 30% 55%, #d9bf86 57% 100%); border: 2px solid #5a3f20; }
+.gd-check { display: flex; align-items: center; gap: 10px; font-weight: 600; cursor: pointer; }
+.gd-check input { width: 20px; height: 20px; accent-color: var(--gd-green); }
+
+/* Garaje */
+#screen-garage { justify-content: space-between; align-items: stretch; background: none; pointer-events: none; }
+#screen-garage > * { pointer-events: auto; }
+.garage-side { width: min(390px, 100%); align-self: center; padding: 26px 26px 22px; max-height: calc(100vh - 60px); overflow-y: auto; }
+.garage-name { font-family: var(--font-display); font-size: 44px; margin: 0; line-height: 1; }
+.garage-desc { margin: 8px 0 18px; font-size: 14px; line-height: 1.45; }
+.gd-stat { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 10px; margin: 8px 0; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.gd-stat .track { height: 16px; border-radius: 999px; background: linear-gradient(180deg, #3b2a14, #5a4124); box-shadow: inset 0 2px 4px rgba(0, 0, 0, .6); overflow: hidden; }
+.gd-stat .fill { height: 100%; border-radius: 999px; transition: width .35s;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(20% - 3px), rgba(22, 40, 10, .9) calc(20% - 3px) 20%),
+    linear-gradient(180deg, #22380f, #b5d672 22%, #6f9f36 55%, #2c4a17); }
+.swatches { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 16px; }
+.swatch { width: 38px; height: 38px; border-radius: 50%; border: 0; cursor: pointer; position: relative;
+  box-shadow: 0 0 0 4px #cdae70, 0 0 0 6px #5a3f20, 0 4px 8px rgba(0, 0, 0, .4); }
+.swatch.selected, .swatch:focus-visible { box-shadow: 0 0 0 4px #9cc25a, 0 0 0 7px #2c4a17, 0 4px 8px rgba(0, 0, 0, .4); outline: none; }
+.gd-input { width: 100%; font: 800 20px var(--font-ui); letter-spacing: .12em; text-transform: uppercase; padding: 8px 12px;
+  background: #f4f4f4; color: #111; border: 3px solid #111; border-radius: 6px; text-align: center; }
+.garage-list { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.garage-nav { align-self: flex-end; display: flex; gap: 12px; margin: 0 0 12px; flex-wrap: wrap; justify-content: flex-end; }
+.gd-hint { color: var(--gd-bone); font-size: 13px; background: rgba(28, 18, 8, .78); padding: 8px 14px; border-radius: 999px; align-self: flex-end; margin: 0 0 8px; }
+
+/* Créditos */
+.gd-credits { font-size: 13px; line-height: 1.5; max-height: 52vh; overflow-y: auto; padding-right: 6px; }
+.gd-credits h3 { margin: 12px 0 4px; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; }
+.gd-credits p { margin: 0; }
+
+/* Estados del juego: ocultar HUD fuera de la partida */
+#app[data-state="menu"] #hud, #app[data-state="garage"] #hud, #app[data-state="paused"] #hud-speed,
+#app[data-state="menu"] #help, #app[data-state="garage"] #help { visibility: hidden; }
+
+@media (max-width: 760px) {
+  #menus .screen { align-items: flex-end; padding: 16px; }
+  #screen-garage { flex-direction: column; justify-content: flex-end; }
+  .garage-side { max-height: 55vh; width: 100%; }
+  .culm-btn { font-size: 20px; min-height: 44px; }
+}

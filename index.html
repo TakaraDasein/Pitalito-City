@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pitalito: Mundo Abierto</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%226%22 fill=%22%23008351%22/%3E%3Ctext x=%2216%22 y=%2223%22 font-size=%2218%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22Arial%22 font-weight=%22bold%22%3EP%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;800&display=swap" />
+  <link rel="stylesheet" href="/src/ui/styles.css" />
+  <link rel="stylesheet" href="/src/ui/guadua/menus.css" />
+</head>
+<body>
+  <div id="app" data-state="loading">
+    <div id="viewport"></div>
+
+    <div id="hud">
+      <div id="hud-minimap"></div>
+      <div id="hud-street" class="plate">
+        <div class="plate-blue"><strong>PITALITO</strong><span id="hud-street-zone">Centro</span></div>
+        <div class="plate-green"><span id="hud-street-name">—</span></div>
+      </div>
+      <div id="hud-zone"></div>
+      <div id="hud-top">
+        <span id="hud-clock">09:30</span>
+        <span id="hud-vehicle">Jeep Willys</span>
+        <span id="hud-gps" hidden></span>
+      </div>
+      <div id="hud-speed">
+        <div id="hud-speed-bar"></div>
+        <span id="hud-speed-value">0</span><small>km/h</small>
+      </div>
+      <div id="hud-toast"></div>
+      <pre id="hud-debug" hidden></pre>
+      <div id="hud-attr">Imagen: Esri, Maxar, Earthstar Geographics · © OpenStreetMap · Overture · Google Open Buildings · Copernicus · Meta/WRI</div>
+    </div>
+
+    <div id="help">
+      <h3>Controles</h3>
+      <dl>
+        <dt>W / S · ↑ / ↓</dt><dd>Acelerar / frenar y reversa</dd>
+        <dt>A / D · ← / →</dt><dd>Girar</dd>
+        <dt>Espacio</dt><dd>Freno de mano (derrape)</dd>
+        <dt>M</dt><dd>Mapa interactivo (clic = destino GPS, doble clic = viajar)</dd>
+        <dt>C</dt><dd>Cambiar cámara (incluye vista aérea) · arrastrar = orbitar · rueda = zoom</dd>
+        <dt>V</dt><dd>Garaje: elegir y pintar vehículo</dd>
+        <dt>Esc</dt><dd>Pausa</dd>
+        <dt>N</dt><dd>Adelantar 3 horas (día / noche)</dd>
+        <dt>H</dt><dd>Pito</dd>
+        <dt>R</dt><dd>Volver a la vía</dd>
+        <dt>T</dt><dd>Ir al Parque Principal</dd>
+        <dt>G</dt><dd>Borrar ruta GPS</dd>
+        <dt>B</dt><dd>Datos de rendimiento</dd>
+      </dl>
+      <p>También funciona con control (gamepad): RT acelera, LT frena, A freno de mano.</p>
+    </div>
+
+    <div id="map-screen" hidden>
+      <canvas id="map-canvas"></canvas>
+      <aside class="map-panel">
+        <header>
+          <h2>Pitalito</h2>
+          <button id="map-close" aria-label="Cerrar mapa">✕</button>
+        </header>
+        <input id="map-search" type="search" placeholder="Buscar lugar…" autocomplete="off" />
+        <ul id="map-places"></ul>
+        <p class="hint">Clic: marcar destino · Doble clic: viajar · Rueda: zoom · Arrastrar: mover</p>
+        <p class="attr">© OpenStreetMap · Overture Maps · Google Open Buildings</p>
+      </aside>
+    </div>
+
+    <div id="menus"></div>
+
+    <div id="loading">
+      <div class="brand">
+        <h1>PITALITO</h1>
+        <p>Valle de Laboyos · Huila</p>
+      </div>
+      <div class="progress"><div id="loading-bar"></div></div>
+      <p id="loading-text">Iniciando…</p>
+      <small class="credits">Datos reales: OpenStreetMap · Overture Maps · Google Open Buildings · Imagen Esri/Maxar · Relieve Copernicus · Árboles Meta/WRI · Referencias: Wikimedia Commons</small>
+    </div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

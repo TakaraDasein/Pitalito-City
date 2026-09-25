@@ -1,0 +1,34 @@
+{
+  "name": "pitalito-city",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "description": "Mundo abierto web de Pitalito (Huila, Colombia) reconstruido con datos geogr\u00e1ficos reales, recorrible en carro. three.js + Vite.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "setup": "npm run data:fetch && npm run data:google && npm run data:rasters && npm run data:build && npm run refs:fetch",
+    "data:fetch": "node scripts/fetch-osm.mjs",
+    "data:google": "node scripts/fetch-google-buildings.mjs",
+    "data:rasters": "node scripts/fetch-rasters.mjs",
+    "data:build": "node scripts/build-world.mjs",
+    "refs:fetch": "node scripts/fetch-references.mjs",
+    "shot": "node tools/screenshot.mjs",
+    "shot:vehicle": "node tools/screenshot.mjs --vehicle"
+  },
+  "dependencies": {
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0",
+    "playwright-core": "^1.49.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:TakaraDasein/Pitalito-City.git"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
