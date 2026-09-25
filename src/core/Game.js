@@ -4,7 +4,7 @@ import { AssetManager } from './AssetManager.js';
 import { Settings } from './Settings.js';
 import { PostFX } from '../render/PostFX.js';
 import { GAME } from '../config/game.config.js';
-import { PLAYER_ROSTER } from '../config/vehicles.config.js';
+import { PLAYER_ROSTER, VEHICLES } from '../config/vehicles.config.js';
 import { projection } from '../geo/projection.js';
 import { distToSegment } from '../geo/geometry.js';
 import { MaterialLibrary, LAYER } from '../materials/MaterialLibrary.js';
@@ -146,7 +146,7 @@ export class Game {
 
     progress(0.95, 'Preparando el mapa interactivo…');
     this.mapRenderer = new MapRenderer(this.map, this.manifest);
-    this.hud = new HUD(this.root.querySelector('#hud'), { map: this.map, manifest: this.manifest });
+    this.hud = new HUD(this.root.querySelector('#hud'), { map: this.map, manifest: this.manifest, events: this.events, settings: this.settings });
     this.minimap = new Minimap(this.root.querySelector('#hud-minimap'), this.mapRenderer);
     this.mapScreen = new MapScreen(this.root.querySelector('#map-screen'), this.mapRenderer, this.map, this.manifest, this.events);
     this.menus = new Menus(this.root.querySelector('#menus'), { settings: this.settings, events: this.events });
@@ -195,6 +195,18 @@ export class Game {
       if (a === 'clearRoute') this.setWaypoint(null);
       if (a === 'help') this.root.querySelector('#help').classList.toggle('open');
       if (a === 'debug') { this.debug = !this.debug; if (!this.debug) this.hud.setDebug(null); }
+    });
+    // Cambio rápido desde la barra en pantalla: conserva pintura y placa si ya era ese vehículo
+    e.on('hud:vehicle', ({ type }) => {
+      if (this.state !== 'playing' || type === this.player.type) return;
+      const saved = this.settings.get('vehicle');
+      this.settings.set('vehicle', { type, color: VEHICLES[type].colors[0] ?? null, plate: saved.plate });
+      const { x, z, heading } = this.player;
+      this.#spawnPlayer(type, x, z, heading);
+      this.hud.toast(`Vehículo: ${this.player.spec.name}`);
+    });
+    e.on('settings:changed', ({ key, value }) => {
+      if (key === 'weather' && this.state === 'playing') this.hud.toast({ auto: 'Clima automático', despejado: 'Cielo despejado', lluvia: 'Lluvia' }[value]);
     });
     e.on('waypoint:set', (p) => this.setWaypoint(p));
     e.on('teleport', (p) => this.teleport(p.x, p.z));
@@ -385,7 +397,7 @@ export class Game {
     this.routeTimer -= dt;
     if (this.routeTimer <= 0) { this.routeTimer = 1; this.#updateRoute(); }
 
-    this.hud.update(dt, { vehicle: p, network: this.network, env: this.env, route: this.route });
+    this.hud.update(dt, { vehicle: p, network: this.network, env: this.env, route: this.route, raining: this.weather.raining });
     const look = this.cameraSys.look, cp = this.camera.position;
     const camHeading = Math.atan2(-(look.x - cp.x), -(look.z - cp.z));
     this.minimap.draw({

@@ -1,4 +1,4 @@
-import { guaduaFrame } from './guadua/culm.js';
+import { guaduaFrame, coffeeBean } from './guadua/culm.js';
 import { QUALITY } from '../core/Settings.js';
 
 // Pantallas del juego en estilo guadua: principal, pausa, opciones, créditos y el contenedor del garaje.
@@ -68,7 +68,10 @@ export class Menus {
     this.screens = Object.fromEntries([...root.querySelectorAll('.screen')].map((s) => [s.id.replace('screen-', ''), s]));
     for (const s of Object.values(this.screens)) {
       const panel = s.querySelector('.gd-panel');
-      if (panel) guaduaFrame(panel);
+      if (panel) {
+        guaduaFrame(panel);
+        for (const [cls, rot, size] of [['bean-1', -25, 26], ['bean-2', 35, 18]]) panel.appendChild(coffeeBean(size, rot)).classList.add('panel-deco', cls);
+      }
     }
     root.addEventListener('click', (e) => {
       const act = e.target.closest('[data-act]')?.dataset.act;

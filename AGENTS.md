@@ -21,7 +21,8 @@ Resumen operativo. Las reglas completas están en [docs/REGLAS.md](docs/REGLAS.m
 4. **Configuración en `src/config/`, materiales en `MaterialLibrary`**, builders puros, todo lo registrado se retira.
 5. **Presupuesto (preset Alta):** ≤ 700 draw calls, ≤ 1 M triángulos, ≤ 14 draw calls por vehículo de tráfico.
 6. Comentarios y textos de interfaz **en español**; identificadores en inglés.
-7. Interfaz: estilo guadua (`src/ui/guadua/`), navegable con teclado.
+7. Interfaz: estilo café y guadua en **todo** elemento (`src/ui/guadua/`, `src/ui/styles.css`), navegable con teclado;
+   la placa de calle conserva el diseño oficial.
 
 ## Antes de terminar una tarea
 
@@ -31,6 +32,8 @@ Resumen operativo. Las reglas completas están en [docs/REGLAS.md](docs/REGLAS.m
 
 ## Trampas conocidas
 
+- En Chromium sin GPU las transiciones CSS de `transform` pueden no avanzar (el panel de ayuda parece no abrir):
+  es del entorno de prueba, no del juego.
 - Playwright: `#app` no es "visible" (hijos `position: fixed`); esperar con `state: 'attached'`.
 - Una tecla puede llegar a dos manejadores (InputSystem y Menus); `Menus` ignora la pulsación que abrió el menú.
 - `bakeStatic` fusiona piezas por material: piezas espejadas (escala negativa) ya se corrigen allí.

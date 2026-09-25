@@ -94,3 +94,61 @@ export function guaduaFrame(target, { thick = 16, green = false } = {}) {
   draw();
   return layer;
 }
+
+/**
+ * Aro de guadua (culmo curvado en círculo) con nudos y amarres: marco del minimapa y del velocímetro.
+ * `size` = diámetro exterior en px, `thick` = grosor del culmo.
+ */
+export function culmRing(size, thick, { nodes = 10, green = false } = {}) {
+  const svg = el('svg', { width: size, height: size, viewBox: `0 0 ${size} ${size}`, class: 'culm-ring', 'aria-hidden': 'true' });
+  const defs = el('defs', {}, svg);
+  const id = `rg${++uid}`;
+  const rg = el('radialGradient', { id, cx: '50%', cy: '50%', r: '50%' }, defs);
+  const c = green ? GREEN : DRY;
+  const r = size / 2 - thick / 2 - 1;
+  const inner = (r - thick / 2) / (size / 2), outer = (r + thick / 2) / (size / 2);
+  [[inner, c[4]], [inner + (outer - inner) * 0.25, c[1]], [inner + (outer - inner) * 0.55, c[2]], [inner + (outer - inner) * 0.85, c[3]], [outer, c[0]]]
+    .forEach(([o, col]) => el('stop', { offset: o, 'stop-color': col }, rg));
+  el('circle', { cx: size / 2, cy: size / 2, r, fill: 'none', stroke: `url(#${id})`, 'stroke-width': thick }, svg);
+  for (let i = 0; i < nodes; i++) {
+    const a = (i / nodes) * Math.PI * 2 + 0.3;
+    const x1 = size / 2 + Math.cos(a) * (r - thick / 2), y1 = size / 2 + Math.sin(a) * (r - thick / 2);
+    const x2 = size / 2 + Math.cos(a) * (r + thick / 2), y2 = size / 2 + Math.sin(a) * (r + thick / 2);
+    el('line', { x1, y1, x2, y2, stroke: green ? '#1f3510' : '#5a3f20', 'stroke-width': 3.5, 'stroke-linecap': 'round', opacity: 0.85 }, svg);
+    const b = a + 0.035;
+    el('line', {
+      x1: size / 2 + Math.cos(b) * (r - thick / 2 + 1), y1: size / 2 + Math.sin(b) * (r - thick / 2 + 1),
+      x2: size / 2 + Math.cos(b) * (r + thick / 2 - 1), y2: size / 2 + Math.sin(b) * (r + thick / 2 - 1),
+      stroke: green ? '#c6e08a' : '#f3e4bb', 'stroke-width': 1.2, opacity: 0.6,
+    }, svg);
+  }
+  return svg;
+}
+
+// Grano de café (adorno): elipse tostada con su surco central
+export function coffeeBean(size, rotate = 0) {
+  const svg = el('svg', { width: size, height: size, viewBox: '0 0 24 24', class: 'coffee-bean', 'aria-hidden': 'true' });
+  const g = el('g', { transform: `rotate(${rotate} 12 12)` }, svg);
+  el('ellipse', { cx: 12, cy: 12, rx: 7.5, ry: 10.5, fill: '#5b3417', stroke: '#2a160a', 'stroke-width': 1.2 }, g);
+  el('ellipse', { cx: 10, cy: 9, rx: 2.5, ry: 4, fill: '#8a5a33', opacity: 0.55 }, g);
+  el('path', { d: 'M12 2.5 C 8.5 8, 15.5 16, 12 21.5', fill: 'none', stroke: '#1e0f06', 'stroke-width': 1.6, 'stroke-linecap': 'round' }, g);
+  return svg;
+}
+
+// Íconos de la barra de controles (trazos simples, heredan currentColor)
+const ICONS = {
+  car: '<path d="M4 15v-3l2-5h12l2 5v3"/><path d="M3 15h18v3H3z"/><circle cx="7.5" cy="18.5" r="1.8"/><circle cx="16.5" cy="18.5" r="1.8"/><path d="M6.5 12h11"/>',
+  auto: '<circle cx="12" cy="12" r="8"/><path d="M8 15l4-8 4 8M9.5 12.5h5"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+  rain: '<path d="M7 14a4 4 0 0 1 .5-8A5.5 5.5 0 0 1 18 7.5 3.5 3.5 0 0 1 17.5 14z"/><path d="M8 17l-1 3M12 17l-1 3M16 17l-1 3"/>',
+  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/>',
+  camera: '<path d="M3 8h4l2-2.5h6L17 8h4v11H3z"/><circle cx="12" cy="13" r="3.5"/>',
+  map: '<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/>',
+  pause: '<rect x="6.5" y="5" width="3.5" height="14" rx="1"/><rect x="14" y="5" width="3.5" height="14" rx="1"/>',
+  garage: '<path d="M3 10l9-6 9 6v10H3z"/><path d="M7 20v-6h10v6M7 17h10"/>',
+};
+export function icon(name, size = 22) {
+  const svg = el('svg', { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 1.8, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' });
+  svg.innerHTML = ICONS[name];
+  return svg;
+}

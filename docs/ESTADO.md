@@ -12,7 +12,8 @@
 - 6 vehículos modelados sobre fotos (Jeep Willys, taxi, camioneta de platón, chiva, motocarro, moto), con física
   arcade, pendientes reales, suspensión visual y garaje 3D para elegir, pintar y cambiar la placa.
 - Tráfico IA por el carril derecho, GPS con A*, minimapa, mapa interactivo con buscador y viaje rápido.
-- Menús en estilo guadua (principal, pausa, opciones, créditos), presets de calidad, ciclo día/noche, lluvia.
+- Menús e HUD en estilo café y guadua (principal, pausa, opciones, créditos, barra de controles en pantalla),
+  presets de calidad, ciclo día/noche, lluvia.
 - Verificado en Chromium con render por software (sin GPU). **Fps reales en GPU: pendiente de medir.**
 
 ## Bitácora de decisiones
@@ -34,6 +35,7 @@
 | 2026-09-24 | Vehículos por perfil extruido (carkit) en vez de GLTF | Control total, sin binarios, citan su foto de referencia |
 | 2026-09-24 | Tráfico con detalle bajo y materiales fusionados | De 14–31 a 6–13 draw calls por vehículo |
 | 2026-09-24 | Menús de guadua generados en SVG | Nítidos a cualquier resolución, sin imágenes |
+| 2026-09-24 | HUD en café y guadua + barra de controles en pantalla | Pedido del usuario: cambiar vehículo y clima sin teclado, estética unificada |
 
 ## Limitaciones conocidas
 

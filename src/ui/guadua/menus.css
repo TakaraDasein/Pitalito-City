@@ -116,3 +116,8 @@
   .garage-side { max-height: 55vh; width: 100%; }
   .culm-btn { font-size: 20px; min-height: 44px; }
 }
+
+/* Granos de café como adorno en las esquinas de los paneles */
+.panel-deco { position: absolute; pointer-events: none; }
+.panel-deco.bean-1 { right: 22px; bottom: 16px; }
+.panel-deco.bean-2 { right: 46px; bottom: 26px; }

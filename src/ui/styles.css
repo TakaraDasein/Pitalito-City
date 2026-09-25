@@ -1,10 +1,16 @@
+/* Estilos base + HUD. Estética café y guadua (ver docs/REGLAS.md §7):
+   paneles de café tostado con textura de costal de fique y marco de guadua; lo activo en guadua verde.
+   Variables de guadua (--gd-*) en src/ui/guadua/menus.css. */
 :root {
   --green: #008351; /* placas de nomenclatura de Pitalito */
   --blue: #005b8c;
   --ink: #0d0f0e;
-  --text: #f4f4f1;
-  --accent: #ffd400;
+  --text: #f6eed9;
   --route: #b04dff;
+  --cafe-dark: #1c1008;
+  --cafe: #3b2414;
+  --cafe-mid: #6f4e37;
+  --crema: #d9b98a;
   --font-display: 'Anton', Impact, 'Arial Narrow', sans-serif;
   --font-ui: 'Inter', system-ui, sans-serif;
 }
@@ -13,116 +19,192 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ink); 
 #viewport, #viewport canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
 #viewport canvas { cursor: grab; touch-action: none; }
 
+/* ── Superficies de café ─────────────── */
+.cafe-panel, .cafe-pill {
+  position: relative; color: var(--text);
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 230, 190, .035) 0 2px, transparent 2px 6px),
+    repeating-linear-gradient(-45deg, rgba(0, 0, 0, .12) 0 2px, transparent 2px 6px),
+    linear-gradient(180deg, rgba(62, 38, 21, .95), rgba(28, 16, 8, .96));
+  box-shadow: 0 10px 24px rgba(10, 5, 2, .55), inset 0 1px 0 rgba(255, 220, 170, .12);
+  border-radius: 6px;
+}
+.cafe-pill { border-radius: 999px; border: 2px solid var(--gd-gd, #cdae70); }
+.coffee-bean { filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .5)); }
+
 /* ── HUD ─────────────────────────────── */
 #hud { position: fixed; inset: 0; pointer-events: none; }
-#hud-minimap { position: absolute; left: 22px; bottom: 22px; }
-.minimap { width: 210px; height: 210px; border-radius: 50%; box-shadow: 0 6px 24px rgba(0,0,0,.5); }
+#hud button { pointer-events: auto; font: inherit; }
 
+/* Minimapa con aro de guadua */
+#hud-minimap { position: absolute; left: 18px; bottom: 18px; width: 236px; height: 236px; }
+.minimap { position: absolute; left: 13px; top: 13px; width: 210px; height: 210px; border-radius: 50%; }
+#hud-minimap .hud-ring { position: absolute; inset: 0; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .55)); }
+#hud-minimap .bean-a { position: absolute; right: 6px; top: 4px; }
+#hud-minimap .bean-b { position: absolute; right: -4px; top: 22px; width: 16px; height: 16px; }
+
+/* Placa de calle: diseño oficial, montada en un poste de guadua */
 .plate {
-  position: absolute; left: 244px; bottom: 30px; display: flex; height: 58px;
-  border: 3px solid #fff; border-radius: 6px; overflow: hidden; box-shadow: 0 6px 18px rgba(0,0,0,.45);
-  font-weight: 800; letter-spacing: .02em; max-width: calc(100vw - 480px);
+  position: absolute; left: 272px; bottom: 34px; display: flex; height: 58px;
+  border: 3px solid #fff; border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.45);
+  font-weight: 800; letter-spacing: .02em; max-width: calc(100vw - 520px);
 }
-.plate-blue { background: var(--blue); padding: 6px 12px; display: flex; flex-direction: column; justify-content: center; min-width: 96px; border-right: 3px solid #fff; }
+.plate-blue { background: var(--blue); padding: 6px 12px; display: flex; flex-direction: column; justify-content: center; min-width: 96px; border-right: 3px solid #fff; border-radius: 3px 0 0 3px; }
 .plate-blue strong { font-size: 12px; letter-spacing: .12em; }
 .plate-blue span { font-size: 13px; font-weight: 600; white-space: nowrap; }
-.plate-green { background: var(--green); padding: 0 18px; display: flex; align-items: center; font-size: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plate-green { background: var(--green); padding: 0 18px; display: flex; align-items: center; font-size: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 0 3px 3px 0; }
+.plate-post {
+  position: absolute; left: -22px; top: -18px; bottom: -40px; width: 14px; border-radius: 7px; z-index: -1;
+  background:
+    linear-gradient(180deg, transparent 0 30%, rgba(90, 63, 32, .9) 30% calc(30% + 3px), rgba(243, 228, 187, .5) calc(30% + 3px) calc(30% + 5px), transparent calc(30% + 5px) 78%, rgba(90, 63, 32, .9) 78% calc(78% + 3px), transparent calc(78% + 3px)),
+    linear-gradient(90deg, #5a4124, #cdae70 30%, #eedcaa 45%, #9c7a44 80%, #5a4124);
+  box-shadow: 0 6px 10px rgba(0, 0, 0, .45);
+}
+.plate-lash { position: absolute; left: -27px; }
+.plate-lash.lash-a { top: 6px; } .plate-lash.lash-b { bottom: 8px; }
 
+/* Nombre de zona (estilo GTA, en crema sobre sombra de café) */
 #hud-zone {
-  position: absolute; right: 36px; bottom: 150px; font-family: var(--font-display); font-size: 44px;
-  color: #fff; text-shadow: 0 3px 0 #000, 0 0 18px rgba(0,0,0,.6); opacity: 0; text-align: right;
+  position: absolute; right: 36px; bottom: 190px; font-family: var(--font-display); font-size: 46px;
+  color: var(--text); text-shadow: 0 3px 0 var(--cafe-dark), 0 0 18px rgba(20, 10, 4, .7); opacity: 0; text-align: right;
 }
 #hud-zone.show { animation: zone 4.2s ease forwards; }
 @keyframes zone { 0% { opacity: 0; transform: translateY(10px); } 10%, 75% { opacity: 1; transform: none; } 100% { opacity: 0; } }
 
-#hud-top { position: absolute; right: 24px; top: 20px; display: flex; gap: 10px; }
-#hud-top span { background: rgba(0,0,0,.6); padding: 6px 12px; border-radius: 4px; font-weight: 600; font-size: 14px; }
-#hud-clock { font-variant-numeric: tabular-nums; }
-#hud-gps { color: #e3c2ff; border-left: 3px solid var(--route); }
+/* Barra de controles en pantalla */
+#hud-bar { position: absolute; right: 22px; top: 18px; display: flex; align-items: center; gap: 14px; padding: 10px 14px; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100vw - 44px); }
+.hud-info { display: flex; align-items: center; gap: 10px; }
+#hud-clock { font-family: var(--font-display); font-size: 24px; letter-spacing: .04em; font-variant-numeric: tabular-nums; color: var(--crema); min-width: 62px; }
+#hud-gps { font-size: 13px; font-weight: 700; color: #e3c2ff; padding: 4px 10px; border-radius: 999px; background: rgba(176, 77, 255, .18); border: 1px solid rgba(176, 77, 255, .6); }
+.hud-chip {
+  display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px; border: 0; border-radius: 999px; cursor: pointer;
+  color: var(--gd-ink, #24180b); font-weight: 800; font-size: 14px; letter-spacing: .02em;
+  background:
+    linear-gradient(90deg, transparent 0 12px, rgba(90, 63, 32, .9) 12px 15px, transparent 15px calc(100% - 15px), rgba(90, 63, 32, .9) calc(100% - 15px) calc(100% - 12px), transparent calc(100% - 12px)),
+    linear-gradient(180deg, #6b4f2a 0%, #eedcaa 22%, #cdae70 52%, #9c7a44 84%, #5a4124 100%);
+  box-shadow: 0 3px 0 rgba(20, 12, 4, .6);
+}
+.hud-chip:hover, .hud-chip[aria-expanded="true"], .hud-chip:focus-visible {
+  color: #f4f9e6; outline: none;
+  background:
+    linear-gradient(90deg, transparent 0 12px, rgba(22, 40, 10, .95) 12px 15px, transparent 15px calc(100% - 15px), rgba(22, 40, 10, .95) calc(100% - 15px) calc(100% - 12px), transparent calc(100% - 12px)),
+    linear-gradient(180deg, #22380f 0%, #b5d672 22%, #6f9f36 52%, #3e6a1f 84%, #1b2e0c 100%);
+}
+.hud-tools { display: flex; align-items: center; gap: 8px; }
+.hud-group { display: flex; gap: 4px; padding: 3px; border-radius: 999px; background: rgba(0, 0, 0, .28); }
+/* Botón = culmo cortado visto de frente: anillo de guadua y hueco de café */
+.hud-btn {
+  width: 40px; height: 40px; border-radius: 50%; border: 0; cursor: pointer; display: grid; place-items: center;
+  color: var(--crema);
+  background: radial-gradient(circle, var(--cafe) 0 56%, #5a4124 58%, #eedcaa 64%, #cdae70 76%, #8a6a3a 88%, #5a4124 100%);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, .5); transition: transform .1s;
+}
+.hud-btn:hover, .hud-btn:focus-visible { color: #f4f9e6; outline: none;
+  background: radial-gradient(circle, #2c4a17 0 56%, #1f3510 58%, #b5d672 64%, #6f9f36 76%, #3e6a1f 88%, #1b2e0c 100%); }
+.hud-btn.active { color: #f4f9e6;
+  background: radial-gradient(circle, #3e6a1f 0 56%, #1f3510 58%, #c6e08a 64%, #7fae3c 76%, #3e6a1f 88%, #1b2e0c 100%); }
+.hud-btn:active { transform: scale(.94); }
 
+/* Menú rápido de vehículos */
+#hud-vehicles { position: absolute; right: 22px; top: 92px; width: 310px; padding: 16px; display: flex; flex-direction: column; gap: 8px; pointer-events: auto; }
+#hud-vehicles[hidden] { display: none; }
+.hud-menu-title { margin: 0 0 4px; font-family: var(--font-display); font-size: 22px; letter-spacing: .04em; color: var(--crema); }
+#hud-vehicles .culm-btn { width: 100%; justify-content: flex-start; gap: 10px; font-size: 17px; white-space: nowrap; min-height: 40px; }
+.paint-dot { width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 0 2px #5a3f20, inset 0 -2px 3px rgba(0, 0, 0, .35); flex: none; }
+.hud-garage-opt { margin-top: 4px; }
+
+/* Velocímetro de guadua */
 #hud-speed {
-  position: absolute; right: 30px; bottom: 26px; width: 118px; height: 118px; border-radius: 50%;
+  position: absolute; right: 22px; bottom: 22px; width: 156px; height: 156px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; flex-direction: column;
-  background: radial-gradient(circle, rgba(0,0,0,.72) 58%, transparent 60%);
+  background: radial-gradient(circle, rgba(40, 23, 12, .92) 0 54%, rgba(28, 16, 8, .7) 62%, transparent 64%);
 }
-#hud-speed-bar {
-  --p: 0; position: absolute; inset: 0; border-radius: 50%;
-  background: conic-gradient(from 225deg, var(--accent) calc(var(--p) * 270deg), rgba(255,255,255,.12) 0 270deg, transparent 0);
-  mask: radial-gradient(circle, transparent 60%, #000 61%);
-  -webkit-mask: radial-gradient(circle, transparent 60%, #000 61%);
-}
-#hud-speed-value { font-family: var(--font-display); font-size: 42px; line-height: 1; font-style: italic; font-variant-numeric: tabular-nums; }
-#hud-speed small { font-size: 11px; letter-spacing: .15em; opacity: .75; }
+#hud-speed > .culm-ring { position: absolute; inset: 0; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .55)); }
+#hud-speed .speed-arc { position: absolute; inset: 8px; width: 140px; height: 140px; }
+#hud-speed-value { position: relative; font-family: var(--font-display); font-size: 44px; line-height: 1; font-style: italic; font-variant-numeric: tabular-nums; color: var(--text); text-shadow: 0 2px 0 var(--cafe-dark); }
+#hud-speed small { position: relative; font-size: 11px; letter-spacing: .18em; color: var(--crema); font-weight: 700; }
 
+/* Mensajes */
 #hud-toast {
   position: absolute; left: 50%; top: 22px; transform: translate(-50%, -12px); opacity: 0; transition: .25s;
-  background: rgba(0,0,0,.75); padding: 10px 18px; border-radius: 4px; border-left: 4px solid var(--accent); font-weight: 600;
+  padding: 10px 22px; font-weight: 700; border-color: #9cc25a;
 }
 #hud-toast.show { opacity: 1; transform: translate(-50%, 0); }
-#hud-attr { position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); font-size: 10px; opacity: .7; text-shadow: 0 1px 2px #000; white-space: nowrap; }
-#hud-debug { position: absolute; left: 20px; top: 16px; margin: 0; background: rgba(0,0,0,.6); padding: 8px 10px; font-size: 12px; border-radius: 4px; }
+#hud-attr { position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); font-size: 10px; color: var(--crema); opacity: .85; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+#hud-debug { position: absolute; left: 20px; top: 16px; margin: 0; padding: 8px 12px; font-size: 12px; border-radius: 6px; color: var(--crema);
+  background: rgba(28, 16, 8, .88); border-left: 3px solid #9cc25a; }
+#hud.raining #hud-zone { text-shadow: 0 3px 0 #10151a, 0 0 18px rgba(0, 0, 0, .7); }
+
+/* Fuera de la partida la barra no se usa */
+#app[data-state="paused"] #hud-bar, #app[data-state="paused"] #hud-vehicles { visibility: hidden; }
 
 /* ── Ayuda ───────────────────────────── */
 #help {
-  position: fixed; left: 20px; top: 50%; transform: translate(-120%, -50%); transition: transform .3s;
-  background: rgba(10,12,11,.9); padding: 18px 22px; border-radius: 8px; width: 360px; max-width: calc(100vw - 40px);
-  border-top: 4px solid var(--green);
+  position: fixed; left: 26px; top: 50%; transform: translate(-130%, -50%); transition: transform .3s;
+  padding: 20px 24px; width: 380px; max-width: calc(100vw - 52px);
 }
 #help.open { transform: translate(0, -50%); }
-#help h3 { margin: 0 0 10px; font-family: var(--font-display); font-weight: 400; font-size: 26px; letter-spacing: .03em; }
+#help h3 { margin: 0 0 10px; font-family: var(--font-display); font-weight: 400; font-size: 28px; letter-spacing: .03em; color: var(--crema); }
 #help dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: 13px; }
-#help dt { font-weight: 800; color: var(--accent); white-space: nowrap; }
+#help dt { font-weight: 800; color: #b5d672; white-space: nowrap; }
 #help dd { margin: 0; }
-#help p { font-size: 12px; opacity: .7; margin: 12px 0 0; }
+#help p { font-size: 12px; opacity: .75; margin: 12px 0 0; }
 
 /* ── Mapa completo ───────────────────── */
-#map-screen { position: fixed; inset: 0; background: #141a17; display: flex; }
+#map-screen { position: fixed; inset: 0; background: #140c06; display: flex; }
 #map-screen[hidden] { display: none; }
 #map-canvas { flex: 1; min-width: 0; height: 100%; cursor: crosshair; touch-action: none; }
-.map-panel { width: 320px; background: #0e1210; border-left: 4px solid var(--green); display: flex; flex-direction: column; padding: 16px; gap: 10px; }
+.map-panel { width: 330px; display: flex; flex-direction: column; padding: 18px; gap: 10px; border-radius: 0; border-left: 10px solid transparent;
+  border-image: linear-gradient(90deg, #5a4124, #eedcaa 35%, #cdae70 55%, #6b4f2a) 1; }
+.map-panel .panel-bean { position: absolute; right: 60px; top: 22px; }
 .map-panel header { display: flex; align-items: center; justify-content: space-between; }
-.map-panel h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 34px; letter-spacing: .03em; }
-#map-close { background: none; border: 1px solid #444; color: var(--text); width: 34px; height: 34px; border-radius: 4px; cursor: pointer; font-size: 16px; }
-#map-search { background: #1b211e; border: 1px solid #333; color: var(--text); padding: 10px 12px; border-radius: 4px; font: inherit; }
+.map-panel h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 34px; letter-spacing: .03em; color: var(--crema); }
+#map-close { width: 38px; height: 38px; border-radius: 50%; border: 0; cursor: pointer; color: var(--crema); font-size: 15px;
+  background: radial-gradient(circle, var(--cafe) 0 56%, #5a4124 58%, #eedcaa 64%, #cdae70 76%, #8a6a3a 88%, #5a4124 100%); }
+#map-close:hover, #map-close:focus-visible { outline: none; color: #fff; background: radial-gradient(circle, #2c4a17 0 56%, #1f3510 58%, #b5d672 64%, #6f9f36 76%, #3e6a1f 88%, #1b2e0c 100%); }
+#map-search { color: var(--gd-ink, #24180b); padding: 10px 14px; border-radius: 999px; font: inherit; font-weight: 600; border: 2px solid #5a3f20;
+  background: repeating-linear-gradient(90deg, #e6d19c 0 12px, #d4b97f 12px 13px); }
+#map-search::placeholder { color: #6b4f2a; }
 #map-places { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
 #map-places button {
-  width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid #1f2522; color: var(--text);
-  padding: 9px 4px; cursor: pointer; display: flex; justify-content: space-between; gap: 8px; font: inherit; font-size: 13px;
+  width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid rgba(217, 185, 138, .15); color: var(--text);
+  padding: 9px 8px; cursor: pointer; display: flex; justify-content: space-between; gap: 8px; font: inherit; font-size: 13px; border-radius: 6px;
 }
-#map-places button:hover, #map-places button:focus-visible { background: #1b2420; outline: none; }
-#map-places small { color: #8fa39a; white-space: nowrap; }
-.map-panel .hint { font-size: 12px; color: #9aa; margin: 0; }
-.map-panel .attr { font-size: 11px; color: #667; margin: 0; }
+#map-places button:hover, #map-places button:focus-visible { background: rgba(111, 159, 54, .28); outline: none; }
+#map-places small { color: var(--crema); opacity: .75; white-space: nowrap; }
+.map-panel .hint { font-size: 12px; color: var(--crema); margin: 0; opacity: .85; }
+.map-panel .attr { font-size: 11px; color: var(--crema); opacity: .55; margin: 0; }
 
-/* ── Pantalla de carga ───────────────── */
+/* ── Pantalla de carga: café y guadua ── */
 #loading {
   position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
   background:
-    linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.85)),
-    radial-gradient(ellipse at 30% 20%, #e76f51 0%, transparent 55%),
-    radial-gradient(ellipse at 80% 70%, #2a9d8f 0%, transparent 55%),
-    #1b1b1b;
+    radial-gradient(ellipse at 50% 40%, rgba(111, 78, 55, .45), transparent 60%),
+    radial-gradient(circle at 20% 30%, #3b2414 0 3px, transparent 4px) 0 0 / 46px 46px,
+    radial-gradient(circle at 70% 70%, #2a160a 0 3px, transparent 4px) 0 0 / 38px 38px,
+    linear-gradient(180deg, #2a1709, #140b05);
   transition: opacity .6s;
 }
 #loading.done { opacity: 0; pointer-events: none; }
 .brand { text-align: center; }
-.brand h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(64px, 14vw, 150px); margin: 0; line-height: .9; letter-spacing: .02em; text-shadow: 0 6px 0 #000; }
-.brand p { margin: 6px 0 0; letter-spacing: .4em; text-transform: uppercase; font-size: 14px; opacity: .85; }
-.progress { width: min(420px, 80vw); height: 6px; background: rgba(255,255,255,.15); border-radius: 3px; overflow: hidden; }
-#loading-bar { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
-#loading-text { margin: 0; font-size: 14px; opacity: .85; }
-#play {
-  font-family: var(--font-display); font-size: 28px; letter-spacing: .08em; padding: 10px 44px; background: var(--accent);
-  color: #111; border: 0; border-radius: 4px; cursor: pointer; box-shadow: 0 6px 0 #9c8200;
-}
-#play:hover { transform: translateY(-1px); }
-#play:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
-.credits { position: absolute; bottom: 16px; font-size: 11px; opacity: .6; text-align: center; padding: 0 16px; }
+.brand h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(64px, 14vw, 150px); margin: 0; line-height: .9; letter-spacing: .02em; color: var(--text); text-shadow: 0 6px 0 #5a3f20, 0 12px 30px rgba(0, 0, 0, .6); }
+.brand p { margin: 6px 0 0; letter-spacing: .4em; text-transform: uppercase; font-size: 14px; color: var(--crema); }
+.progress { width: min(440px, 80vw); height: 20px; border-radius: 999px; overflow: hidden; padding: 3px;
+  background: linear-gradient(180deg, #5a4124, #cdae70 30%, #eedcaa 45%, #9c7a44 80%, #5a4124); box-shadow: 0 6px 14px rgba(0, 0, 0, .5); }
+#loading-bar { height: 100%; width: 0; border-radius: 999px; transition: width .2s;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(12% - 3px), rgba(22, 40, 10, .9) calc(12% - 3px) 12%),
+    linear-gradient(180deg, #22380f, #b5d672 25%, #6f9f36 60%, #2c4a17); }
+#loading-text { margin: 0; font-size: 14px; color: var(--crema); }
+.credits { position: absolute; bottom: 16px; font-size: 11px; color: var(--crema); opacity: .6; text-align: center; padding: 0 16px; }
 
 @media (max-width: 760px) {
-  .minimap { width: 150px; height: 150px; }
-  .plate { left: 16px; bottom: auto; top: 64px; height: 48px; max-width: calc(100vw - 32px); }
+  #hud-minimap { transform: scale(.7); transform-origin: left bottom; }
+  .plate { left: 30px; bottom: auto; top: 118px; height: 46px; max-width: calc(100vw - 50px); }
   .plate-green { font-size: 17px; }
-  #hud-zone { font-size: 30px; bottom: 140px; right: 16px; }
-  .map-panel { position: absolute; bottom: 0; left: 0; right: 0; width: auto; height: 40%; border-left: 0; border-top: 4px solid var(--green); }
+  #hud-bar { left: 12px; right: 12px; top: 10px; justify-content: center; gap: 8px; padding: 8px; }
+  .hud-btn { width: 36px; height: 36px; }
+  #hud-vehicles { right: 12px; left: 12px; width: auto; top: 118px; }
+  #hud-speed { transform: scale(.75); transform-origin: right bottom; }
+  #hud-zone { font-size: 30px; bottom: 150px; right: 16px; }
+  .map-panel { position: absolute; bottom: 0; left: 0; right: 0; width: auto; height: 40%; border-left: 0; }
 }

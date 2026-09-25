@@ -74,14 +74,19 @@ detalle) o se deja solo en Ultra.
 - Sin dependencias nuevas de ejecución sin discutirlo: hoy solo `three`.
 - Textos de la interfaz: frases cortas, tuteo neutro, tildes correctas.
 
-## 7. Interfaz (estilo guadua)
+## 7. Interfaz (estilo café y guadua)
 
-- Paleta y componentes en `src/ui/guadua/menus.css` (variables `--gd-*`). Guadua **seca** = estado normal,
-  guadua **verde** = seleccionado / foco. No introducir otros colores de acento.
-- Marcos con `guaduaFrame()`, paneles con `.esterilla`, botones con `.culm-btn`.
-- Todo menú debe poder usarse con teclado (flechas, Enter, Esc) y tener foco visible.
-- El HUD no se tapa con menús durante la partida; la placa de calle conserva el diseño oficial de la nomenclatura
-  de Pitalito (verde #008351, azul #005b8c).
+- **Todo elemento de interfaz** (menús, HUD, mapa, ayuda, carga) usa la misma estética:
+  - superficies de **café tostado** (`.cafe-panel`, `.cafe-pill`: textura de costal de fique) o de **esterilla**
+    (`.esterilla`) para paneles claros,
+  - marcos y aros de **guadua** (`guaduaFrame()`, `culmRing()`), granos de café como adorno (`coffeeBean()`),
+  - guadua **seca** = estado normal, guadua **verde** = seleccionado / activo / foco. No hay otros colores de acento.
+- Componentes: botones de texto `.culm-btn`, botones de ícono `.hud-btn` (culmo cortado visto de frente), chips
+  `.hud-chip`, íconos con `icon()` (SVG de trazo, `currentColor`). Todo en `src/ui/guadua/` y `src/ui/styles.css`.
+- Todo menú debe poder usarse con teclado (flechas, Enter, Esc) y tener foco visible. Los botones del HUD evitan
+  tomar el foco al hacer clic (si no, Espacio —freno de mano— los activaría).
+- **Excepción:** la placa de calle conserva el diseño oficial de la nomenclatura de Pitalito (verde #008351,
+  azul #005b8c); la guadua solo la enmarca (poste y amarres).
 
 ## 8. Flujo de trabajo
 

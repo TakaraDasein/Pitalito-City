@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { Vehicle } from '../entities/vehicles/Vehicle.js';
 import { VEHICLES, PLAYER_ROSTER, vehicleStats } from '../config/vehicles.config.js';
-import { guaduaFrame } from './guadua/culm.js';
+import { guaduaFrame, coffeeBean } from './guadua/culm.js';
 
 // Textura de culmo para la escena 3D: color arena con nudos oscuros cada cierto tramo (v = a lo largo).
 function culmTexture(green = false) {
@@ -156,7 +156,9 @@ export class Garage {
         </div>
       </div>
       <div class="garage-nav"><p class="gd-hint">← → cambiar vehículo · arrastrar para girar · rueda para acercar</p></div>`;
-    guaduaFrame(screen.querySelector('#garage-panel'));
+    const panel = screen.querySelector('#garage-panel');
+    guaduaFrame(panel);
+    for (const [cls, rot, size] of [['bean-1', -25, 26], ['bean-2', 35, 18]]) panel.appendChild(coffeeBean(size, rot)).classList.add('panel-deco', cls);
     const list = screen.querySelector('#garage-list');
     PLAYER_ROSTER.forEach((type, i) => {
       const b = document.createElement('button');

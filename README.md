@@ -43,7 +43,8 @@ además GDAL (ver [docs/DATOS.md](docs/DATOS.md)).
 | R / T / G | Volver a la vía / ir al parque / borrar ruta |
 | B / F1 | Rendimiento / ayuda |
 
-Gamepad: RT acelera, LT frena, stick izquierdo gira, A freno de mano.
+Barra de controles en pantalla (arriba a la derecha): cambio rápido de vehículo, clima (auto / despejado / lluvia),
+hora, cámara, mapa y pausa. Gamepad: RT acelera, LT frena, stick izquierdo gira, A freno de mano.
 
 ## Qué incluye
 
@@ -53,7 +54,8 @@ Gamepad: RT acelera, LT frena, stick izquierdo gira, A freno de mano.
 - **6 vehículos** modelados sobre fotos: Jeep Willys, taxi, camioneta de platón, chiva, motocarro y moto.
 - **Juego**: tráfico IA, GPS con rutas por las calles reales, minimapa, placa de calle con la nomenclatura oficial
   de Pitalito, física con pendientes, día/noche, lluvia.
-- **Interfaz en guadua**: menú principal, pausa, opciones (4 presets de calidad), créditos y garaje 3D.
+- **Interfaz en café y guadua**: menú principal, pausa, opciones (4 presets de calidad), créditos, garaje 3D y un HUD
+  con minimapa y velocímetro en aros de guadua, paneles de café tostado y barra de controles en pantalla.
 
 ## Documentación
 
