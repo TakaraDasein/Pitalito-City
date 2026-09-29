@@ -37,6 +37,8 @@ import { Minimap } from '../ui/Minimap.js';
 import { MapScreen } from '../ui/MapScreen.js';
 import { Menus } from '../ui/Menus.js';
 import { Garage } from '../ui/Garage.js';
+import { BlockWorld } from '../world/blocks/BlockWorld.js';
+import { PlayerSystem } from '../systems/PlayerSystem.js';
 
 // Orquestador: crea los sistemas, los conecta por eventos y corre el bucle principal.
 export class Game {
@@ -122,9 +124,12 @@ export class Game {
 
     progress(0.4, 'Construyendo el Parque Principal y la Torre San Antonio…');
     this.landmarks = LANDMARKS.filter((l) => l.available(this.manifest));
+    this.landmarkRoots = [];
     for (const l of this.landmarks) {
       for (const p of l.exclusion(this.manifest)) this.streamer.addExclusion(p);
-      this.scene.add(l.build({ manifest: this.manifest, materials: this.materials, collision: this.collision, network: this.network, terrain: this.terrain }));
+      const root = l.build({ manifest: this.manifest, materials: this.materials, collision: this.collision, network: this.network, terrain: this.terrain });
+      this.landmarkRoots.push(root);
+      this.scene.add(root);
     }
 
     progress(0.5, 'Dibujando la ciudad a lo lejos…');
@@ -153,19 +158,25 @@ export class Game {
     this.menus = new Menus(this.root.querySelector('#menus'), { settings: this.settings, events: this.events });
     this.garage = new Garage({ renderer, materials: this.materials, settings: this.settings, events: this.events, root: this.root });
     this.garage.mountUI(this.menus.screens.garage);
+    // A pie y construcción
+    this.blocks = new BlockWorld({ scene: this.scene, materials: this.materials, collision: this.collision, terrain: this.terrain, events: this.events });
+    this.playerSys = new PlayerSystem(this);
+    for (const l of this.landmarks) for (const it of l.interactables || []) this.playerSys.register(it(this));
+    this.hud.setHotbar(this.blocks.icons(renderer));
     this.#wireEvents();
     this.#applyPlayerSettings();
     this.applyQuality();
     progress(1, 'Listo');
   }
 
-  #spawnPlayer(type, x, z, heading) {
+  #spawnPlayer(type, x, z, heading, { driver = true, color = null } = {}) {
     if (this.player) this.scene.remove(this.player.object);
     const saved = this.settings.get('vehicle');
     const same = saved.type === type;
+    const paint = color ?? (same && saved.color ? saved.color : null);
     this.player = new Vehicle(type, {
-      materials: this.materials, detail: 'high',
-      plateText: (same && saved.plate) || 'PTL 200', ...(same && saved.color ? { color: saved.color } : {}),
+      materials: this.materials, detail: 'high', driver,
+      plateText: (same && saved.plate) || 'PTL 200', ...(paint ? { color: paint } : {}),
     });
     this.player.place(x, z, heading);
     this.scene.add(this.player.object);
@@ -175,6 +186,17 @@ export class Game {
     lamp.target.position.set(0, 0, -20);
     this.player.object.add(lamp, lamp.target);
     this.headlamp = lamp;
+  }
+
+  // Rehace el vehículo del jugador en la misma posición (con o sin conductor visible, al bajarse/subirse)
+  rebuildPlayerVehicle({ driver }) {
+    const { type, x, z, heading, modelOpts } = this.player;
+    this.#spawnPlayer(type, x, z, heading, { driver, color: modelOpts?.color ?? null });
+  }
+
+  // El jugador toma otro vehículo (p. ej. del tráfico)
+  replacePlayerVehicle(type, x, z, heading, color) {
+    this.#spawnPlayer(type, x, z, heading, { driver: true, color });
   }
 
   #wireEvents() {
@@ -187,12 +209,17 @@ export class Game {
       if (a === 'map' || (a === 'escape' && this.mapScreen.open)) return this.mapScreen.toggle(a === 'escape' ? false : undefined);
       if (this.mapScreen.open) return;
       if (a === 'escape') { this.setState('paused'); this.menus.show('pause'); return; }
+      if (a === 'camera' && this.playerSys.walking) { this.playerSys.toggleView(); return; }
       if (a === 'camera') { this.cameraSys.next(); this.hud.toast(`Cámara: ${MODE_LABELS[this.cameraSys.modeName]}`); }
       if (a === 'vehicle') this.openGarage();
       if (a === 'time') { this.env.setHour(this.env.hour + 3); this.hud.toast(`Hora: ${this.env.clock}`); }
       if (a === 'horn') this.audio.horn();
-      if (a === 'reset') this.teleport(this.player.x, this.player.z);
-      if (a === 'home') { const s = this.manifest.spawn; this.player.place(s.x, s.z, s.heading); this.hud.toast('Parque Principal'); }
+      if (a === 'reset') this.teleport(this.playerSys.focus.x, this.playerSys.focus.z);
+      if (a === 'home') {
+        const s = this.manifest.spawn;
+        if (this.playerSys.walking) this.playerSys.placeCharacter(s.x, s.z); else this.player.place(s.x, s.z, s.heading);
+        this.hud.toast('Parque Principal');
+      }
       if (a === 'clearRoute') this.setWaypoint(null);
       if (a === 'help') this.root.querySelector('#help').classList.toggle('open');
       if (a === 'debug') { this.debug = !this.debug; if (!this.debug) this.hud.setDebug(null); }
@@ -275,6 +302,11 @@ export class Game {
 
   // Ubica al jugador en la vía vehicular más cercana, alineado con ella.
   teleport(x, z) {
+    if (this.playerSys?.walking) {
+      const q = this.network.nearest(x, z, { maxDist: 800 });
+      if (q) this.playerSys.placeCharacter(q.cx, q.cz);
+      return;
+    }
     const n = this.network.nearest(x, z, { maxDist: 800, drivable: true });
     if (!n) return;
     const ax = this.network.vx(n.a), az = this.network.vz(n.a), bx = this.network.vx(n.b), bz = this.network.vz(n.b);
@@ -286,7 +318,8 @@ export class Game {
 
   setWaypoint(p) {
     this.waypoint = p;
-    this.route = p ? this.network.route(this.player.x, this.player.z, p.x, p.z) : null;
+    const f = this.playerSys?.focus || this.player;
+    this.route = p ? this.network.route(f.x, f.z, p.x, p.z) : null;
     if (p) this.hud.toast(p.name ? `Destino: ${p.name}` : this.route ? 'Ruta GPS trazada' : 'Destino marcado (sin ruta vehicular)');
     this.#rebuildRouteLine();
   }
@@ -303,7 +336,7 @@ export class Game {
 
   #updateRoute() {
     if (!this.waypoint) return;
-    const { x, z } = this.player;
+    const { x, z } = this.playerSys.focus;
     if (Math.hypot(this.waypoint.x - x, this.waypoint.z - z) < 25) {
       this.hud.toast('¡Llegaste a tu destino!');
       this.setWaypoint(null);
@@ -376,20 +409,25 @@ export class Game {
     // en pausa (o con el mapa abierto desde la pausa) el mundo se congela; en el menú principal sigue vivo
     const sim = this.state === 'paused' ? 0 : dt;
 
+    const walking = this.playerSys.walking;
     Object.assign(p.controls, this.input.update(dt));
+    if (walking) Object.assign(p.controls, { throttle: 0, brake: 0, steer: 0, handbrake: true }); // carro estacionado
+    const f = this.playerSys.focus; // lo que sigue el mundo: el carro o el personaje
     const wallImpact = this.state === 'playing' ? p.updatePhysics(sim, this.collision) : 0;
-    this.traffic.update(sim, p);
-    const carImpact = this.state === 'playing' ? this.traffic.collidePlayer(p) : 0;
+    this.traffic.update(sim, walking ? { x: f.x, z: f.z } : p);
+    if (this.state === 'playing') this.playerSys.update(sim);
+    this.blocks.flush();
+    const carImpact = this.state === 'playing' && !walking ? this.traffic.collidePlayer(p) : 0;
     const impact = Math.max(wallImpact, carImpact);
     if (impact > 2) { this.cameraSys.impact(impact); this.events.emit('impact', impact); }
 
-    this.streamer.update(dt, p.x, p.z);
-    this.ground?.update(dt, p.x, p.z);
+    this.streamer.update(dt, f.x, f.z);
+    this.ground?.update(dt, f.x, f.z);
     wind.uniforms.uTime.value = this.time;
     TrafficSignalBuilder.update(this.time);
     wind.uniforms.uWind.value = 0.5 + this.env.wet * 0.9;
     this.weather.update(sim, this.camera);
-    this.env.update(sim, this.state === 'menu' ? new THREE.Vector3(...(this.manifest.landmarks.parquePrincipal?.c ? [this.manifest.landmarks.parquePrincipal.c[0], p.y, this.manifest.landmarks.parquePrincipal.c[1]] : [p.x, p.y, p.z])) : p.object.position, this.camera);
+    this.env.update(sim, this.state === 'menu' ? new THREE.Vector3(...(this.manifest.landmarks.parquePrincipal?.c ? [this.manifest.landmarks.parquePrincipal.c[0], p.y, this.manifest.landmarks.parquePrincipal.c[1]] : [p.x, p.y, p.z])) : walking ? new THREE.Vector3(f.x, f.y, f.z) : p.object.position, this.camera);
     this.headlamp.intensity = this.env.night * 60;
     if (this.streamer.builders.includes(StreetLightBuilder)) StreetLightBuilder.setNight(this.env.night);
     for (const l of this.landmarks) l.update?.(dt, this.time, this.env);
@@ -408,20 +446,24 @@ export class Game {
       const a = p.heading + this.debugCam.angle, d = this.debugCam.dist;
       this.camera.position.set(p.x + Math.sin(a) * d, p.y + 1.6, p.z + Math.cos(a) * d);
       this.camera.lookAt(p.x, p.y + 0.8, p.z);
-    } else this.cameraSys.update(dt, p);
-    this.audio.setEngine(p.spec, p.speedKmh, p.controls.throttle);
+    } else if (walking) this.playerSys.updateCamera(dt);
+    else this.cameraSys.update(dt, p);
+    this.audio.setEngine(p.spec, walking ? 0 : p.speedKmh, walking ? 0 : p.controls.throttle);
 
     this.routeTimer -= dt;
     if (this.routeTimer <= 0) { this.routeTimer = 1; this.#updateRoute(); }
 
-    this.hud.update(dt, { vehicle: p, network: this.network, env: this.env, route: this.route, raining: this.weather.raining });
+    const hudSubject = walking
+      ? { x: f.x, z: f.z, speedKmh: Math.hypot(f.vx, f.vz) * 3.6, spec: { name: 'A pie', maxSpeed: 32 } }
+      : p;
+    this.hud.update(dt, { vehicle: hudSubject, network: this.network, env: this.env, route: this.route, raining: this.weather.raining });
     const look = this.cameraSys.look, cp = this.camera.position;
     const camHeading = Math.atan2(-(look.x - cp.x), -(look.z - cp.z));
     this.minimap.draw({
-      x: p.x, z: p.z, camHeading, vehicleHeading: p.heading, route: this.route, waypoint: this.waypoint,
-      traffic: this.traffic.cars.map((c) => ({ x: c.v.x, z: c.v.z, type: c.v.type })), speedKmh: p.speedKmh,
+      x: f.x, z: f.z, camHeading, vehicleHeading: f.heading, route: this.route, waypoint: this.waypoint,
+      traffic: this.traffic.cars.map((c) => ({ x: c.v.x, z: c.v.z, type: c.v.type })), speedKmh: hudSubject.speedKmh,
     });
-    this.mapScreen.draw({ x: p.x, z: p.z, heading: p.heading, route: this.route, waypoint: this.waypoint });
+    this.mapScreen.draw({ x: f.x, z: f.z, heading: f.heading, route: this.route, waypoint: this.waypoint });
 
     this.renderer.info.reset();
     this.postfx.setAmbience(this.env.night, this.env.wet);

@@ -1,5 +1,6 @@
 import { pointInPolygon, bbox } from '../geo/geometry.js';
 import { VEHICLES, PLAYER_ROSTER } from '../config/vehicles.config.js';
+import { BLOCKS } from '../config/blocks.config.js';
 import { guaduaFrame, culmRing, coffeeBean, icon, lashing } from './guadua/culm.js';
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -29,6 +30,50 @@ export class HUD {
     this.lastStreetCheck = 0;
     this.#decorate();
     this.#bindControls();
+    this.#bindWalking();
+  }
+
+  // ───────────── A pie: mira, aviso, ficha y barra de bloques ─────────────
+  #bindWalking() {
+    const ev = this.events;
+    this.prompt = this.el('#hud-prompt');
+    this.infoEl = this.el('#hud-info');
+    ev.on('player:mode', (mode) => {
+      const walk = mode === 'walk';
+      this.el('#hud-crosshair').hidden = !walk;
+      this.el('#hud-hotbar').hidden = !walk;
+      this.root.classList.toggle('walking', walk);
+      if (!walk) { this.prompt.hidden = true; this.infoEl.hidden = true; }
+    });
+    ev.on('player:target', (t) => {
+      this.prompt.hidden = !t;
+      if (!t) return;
+      this.prompt.querySelector('kbd').textContent = t.key;
+      this.prompt.querySelector('span').textContent = t.label;
+    });
+    ev.on('player:slot', (i) => this.el('#hud-hotbar').querySelectorAll('.slot').forEach((s, k) => s.classList.toggle('selected', k === i)));
+  }
+
+  setHotbar(icons) {
+    const bar = this.el('#hud-hotbar');
+    BLOCKS.forEach((b, i) => {
+      const s = document.createElement('div');
+      s.className = 'slot' + (i === 0 ? ' selected' : '');
+      s.title = `${b.name} — ${b.note}`;
+      s.innerHTML = `<img alt="" src="${icons[b.id]}" /><span>${i + 1}</span><em>${b.name}</em>`;
+      bar.appendChild(s);
+    });
+    guaduaFrame(bar, { thick: 9 });
+  }
+
+  // Ficha de información de un edificio o lugar real (se cierra sola)
+  info(title, lines) {
+    const el = this.infoEl;
+    el.querySelector('h3').textContent = title;
+    el.querySelector('ul').replaceChildren(...lines.map((l) => { const li = document.createElement('li'); li.textContent = l; return li; }));
+    el.hidden = false;
+    clearTimeout(this.infoTimer);
+    this.infoTimer = setTimeout(() => { el.hidden = true; }, 7000);
   }
 
   // ───────────── Decoración ─────────────

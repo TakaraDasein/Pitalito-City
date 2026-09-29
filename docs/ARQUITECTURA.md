@@ -93,6 +93,21 @@ del grafo.
 - **Clima** (`systems/WeatherSystem.js`): gotas alrededor de la cámara, `env.wet` (niebla, luz) y
   `MaterialLibrary.setWet` (asfalto y techos oscuros y brillantes).
 
+## A pie y construcción
+
+- **`systems/PlayerSystem.js`**: modo `drive` ⇄ `walk` (F). A pie: `entities/character/Character.js` (modelo
+  articulado con animación, gravedad, salto, escalones ≤ 0,55 m, colisión con paredes 2D y bloques 3D), cámara con
+  mouse (bloqueo de puntero) en tercera o primera persona, mira con rayo contra bloques (DDA) y mundo (Raycaster).
+  E interactúa con lo más cercano: vehículo propio, tráfico (`TrafficSystem.takeCar`), objetos registrados por los
+  hitos (`landmark.interactables`: bancas, letreros, torre) o el edificio bajo la mira, cuya ficha sale de los datos
+  del tile (fuente, área, altura) + grafo vial (calle) + POIs.
+- **`world/blocks/BlockWorld.js`**: rejilla de 1 m, `Map` de celdas, un `InstancedMesh` por parte de modelo
+  (`BlockModels.js`), consultas `floorAt` / `ceilingAt` / `pushOut` / `raycast`, colisión con vehículos para bloques
+  a nivel de calle, guardado en `localStorage`, íconos renderizados en miniatura para la barra. Catálogo en
+  `config/blocks.config.js`. Es una capa del jugador: nunca modifica `public/world/`.
+- `Game` sigue un **foco** (`playerSys.focus`): el carro o el personaje; streaming, suelo, sombras, minimapa y GPS usan
+  ese foco.
+
 ## Cómo extender
 
 ### Un hito nuevo (p. ej. la Alcaldía "La Chapolera")

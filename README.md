@@ -37,6 +37,10 @@ además GDAL (ver [docs/DATOS.md](docs/DATOS.md)).
 | Espacio | Freno de mano |
 | M | Mapa: clic = destino GPS, doble clic = viajar, buscador de lugares |
 | C | Cámara (persecución, lejana, capó, cinemática, aérea) · arrastrar = orbitar · rueda = zoom |
+| F | Bajarse / subirse del vehículo (también toma carros del tráfico) |
+| E | A pie: interactuar (sentarse, consultar edificios y lugares reales) |
+| Clic der. / izq. · 1–9 | A pie: poner / quitar bloque · elegir bloque |
+| Shift · Espacio | A pie: correr · saltar (C alterna primera/tercera persona) |
 | V | Garaje: vehículo, pintura y placa |
 | Esc | Pausa |
 | N / H | Adelantar 3 horas / pito |
@@ -54,6 +58,10 @@ hora, cámara, mapa y pausa. Gamepad: RT acelera, LT frena, stick izquierdo gira
 - **6 vehículos** modelados sobre fotos: Jeep Willys, taxi, camioneta de platón, chiva, motocarro y moto.
 - **Juego**: tráfico IA, GPS con rutas por las calles reales, minimapa, placa de calle con la nomenclatura oficial
   de Pitalito, física con pendientes, día/noche, lluvia.
+- **A pie y construcción**: bájate del carro, camina con un personaje de sombrero aguadeño, siéntate en las bancas,
+  consulta cualquier edificio (fuente del dato, altura, calle, lugar cercano) y construye con 9 bloques de Pitalito
+  (guadua, ladrillo, pañete, adoquín, teja, madera, ventana, costal de café, matera), cada uno con su modelo.
+  Lo construido es una capa del jugador: no altera los datos reales y se guarda en el navegador.
 - **Interfaz en café y guadua**: menú principal, pausa, opciones (4 presets de calidad), créditos, garaje 3D y un HUD
   con minimapa y velocímetro en aros de guadua, paneles de café tostado y barra de controles en pantalla.
 

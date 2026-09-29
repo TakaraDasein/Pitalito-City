@@ -197,6 +197,12 @@ export const CatedralSanAntonio = {
     // ── Colisiones (mundo)
     collision.addPolygon(this.id, f.rect(Math.min(front, back), vc - W / 2 - 0.5, Math.max(front, back), vc + W / 2 + 0.5));
     collision.addPolygon(this.id, f.rect(tu - T / 2 - 1, tv - T / 2 - 1, tu + T / 2 + 1, tv + T / 2 + 1));
+    {
+      const [x, z] = f.toWorld(tu, tv);
+      this.interactables = [(game) => ({ x, z, r: 7, key: 'E', label: 'Torre San Antonio', run: () => game.hud.info('Torre San Antonio', [
+        'Torre del reloj de la Iglesia Central San Antonio de Padua', 'Esquina de la Carrera 4 con Calle 5, frente al Parque Principal',
+        'Modelada con fotos a nivel de calle (mayo 2025); planta según OSM'])})];
+    }
     bakeStatic(root); // cientos de piezas → un mesh por material
     return root;
   },

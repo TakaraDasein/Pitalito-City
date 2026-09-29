@@ -152,5 +152,13 @@ export class TrafficSystem {
     return impact;
   }
 
+  // El jugador toma un vehículo del tráfico: sale de la simulación (no vuelve al pool)
+  takeCar(car) {
+    const i = this.cars.indexOf(car);
+    if (i < 0) return;
+    this.cars.splice(i, 1);
+    this.scene.remove(car.v.object);
+  }
+
   clear() { for (const c of this.cars) this.#release(c); this.cars = []; }
 }

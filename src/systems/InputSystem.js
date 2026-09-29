@@ -1,7 +1,7 @@
 // Entrada unificada: teclado + gamepad → controles analógicos + acciones discretas.
 const ACTIONS = {
   KeyM: 'map', KeyC: 'camera', KeyV: 'vehicle', KeyN: 'time', KeyH: 'horn', KeyR: 'reset',
-  KeyT: 'home', Escape: 'escape', KeyG: 'clearRoute', F1: 'help', KeyB: 'debug',
+  KeyT: 'home', KeyF: 'enterExit', KeyE: 'interact', Escape: 'escape', KeyG: 'clearRoute', F1: 'help', KeyB: 'debug',
 };
 
 export class InputSystem {

@@ -32,6 +32,8 @@ Resumen operativo. Las reglas completas están en [docs/REGLAS.md](docs/REGLAS.m
 
 ## Trampas conocidas
 
+- La construcción del jugador (`BlockWorld`) es una capa aparte: no tocar `public/world/` desde el juego. Las pruebas
+  headless no tienen bloqueo de puntero: usar `game.playerSys` (placeCharacter, yaw/pitch, placeBlock) desde `eval`.
 - Algunos dispositivos aparecen como gamepad con botones "presionados" desde el inicio (abrían el mapa solos):
   `InputSystem` solo acepta mapeo estándar y toma la primera lectura como referencia.
 - Las huellas de edificios se recortan contra las calzadas en `build-world.mjs` (`clearRoads`); si se cambian anchos

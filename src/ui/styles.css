@@ -208,3 +208,35 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ink); 
   #hud-zone { font-size: 30px; bottom: 150px; right: 16px; }
   .map-panel { position: absolute; bottom: 0; left: 0; right: 0; width: auto; height: 40%; border-left: 0; }
 }
+
+/* ── A pie ───────────────────────────── */
+#hud-crosshair { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; transform: translate(-50%, -50%);
+  background:
+    linear-gradient(var(--text), var(--text)) center / 2px 100% no-repeat,
+    linear-gradient(var(--text), var(--text)) center / 100% 2px no-repeat;
+  filter: drop-shadow(0 0 2px #000); opacity: .85; }
+#hud-crosshair[hidden], #hud-prompt[hidden], #hud-info[hidden], #hud-hotbar[hidden] { display: none; }
+#hud-prompt { position: absolute; left: 50%; top: calc(50% + 34px); transform: translateX(-50%); display: flex; align-items: center; gap: 10px;
+  padding: 7px 16px 7px 8px; font-weight: 700; font-size: 14px; max-width: min(620px, 90vw); }
+#hud-prompt kbd { font: 800 13px var(--font-ui); color: #f4f9e6; padding: 4px 9px; border-radius: 999px; white-space: nowrap;
+  background: linear-gradient(180deg, #22380f, #b5d672 22%, #6f9f36 55%, #2c4a17); }
+#hud-prompt span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#hud-info { position: absolute; left: 26px; top: 50%; transform: translateY(-50%); width: min(360px, 80vw); padding: 18px 20px; }
+#hud-info h3 { margin: 0 0 8px; font-family: var(--font-display); font-weight: 400; font-size: 24px; color: var(--crema); letter-spacing: .02em; }
+#hud-info ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+.hud-info-foot { margin: 10px 0 0; font-size: 11px; opacity: .6; }
+#hud-hotbar { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); display: flex; gap: 6px; padding: 8px 10px; }
+#hud-hotbar .slot { position: relative; width: 58px; height: 58px; border-radius: 8px; display: grid; place-items: center;
+  background: radial-gradient(circle, rgba(255, 230, 190, .08), rgba(0, 0, 0, .35)); box-shadow: inset 0 0 0 2px #5a4124; }
+#hud-hotbar .slot img { width: 50px; height: 50px; }
+#hud-hotbar .slot span { position: absolute; left: 4px; top: 2px; font: 800 11px var(--font-ui); color: var(--crema); text-shadow: 0 1px 2px #000; }
+#hud-hotbar .slot em { display: none; position: absolute; bottom: calc(100% + 12px); left: 50%; transform: translateX(-50%);
+  font: 700 12px var(--font-ui); font-style: normal; white-space: nowrap; color: var(--text); background: rgba(28, 16, 8, .92); padding: 4px 10px; border-radius: 999px; }
+#hud-hotbar .slot.selected { box-shadow: inset 0 0 0 3px #9cc25a, 0 0 0 2px #2c4a17; background: radial-gradient(circle, rgba(181, 214, 114, .25), rgba(0, 0, 0, .35)); }
+#hud-hotbar .slot.selected em { display: block; }
+/* a pie: la barra de bloques ocupa el centro inferior, el velocímetro se reduce */
+#hud.walking #hud-speed { transform: scale(.7); transform-origin: right bottom; }
+@media (max-width: 760px) {
+  #hud-hotbar .slot { width: 40px; height: 40px; } #hud-hotbar .slot img { width: 34px; height: 34px; }
+  #hud-hotbar { bottom: 150px; }
+}

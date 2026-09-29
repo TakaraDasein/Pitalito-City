@@ -17,6 +17,9 @@
 4. **Calibraciones con evidencia.** Un factor de ajuste (como `heightScale`) se documenta con el dato que lo
    justifica en DATOS.md → "Calibraciones".
 
+5. **Lo que construye el jugador es otra capa.** Los bloques y cambios del jugador nunca modifican los datos
+   reales (`public/world/`) ni permiten destruir edificios de Pitalito.
+
 ## 2. Licencias y atribución
 
 1. Toda imagen o dato nuevo entra por un script (`scripts/fetch-*.mjs`) que registre fuente, autor y licencia.

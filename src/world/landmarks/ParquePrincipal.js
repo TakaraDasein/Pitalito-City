@@ -29,6 +29,12 @@ export const ParquePrincipal = {
     const f = orientedFrame(manifest.landmarks.parquePrincipal.p);
     const root = frameGroup(f);
     root.name = this.id;
+    // Objetos con los que el jugador a pie puede interactuar (PlayerSystem): fábricas (game) → { x, z, r, key, label, run }
+    this.interactables = [];
+    const info = (u, v, r, title, lines) => {
+      const [x, z] = f.toWorld(u, v);
+      this.interactables.push((game) => ({ x, z, r, key: 'E', label: title, run: () => game.hud.info(title, lines) }));
+    };
     const toLocal = (x, z) => [(x - f.cx) * f.ux + (z - f.cz) * f.uz, (x - f.cx) * f.vx + (z - f.cz) * f.vz];
     const yAt = (u, v) => terrain.height(...f.toWorld(u, v));
     const circle = (u, v, r) => { const [x, z] = f.toWorld(u, v); collision.addCircle(this.id, x, z, r); };
@@ -134,6 +140,7 @@ export const ParquePrincipal = {
       }
       // Mariposa amarilla sobre el muro, mirando a la calle
       const [bu, bv] = onSide(c4, 0.32, 2.6);
+      info(bu, bv, 3, 'Mariposa amarilla', ['Escultura sobre el muro de la Carrera 4', 'Modelada según fotos a nivel de calle (mayo 2025)']);
       const fly = butterfly();
       fly.position.set(bu, yAt(bu, bv) + 1.0, bv);
       fly.rotation.y = faceIn(c4) + Math.PI;
@@ -145,6 +152,7 @@ export const ParquePrincipal = {
     const signSide = c4 || sides[1];
     {
       const [su, sv] = onSide(signSide, -0.05, 6);
+      info(su, sv, 4.5, 'YO ❤ PITALITO', ['Letrero del Parque Principal José Hilario López', 'Tablero: "Macizo Colombiano"', 'Fundado como plaza de mercado en 1818']);
       const g = new THREE.Group();
       g.position.set(su, yAt(su, sv), sv);
       g.rotation.y = faceIn(signSide);
@@ -236,6 +244,10 @@ export const ParquePrincipal = {
     if (benchSpots.length) {
       const bm = new THREE.InstancedMesh(benchG, materials.get('concrete'), benchSpots.length);
       const q = new THREE.Quaternion(), one = new THREE.Vector3(1, 1, 1), up = new THREE.Vector3(0, 1, 0);
+      benchSpots.forEach(([u, v, ry]) => {
+        const [x, z] = f.toWorld(u, v), y = yAt(u, v) + 0.13, heading = f.angle + ry + Math.PI;
+        this.interactables.push((game) => ({ x, z, r: 1.4, key: 'E', label: 'Sentarse en la banca', run: () => game.playerSys.character.sitAt(x, z, y, heading) }));
+      });
       benchSpots.forEach(([u, v, ry], i) => {
         q.setFromAxisAngle(up, ry);
         bm.setMatrixAt(i, m4.compose(new THREE.Vector3(u, yAt(u, v) + 0.1, v), q, one));

@@ -39,6 +39,7 @@ export class Vehicle {
     this.body = built.body;
     this.wheels = built.wheels;
     this.headlightPos = built.headlightPos;
+    this.modelOpts = modelOpts;
     bakeStatic(this.body, { flatten: modelOpts.detail === 'low' });
     this.object.add(blobShadow(this.spec.length, this.spec.width || this.spec.radius * 1.7));
     this.object.traverse((o) => { if (o.isMesh) o.castShadow = true; });

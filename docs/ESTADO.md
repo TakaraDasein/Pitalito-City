@@ -39,6 +39,7 @@
 | 2026-09-24 | Despeje de calzadas en el pipeline | 4.710 huellas invadían las vías; el usuario pidió "carreteras libres de casas o tiendas" |
 | 2026-09-24 | Semáforos desde OSM | Dato real disponible y visibles en las fotos |
 | 2026-09-24 | Fuente del parque pendiente | Existe, pero no hay foto de su diseño; no se inventa |
+| 2026-09-29 | A pie + interacción + construcción por bloques | Pedido del usuario ("salir del carro e interactuar tipo Minecraft"); los bloques son capa del jugador, los edificios reales no se rompen |
 | 2026-09-24 | HUD en café y guadua + barra de controles en pantalla | Pedido del usuario: cambiar vehículo y clima sin teclado, estética unificada |
 
 ## Limitaciones conocidas
