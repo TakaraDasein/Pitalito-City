@@ -101,14 +101,42 @@
 .garage-nav { align-self: flex-end; display: flex; gap: 12px; margin: 0 0 12px; flex-wrap: wrap; justify-content: flex-end; }
 .gd-hint { color: var(--gd-bone); font-size: 13px; background: rgba(28, 18, 8, .78); padding: 8px 14px; border-radius: 999px; align-self: flex-end; margin: 0 0 8px; }
 
+/* Creación de personaje: panel lateral con pestañas de categoría y lista de opciones */
+.creator-panel { width: min(430px, 100%); margin-left: auto; margin-right: 3vw; max-height: 88vh; display: flex; flex-direction: column; }
+.creator-origen { margin: 2px 0 14px; font-size: 13px; line-height: 1.45; color: var(--gd-bone); }
+.creator-cats { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.culm-tab { font: 800 12px var(--font-ui); letter-spacing: .06em; text-transform: uppercase; cursor: pointer;
+  padding: 7px 12px; border-radius: 999px; color: var(--gd-bone); border: 2px solid #5a3f20;
+  background: linear-gradient(180deg, #4b3419, #35230f); }
+.culm-tab:hover, .culm-tab:focus-visible, .culm-tab.selected {
+  color: #1c1208; border-color: #2c4a17; outline: none;
+  background: linear-gradient(180deg, #d6e9a4, #9cc25a 55%, #6f9f36); }
+.creator-opts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; overflow-y: auto;
+  padding: 2px 6px 2px 2px; flex: 1 1 auto; min-height: 0; }
+.creator-opt { flex: 0 0 auto; min-height: 44px; height: auto; font-size: 17px; padding: 10px 16px;
+  justify-content: flex-start; gap: 10px; flex-wrap: wrap; text-align: left; line-height: 1.2; align-content: center; }
+.creator-opt small { flex-basis: 100%; font-size: 11px; letter-spacing: .02em; text-transform: none; opacity: .8;
+  line-height: 1.3; }
+.creator-swatch { width: 22px; height: 22px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 0 2px #1c1208; }
+.creator-hint { margin: 0 0 12px; font-size: 12px; color: var(--gd-bone); opacity: .8; }
+
+/* Historia: línea de tiempo por épocas */
+.gd-sub-small { margin: 0 0 14px; font: 800 12px var(--font-ui); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--gd-bone); opacity: .85; }
+#historia-linea { max-height: 56vh; }
+#historia-linea p { margin: 0 0 10px; }
+.historia-pendiente { opacity: .5; font-style: italic; }
+.historia-fuente { font-size: 11px; opacity: .7; margin-top: 10px; }
+
 /* Créditos */
 .gd-credits { font-size: 13px; line-height: 1.5; max-height: 52vh; overflow-y: auto; padding-right: 6px; }
 .gd-credits h3 { margin: 12px 0 4px; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; }
 .gd-credits p { margin: 0; }
 
 /* Estados del juego: ocultar HUD fuera de la partida */
-#app[data-state="menu"] #hud, #app[data-state="garage"] #hud, #app[data-state="paused"] #hud-speed,
-#app[data-state="menu"] #help, #app[data-state="garage"] #help { visibility: hidden; }
+#app[data-state="menu"] #hud, #app[data-state="garage"] #hud, #app[data-state="creator"] #hud,
+#app[data-state="paused"] #hud-speed,
+#app[data-state="menu"] #help, #app[data-state="garage"] #help, #app[data-state="creator"] #help { visibility: hidden; }
 
 @media (max-width: 760px) {
   #menus .screen { align-items: flex-end; padding: 16px; }

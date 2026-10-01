@@ -37,6 +37,17 @@ import { Minimap } from '../ui/Minimap.js';
 import { MapScreen } from '../ui/MapScreen.js';
 import { Menus } from '../ui/Menus.js';
 import { Garage } from '../ui/Garage.js';
+import { CharacterCreator } from '../ui/CharacterCreator.js';
+import { CombatSystem } from '../systems/CombatSystem.js';
+import { FactionSystem } from '../systems/FactionSystem.js';
+import { WildlifeSystem } from '../systems/WildlifeSystem.js';
+import { ParticleSystem } from '../render/Particles.js';
+import { AmbienceSystem } from '../systems/AmbienceSystem.js';
+import { StorySystem } from '../systems/StorySystem.js';
+import { FrameBudget } from './FrameBudget.js';
+import { Character } from '../entities/character/Character.js';
+import { Combatant } from '../entities/combat/Combatant.js';
+import { COMBAT } from '../config/combat.config.js';
 import { BlockWorld } from '../world/blocks/BlockWorld.js';
 import { PlayerSystem } from '../systems/PlayerSystem.js';
 
@@ -53,7 +64,7 @@ export class Game {
     this.rosterIndex = 0;
     this.debug = false;
     this.fps = 60;
-    this.state = 'loading'; // loading | menu | playing | paused | garage
+    this.state = 'loading'; // loading | menu | playing | paused | garage | creator
   }
 
   setState(state) {
@@ -65,6 +76,7 @@ export class Game {
     if (this.cameraSys) this.cameraSys.enabled = playing;
     if (this.audio) this.audio.active = playing;
     if (this.garage) { if (state === 'garage') this.garage.show(); else this.garage.hide(); }
+    if (this.creator) { if (state === 'creator') this.creator.show(); else this.creator.hide(); }
   }
 
   showMainMenu() {
@@ -90,6 +102,7 @@ export class Game {
       this.postfx.setSize(innerWidth, innerHeight);
       this.camera.aspect = innerWidth / innerHeight;
       this.camera.updateProjectionMatrix();
+      this.creator?.resize();
     });
 
     this.assets = new AssetManager(renderer);
@@ -158,9 +171,19 @@ export class Game {
     this.menus = new Menus(this.root.querySelector('#menus'), { settings: this.settings, events: this.events });
     this.garage = new Garage({ renderer, materials: this.materials, settings: this.settings, events: this.events, root: this.root });
     this.garage.mountUI(this.menus.screens.garage);
+    this.creator = new CharacterCreator({ renderer, assets: this.assets, settings: this.settings, events: this.events, root: this.root });
+    this.combatSys = new CombatSystem(this);
     // A pie y construcción
     this.blocks = new BlockWorld({ scene: this.scene, materials: this.materials, collision: this.collision, terrain: this.terrain, events: this.events });
     this.playerSys = new PlayerSystem(this);
+    this.combatSys.add(this.playerSys.combat, { isPlayer: true });
+    this.factions = new FactionSystem(this);
+    this.wildlife = new WildlifeSystem(this);
+    this.particles = new ParticleSystem(this.scene, { calidad: this.settings.get('quality') });
+    this.ambience = new AmbienceSystem(this, this.particles);
+    this.story = new StorySystem(this);
+    this.budget = new FrameBudget(this);
+    this.dummies = [];
     for (const l of this.landmarks) for (const it of l.interactables || []) this.playerSys.register(it(this));
     this.hud.setHotbar(this.blocks.icons(renderer));
     this.#wireEvents();
@@ -249,6 +272,28 @@ export class Game {
     e.on('menu:garage', () => this.openGarage());
     e.on('menu:map', () => { this.menus.closeAll(); this.mapScreen.toggle(true); });
     e.on('menu:quit', () => { this.menus.closeAll(); this.showMainMenu(); });
+    e.on('menu:historia', () => {
+      const s = this.story;
+      this.menus.setHistoria({
+        linea: s.lineaDeTiempo(),
+        progreso: `${s.completados} de ${s.total}`,
+        toponimo: s.fichaToponimo(),
+        nombres: s.nombres.size,
+      });
+    });
+    e.on('menu:creator', () => this.openCreator());
+    e.on('creator:confirm', () => {
+      const look = this.creator.confirm();
+      this.playerSys?.character.setLook(this.assets, look);
+      this.events.emit('creator:close');
+    });
+    e.on('creator:close', () => {
+      const back = this.creatorReturn || 'menu';
+      this.setState(back);
+      this.menus.closeAll();
+      if (back === 'menu') this.menus.show('main');
+      else if (back === 'paused') this.menus.show('pause');
+    });
     e.on('garage:confirm', () => this.garage.confirm());
     e.on('garage:close', () => {
       const back = this.garageReturn || 'menu';
@@ -268,6 +313,13 @@ export class Game {
       if (key === 'quality') this.applyQuality();
       else this.#applyPlayerSettings();
     });
+  }
+
+  openCreator() {
+    this.creatorReturn = this.state === 'creator' ? this.creatorReturn : this.state === 'playing' ? 'playing' : this.state;
+    this.menus.closeAll();
+    this.menus.show('creator');
+    this.setState('creator');
   }
 
   openGarage() {
@@ -293,7 +345,9 @@ export class Game {
       this.scene.traverse((o) => { if (o.material) for (const m of [].concat(o.material)) m.needsUpdate = true; });
     }
     this.env.applyQuality(q);
+    this.particles?.applyQuality(this.settings.get('quality'));
     GAME.streaming.radius = q.streamRadius;
+    if (this.budget) this.budget.nominal.radio = q.streamRadius;
     groundDetail.enabled = q.groundDetail;
     this.scene.traverse((o) => { const sh = o.material?.userData?.shader; if (sh?.uniforms.detailOn) sh.uniforms.detailOn.value = q.groundDetail ? 1 : 0; });
     this.postfx.configure(q);
@@ -365,6 +419,32 @@ export class Game {
     return { path: path.join(' < '), material: hit.object.material?.type, point: hit.point.toArray().map((v) => +v.toFixed(1)), dist: +hit.distance.toFixed(1) };
   }
 
+  /**
+   * Depuración: pone un muñeco de entrenamiento delante del jugador para probar el combate.
+   * No es contenido del mundo (no se guarda ni aparece solo): sirve para verificar golpes, daño y muerte hasta
+   * que lleguen los enemigos de la Fase 5. Consola: `game.debugSpawnDummy()`.
+   */
+  debugSpawnDummy(distance = 3) {
+    const p = this.playerSys.character;
+    const x = p.x - Math.sin(p.heading) * distance;
+    const z = p.z - Math.cos(p.heading) * distance;
+    const ch = new Character({ look: this.settings.get('look') });
+    ch.place(x, z, p.heading + Math.PI, this.terrain.height(x, z));
+    this.scene.add(ch.object);
+    ch.useRig(this.assets, this.settings.get('look'));
+    const c = new Combatant(ch, { stats: COMBAT.player, team: 'enemy', weapon: 'manos' });
+    // El muñeco no se mueve ni pega: sólo recibe. Su animación se actualiza con el resto.
+    const entry = {
+      combat: c,
+      update: (dt) => ch.update(dt, { forward: 0, strafe: 0, run: false, jump: false, yaw: 0 },
+        { collision: this.collision, terrain: this.terrain, blocks: this.blocks }),
+    };
+    this.combatSys.add(c);
+    this.dummies.push(entry);
+    this.hud.toast('Muñeco de entrenamiento');
+    return c;
+  }
+
   // Depuración: muestra un vehículo con cámara fija en un ángulo (consola: game.debugShowVehicle('taxi', 2.4))
   debugShowVehicle(type, angle = 2.4, dist = null) {
     if (this.player.type !== type) {
@@ -406,6 +486,7 @@ export class Game {
     this.fps += (1 / Math.max(raw, 1e-4) - this.fps) * 0.05;
     const p = this.player;
     if (this.state === 'garage') { this.garage.render(dt); return; }
+    if (this.state === 'creator') { this.creator.render(dt); return; }
     // en pausa (o con el mapa abierto desde la pausa) el mundo se congela; en el menú principal sigue vivo
     const sim = this.state === 'paused' ? 0 : dt;
 
@@ -415,7 +496,17 @@ export class Game {
     const f = this.playerSys.focus; // lo que sigue el mundo: el carro o el personaje
     const wallImpact = this.state === 'playing' ? p.updatePhysics(sim, this.collision) : 0;
     this.traffic.update(sim, walking ? { x: f.x, z: f.z } : p);
-    if (this.state === 'playing') this.playerSys.update(sim);
+    if (this.state === 'playing') {
+      this.playerSys.update(sim);
+      this.factions.update(sim);
+      this.wildlife.update(sim);
+      this.ambience.update(sim);
+      this.story.update(sim);
+      this.budget.update(dt);
+      this.combatSys.update(sim);
+      for (const d of this.dummies) d.update(sim);
+    }
+    this.particles?.update(sim);
     this.blocks.flush();
     const carImpact = this.state === 'playing' && !walking ? this.traffic.collidePlayer(p) : 0;
     const impact = Math.max(wallImpact, carImpact);
@@ -447,6 +538,7 @@ export class Game {
       this.camera.position.set(p.x + Math.sin(a) * d, p.y + 1.6, p.z + Math.cos(a) * d);
       this.camera.lookAt(p.x, p.y + 0.8, p.z);
     } else if (walking) this.playerSys.updateCamera(dt);
+    if (this.state === 'playing') this.hud.updateLock(this.camera);
     else this.cameraSys.update(dt, p);
     this.audio.setEngine(p.spec, walking ? 0 : p.speedKmh, walking ? 0 : p.controls.throttle);
 

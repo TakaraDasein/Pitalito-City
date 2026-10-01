@@ -17,6 +17,9 @@ export class Menus {
           <div class="gd-panel esterilla" style="margin-top:36px">
             <div class="gd-stack">
               <button class="culm-btn" data-act="play">Jugar <small>ENTER</small></button>
+              <button class="culm-btn" data-act="creator">Personaje</button>
+            <button class="culm-btn" data-act="historia">Historia</button>
+              <button class="culm-btn" data-act="historia">Historia</button>
               <button class="culm-btn" data-act="garage">Garaje</button>
               <button class="culm-btn" data-act="options">Opciones</button>
               <button class="culm-btn" data-act="credits">Créditos</button>
@@ -29,6 +32,8 @@ export class Menus {
           <h2>Pausa</h2>
           <div class="gd-stack">
             <button class="culm-btn" data-act="resume">Continuar <small>ESC</small></button>
+            <button class="culm-btn" data-act="creator">Personaje</button>
+            <button class="culm-btn" data-act="historia">Historia</button>
             <button class="culm-btn" data-act="garage">Garaje</button>
             <button class="culm-btn" data-act="map">Mapa</button>
             <button class="culm-btn" data-act="options">Opciones</button>
@@ -63,7 +68,16 @@ export class Menus {
           <div class="gd-stack" style="margin-top:18px"><button class="culm-btn" data-act="back">Volver <small>ESC</small></button></div>
         </div>
       </section>
-      <section class="screen" id="screen-garage" aria-label="Garaje"></section>`;
+      <section class="screen" id="screen-garage" aria-label="Garaje"></section>
+      <section class="screen" id="screen-creator" aria-label="Creación de personaje"></section>
+      <section class="screen dim" id="screen-historia" aria-label="Historia de Pitalito">
+        <div class="gd-panel esterilla" style="width:min(620px,100%)">
+          <h2>La historia de Pitalito</h2>
+          <p class="gd-sub-small" id="historia-progreso"></p>
+          <div class="gd-credits" id="historia-linea"></div>
+          <div class="gd-stack" style="margin-top:18px"><button class="culm-btn" data-act="back">Volver <small>ESC</small></button></div>
+        </div>
+      </section>`;
 
     this.screens = Object.fromEntries([...root.querySelectorAll('.screen')].map((s) => [s.id.replace('screen-', ''), s]));
     for (const s of Object.values(this.screens)) {
@@ -82,6 +96,26 @@ export class Menus {
   }
 
   get current() { return this.stack[this.stack.length - 1] || null; }
+
+  /** Pinta la línea de tiempo que le pasa StorySystem. */
+  setHistoria({ linea, progreso, toponimo, nombres }) {
+    const el = this.root.querySelector('#historia-linea');
+    const prog = this.root.querySelector('#historia-progreso');
+    prog.textContent = `${progreso} hitos · ${nombres} de los seis nombres que tuvo el pueblo`;
+    const partes = linea.map((e) => `
+      <h3>${e.epoca}</h3>
+      ${e.hitos.map((h) => (h.conseguido
+        ? `<p><strong>${h.anio ? h.anio + ' · ' : ''}${h.titulo}</strong><br />${h.texto}</p>`
+        : `<p class="historia-pendiente">· ${h.titulo} — por descubrir</p>`)).join('')}`).join('');
+    const ficha = toponimo ? `
+      <h3>El nombre</h3>
+      <p><strong>${toponimo.nombre} es un topotopónimo</strong> (familia ${toponimo.familiaLinguistica}, época de
+      ${toponimo.epoca === 'independencia' ? 'La Independencia' : toponimo.epoca}).</p>
+      <p>${toponimo.significado}</p>
+      <p><em>${toponimo.tradicionPopular}</em></p>
+      <p class="historia-fuente">Fuente: ${toponimo.fuente.cita}</p>` : '';
+    el.innerHTML = partes + ficha;
+  }
 
   show(name) {
     for (const [k, s] of Object.entries(this.screens)) s.classList.toggle('open', k === name);
@@ -109,6 +143,9 @@ export class Menus {
   }
 
   #act(act) {
+    if (act === 'creator-confirm') return this.events.emit('creator:confirm');
+    if (act === 'creator-cancel') return this.events.emit('creator:close');
+    if (act === 'historia') { this.events.emit('menu:historia'); return this.show('historia'); }
     if (act === 'options' || act === 'credits') return this.show(act);
     if (act === 'back') { this.back(); return; }
     this.events.emit(`menu:${act}`);
@@ -123,12 +160,14 @@ export class Menus {
       e.preventDefault();
       if (cur === 'pause') this.events.emit('menu:resume');
       else if (cur === 'garage') this.events.emit('garage:close');
+      else if (cur === 'creator') this.events.emit('creator:close');
       else if (cur !== 'main') this.back();
     }
     if (e.code === 'Enter' && cur === 'main' && !(document.activeElement instanceof HTMLButtonElement)) this.events.emit('menu:play');
     if (e.code === 'Enter' && cur === 'garage' && !(document.activeElement instanceof HTMLButtonElement)) this.events.emit('garage:confirm');
+    if (e.code === 'Enter' && cur === 'creator' && !(document.activeElement instanceof HTMLButtonElement)) this.events.emit('creator:confirm');
     // flechas arriba/abajo recorren los botones del panel
-    if ((e.code === 'ArrowDown' || e.code === 'ArrowUp') && cur !== 'garage') {
+    if ((e.code === 'ArrowDown' || e.code === 'ArrowUp') && cur !== 'garage' && cur !== 'creator') {
       const btns = [...this.screens[cur].querySelectorAll('.gd-stack .culm-btn')];
       const i = btns.indexOf(document.activeElement);
       const n = btns[(i + (e.code === 'ArrowDown' ? 1 : -1) + btns.length) % btns.length];

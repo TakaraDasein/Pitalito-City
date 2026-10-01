@@ -2,11 +2,17 @@ import * as THREE from 'three';
 import { Character } from '../entities/character/Character.js';
 import { BLOCKS, REACH } from '../config/blocks.config.js';
 import { VEHICLES } from '../config/vehicles.config.js';
+import { COMBAT, ARSENAL, WEAPONS } from '../config/combat.config.js';
+import { Combatant } from '../entities/combat/Combatant.js';
 import { pointInPolygon, polygonArea } from '../geo/geometry.js';
 
 // Jugador a pie: bajar/subir de vehículos (F), caminar/correr/saltar, cámara con mouse (tercera o primera persona),
 // mira para interactuar (E) y construir tipo Minecraft (clic izq. = quitar bloque, clic der. = poner bloque, 1–9 =
 // elegir bloque, rueda = cambiar bloque).
+//
+// **Dos modos que no se pisan** (ver docs/PLAN_JUEGO.md): con el arma guardada se construye, con el arma en la
+// mano se pelea. X saca o guarda el arma, Z cambia de arma. Con el arma fuera: clic izq. = golpe, clic der. =
+// cubrirse, Ctrl = rodar, Q = fijar blanco.
 // Interacciones: subir al carro propio o tomar uno del tráfico, sentarse en bancas, y consultar edificios y lugares
 // reales (fuente del dato, altura, calle) — la información sale de los datos del mapa, no se inventa.
 // Emite: player:mode ('drive' | 'walk'), player:target ({ label, key, detail } | null), player:slot (índice).
@@ -20,6 +26,12 @@ export class PlayerSystem {
     this.character = new Character();
     this.character.object.visible = false;
     game.scene.add(this.character.object);
+    // El modelo con esqueleto llega por red: mientras tanto el personaje usa el cuerpo de cajas (ver Character.js).
+    this.character.useRig(game.assets, game.settings.get('look')).then((ok) => { if (ok) game.events.emit('player:rig', true); });
+    // El jugador es un combatiente más (ver src/entities/combat/Combatant.js): la IA de la Fase 5 usará lo mismo.
+    this.combat = new Combatant(this.character, { stats: COMBAT.player, team: 'player', weapon: 'manos', events: game.events });
+    this.armed = false;          // false = modo construcción; true = modo combate
+    this.weaponIndex = 0;
     this.interactables = []; // { x, z, r, label, key, run() }
     this.target = null;
     this.raycaster = new THREE.Raycaster();
@@ -48,14 +60,29 @@ export class PlayerSystem {
     });
     dom.addEventListener('mousedown', (e) => {
       if (!active() || document.pointerLockElement !== dom) return;
+      if (this.armed) {
+        if (e.button === 0) this.combat.attack();
+        if (e.button === 2) this.combat.setGuard(true);
+        return;
+      }
       if (e.button === 0) this.breakBlock();
       if (e.button === 2) this.placeBlock();
     });
-    dom.addEventListener('wheel', (e) => { if (active()) this.selectSlot((this.slot + (e.deltaY > 0 ? 1 : -1) + BLOCKS.length) % BLOCKS.length); }, { passive: true });
+    addEventListener('mouseup', (e) => { if (e.button === 2) this.combat.setGuard(false); });
+    dom.addEventListener('wheel', (e) => {
+      if (!active()) return;
+      if (this.armed) this.cycleWeapon(e.deltaY > 0 ? 1 : -1);
+      else this.selectSlot((this.slot + (e.deltaY > 0 ? 1 : -1) + BLOCKS.length) % BLOCKS.length);
+    }, { passive: true });
     addEventListener('keydown', (e) => {
       if (this.g.state !== 'playing' || e.repeat || e.target instanceof HTMLInputElement) return;
       const d = /^Digit([1-9])$/.exec(e.code);
-      if (d && this.walking) this.selectSlot(+d[1] - 1);
+      if (d && this.walking && !this.armed) this.selectSlot(+d[1] - 1);
+      if (!this.walking || !COMBAT.enabled) return;
+      if (e.code === 'KeyX') this.toggleArmed();
+      if (e.code === 'KeyZ' && this.armed) this.cycleWeapon();
+      if (e.code === 'KeyQ' && this.armed) this.g.combatSys.toggleLock(this.combat, this.yaw);
+      if (e.code === 'ControlLeft' && this.armed) this.#roll();
     });
     this.g.events.on('action', (a) => {
       if (this.g.state !== 'playing' || this.g.mapScreen.open) return;
@@ -67,6 +94,47 @@ export class PlayerSystem {
   selectSlot(i) {
     this.slot = i;
     this.g.events.emit('player:slot', i);
+  }
+
+  // ───────────── Combate ─────────────
+
+  // Saca o guarda el arma. Guardada, el clic vuelve a construir; fuera, pelea.
+  toggleArmed(on = !this.armed) {
+    this.armed = on;
+    this.combat.setGuard(false);
+    if (!on) {
+      this.combat.lockTarget = null;
+      this.g.events.emit('combat:lock', null);
+      this.character.setWeapon(null);
+    } else {
+      this.character.setWeapon(WEAPONS[ARSENAL[this.weaponIndex]].model);
+      this.combat.setWeapon(ARSENAL[this.weaponIndex]);
+    }
+    this.g.events.emit('player:armed', on ? this.combat.weapon.nombre : null);
+  }
+
+  cycleWeapon(step = 1) {
+    this.weaponIndex = (this.weaponIndex + step + ARSENAL.length) % ARSENAL.length;
+    const w = this.combat.setWeapon(ARSENAL[this.weaponIndex]);
+    this.character.setWeapon(w.model);
+    this.g.events.emit('player:armed', w.nombre);
+  }
+
+  // Rueda hacia donde se está moviendo; quieto, hacia donde mira la cámara.
+  #roll() {
+    const keys = this.g.input.keys;
+    const on = (...c) => (c.some((k) => keys.has(k)) ? 1 : 0);
+    const f = on('KeyW', 'ArrowUp') - on('KeyS', 'ArrowDown');
+    const s = on('KeyD', 'ArrowRight') - on('KeyA', 'ArrowLeft');
+    let dx, dz;
+    if (f || s) {
+      const len = Math.hypot(f, s);
+      dx = (-Math.sin(this.yaw) * (f / len) + Math.cos(this.yaw) * (s / len));
+      dz = (-Math.cos(this.yaw) * (f / len) - Math.sin(this.yaw) * (s / len));
+    } else {
+      dx = -Math.sin(this.yaw); dz = -Math.cos(this.yaw);
+    }
+    if (this.combat.roll(dx, dz)) this.character.heading = Math.atan2(-dx, -dz);
   }
 
   // ───────────── Bajar / subir ─────────────
@@ -112,6 +180,7 @@ export class PlayerSystem {
   }
 
   #enter() {
+    if (this.armed) this.toggleArmed(false);
     this.mode = 'drive';
     this.character.object.visible = false;
     this.character.sitting = null;
@@ -261,8 +330,12 @@ export class PlayerSystem {
   }
 
   interact() {
+    // Un cronista manda sobre cualquier otra cosa que haya cerca: es el contenido del juego.
+    if (this.g.story?.hablar()) { this.character.trigger('interact'); return; }
     const it = this.#findInteraction();
-    if (it?.run) it.run();
+    if (!it?.run) return;
+    this.character.trigger('interact');
+    it.run();
   }
 
   #setTarget(t) {
@@ -284,9 +357,33 @@ export class PlayerSystem {
       jump: !!on('Space'),
       yaw: this.yaw,
     };
-    this.character.update(dt, input, { collision: g.collision, terrain: g.terrain, blocks: g.blocks });
+    // La distancia a la cámara decide la frecuencia de mezcla de animación (CHARACTERS.animationLod).
+    this.character.cameraDistance = g.camera.position.distanceTo(this.character.object.position);
+
+    const world = { collision: g.collision, terrain: g.terrain, blocks: g.blocks };
+    const c = this.combat;
+    if (c.state === 'roll') {
+      // Rodando manda el impulso: no se acelera ni se frena con el teclado.
+      const step = c.rollStep(dt);
+      if (step) this.character.displace(step.x, step.z, world);
+      this.character.update(dt, { ...input, forward: 0, strafe: 0, jump: false }, world);
+    } else {
+      // Atacando o aturdido no se camina, pero sí se sigue cayendo.
+      const locked = c.state === 'attack' || c.state === 'hit' || c.state === 'dead';
+      const slowed = c.guarding ? 0.45 : 1;
+      this.character.update(dt, locked
+        ? { ...input, forward: 0, strafe: 0, run: false, jump: false }
+        : { ...input, forward: input.forward * slowed, strafe: input.strafe * slowed, run: input.run && !c.guarding },
+      world);
+      // Con blanco fijado, el personaje encara al enemigo aunque camine de lado.
+      if (c.lockTarget?.alive) {
+        const t = c.lockTarget.position;
+        this.character.heading = Math.atan2(-(t.x - this.character.x), -(t.z - this.character.z));
+      }
+    }
+
     this.#aimUpdate();
-    this.#setTarget(this.#findInteraction());
+    this.#setTarget(this.armed ? null : this.#findInteraction());
   }
 
   updateCamera(dt) {
