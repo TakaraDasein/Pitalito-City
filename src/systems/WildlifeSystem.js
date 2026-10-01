@@ -1,6 +1,7 @@
 import { WILDLIFE, ESPECIES, NICHOS, BOSQUE, CIUDAD, MANADA } from '../config/wildlife.config.js';
 import { MUNICIPIO, DERIVADOS } from '../config/municipio.config.js';
 import { Animal } from '../entities/wildlife/Animal.js';
+import { turno } from './ai/UpdateScheduler.js';
 
 // Reparte la fauna por el mundo: qué animal, dónde y a qué hora.
 //
@@ -36,38 +37,16 @@ export class WildlifeSystem {
     return this.hora >= desde || this.hora <= hasta;
   }
 
-  // Cuántos árboles hay cerca, mirando los tiles ya cargados.
+  // Cuántos árboles hay cerca. Lo responde el perfil de tiles en tiempo constante: antes esto recorría todos
+  // los tiles cargados y todos sus árboles, varias veces por segundo (ver src/world/TileProfile.js).
   #arbolesCerca(x, z, radio = BOSQUE.radio) {
-    let n = 0;
-    const r2 = radio * radio;
-    for (const entry of this.g.streamer.tiles.values()) {
-      const t = entry.data;
-      if (!t?.trees) continue;
-      // Descarta el tile entero si está lejos (los tiles son de 250 m).
-      if (Math.abs(t.x * 250 + 125 - x) > radio + 180 || Math.abs(t.z * 250 + 125 - z) > radio + 180) continue;
-      for (let k = 0; k < t.trees.length; k += 4) {
-        const dx = t.trees[k] - x, dz = t.trees[k + 1] - z;
-        if (dx * dx + dz * dz < r2) n++;
-      }
-    }
-    return n;
+    return this.g.tileProfile.contar('arboles', x, z, radio);
   }
 
   // Cuántos edificios hay alrededor. No vale preguntar "¿hay alguno?": en el campo de Pitalito hay casas de
   // finca por todas partes. Lo que distingue la ciudad del campo es la **densidad**.
   #edificiosCerca(x, z, radio = CIUDAD.radio) {
-    let n = 0;
-    const r2 = radio * radio;
-    for (const entry of this.g.streamer.tiles.values()) {
-      const t = entry.data;
-      if (!t?.buildings?.length) continue;
-      if (Math.abs(t.x * 250 + 125 - x) > radio + 180 || Math.abs(t.z * 250 + 125 - z) > radio + 180) continue;
-      for (const b of t.buildings) {
-        const dx = b.p[0] - x, dz = b.p[1] - z;
-        if (dx * dx + dz * dz < r2) n++;
-      }
-    }
-    return n;
+    return this.g.tileProfile.contar('edificios', x, z, radio);
   }
 
   /** Qué hábitat hay en un punto: 'bosque' | 'finca' | 'calle'. */
@@ -98,9 +77,8 @@ export class WildlifeSystem {
       const a = Math.random() * Math.PI * 2;
       const dist = WILDLIFE.minDistance + Math.random() * (WILDLIFE.spawnRadius - WILDLIFE.minDistance);
       const x = px + Math.cos(a) * dist, z = pz + Math.sin(a) * dist;
-      // Nada de fauna dentro de una pared: si la colisión lo empuja, el sitio no sirve.
-      const libre = this.g.collision.resolveCircle(x, z, 1);
-      if (Math.hypot(libre.x - x, libre.z - z) > 0.01) continue;
+      // Nada de fauna dentro de una pared. `ocupado` corta en el primer contacto: más barato que resolver.
+      if (this.g.collision.ocupado(x, z, 1)) continue;
       return { x, z };
     }
     return null;
@@ -148,7 +126,9 @@ export class WildlifeSystem {
         this.animals.splice(i, 1);
         continue;
       }
-      a.update(dt);
+      // Lo lejos se piensa menos veces (ver src/systems/ai/UpdateScheduler.js).
+      const paso = turno(a, p.x, p.z, dt);
+      if (paso > 0) a.update(paso);
     }
 
     // Tope efectivo del director de presupuesto (ver src/core/FrameBudget.js). Si ya hay de más —porque el

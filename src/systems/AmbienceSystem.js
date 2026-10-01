@@ -33,21 +33,10 @@ export class AmbienceSystem {
     });
   }
 
-  // ¿Hay árboles encima? El umbral es más bajo que el de la fauna: para que salgan luciérnagas basta un par de
-  // árboles, mientras que para que aparezca un venado hace falta monte de verdad.
+  // ¿Hay árboles encima? Lo responde el perfil de tiles (src/world/TileProfile.js). El umbral es más bajo que
+  // el de la fauna: para unas luciérnagas basta un par de árboles; para un venado hace falta monte.
   #arbolesCerca(x, z) {
-    let n = 0;
-    const r2 = BOSQUE.radio * BOSQUE.radio;
-    for (const entry of this.g.streamer.tiles.values()) {
-      const t = entry.data;
-      if (!t?.trees) continue;
-      if (Math.abs(t.x * 250 + 125 - x) > BOSQUE.radio + 180 || Math.abs(t.z * 250 + 125 - z) > BOSQUE.radio + 180) continue;
-      for (let k = 0; k < t.trees.length; k += 4) {
-        const dx = t.trees[k] - x, dz = t.trees[k + 1] - z;
-        if (dx * dx + dz * dz < r2) n++;
-      }
-    }
-    return n;
+    return this.g.tileProfile.contar('arboles', x, z, BOSQUE.radio);
   }
 
   update(dt) {

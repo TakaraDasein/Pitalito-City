@@ -5,8 +5,8 @@ import { GAME } from '../config/game.config.js';
 // Carga/descarga tiles alrededor del jugador. Cada tile se construye con una lista de builders
 // intercambiables (calles, áreas, edificios, vegetación...). Agregar una capa nueva = agregar un builder.
 export class WorldStreamer {
-  constructor({ scene, assets, materials, collision, manifest, builders, events, terrain }) {
-    Object.assign(this, { scene, assets, materials, collision, manifest, builders, events, terrain });
+  constructor({ scene, assets, materials, collision, manifest, builders, events, terrain, profile = null }) {
+    Object.assign(this, { scene, assets, materials, collision, manifest, builders, events, terrain, profile });
     this.available = new Set(manifest.tiles);
     this.tiles = new Map();       // key → { state: 'loading'|'ready'|'built', data, group }
     this.buildQueue = [];
@@ -45,6 +45,8 @@ export class WorldStreamer {
       }
       entry.data = data;
       entry.state = 'ready';
+      // Perfil del tile: se cuenta una vez lo que hay, para que nadie tenga que recorrerlo después.
+      this.profile?.añadir(k, data);
       this.buildQueue.push(k);
     } catch (err) {
       console.warn('tile', k, err);
@@ -80,6 +82,7 @@ export class WorldStreamer {
       });
     }
     this.collision.remove(k);
+    this.profile?.quitar(k);
     this.tiles.delete(k);
     this.events?.emit('tile:unloaded', { key: k });
   }

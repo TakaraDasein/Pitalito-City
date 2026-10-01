@@ -2,7 +2,7 @@
 
 > Qué hay hoy, por qué se decidió así, qué falla y qué sigue. Actualizar al cerrar cada etapa de trabajo.
 
-**Versión:** 1.0.0 · **Última actualización:** 2026-10-01
+**Versión:** 1.1.0 · **Última actualización:** 2026-10-01
 
 ## Hacia dónde va (nuevo)
 
@@ -78,6 +78,11 @@ El plan por fases, con presupuestos, equipos de agentes y decisiones abiertas, e
 | 2026-09-30 | **El esqueleto se genera, no se descarga** (`scripts/lib/make-skeleton.py`) | Los paquetes de monstruos traen su propio armature: no servirían con los 45 clips ni con el sistema de combate. Generado sobre el rig propio, hereda todo |
 | 2026-09-30 | Árbol de comportamiento compartido en vez de una clase por enemigo | Un enemigo es un árbol + unas cifras; la fauna de la Fase 4 reutiliza la misma pieza |
 | 2026-09-30 | Enemigos que sólo existen cerca del jugador, como el tráfico | El presupuesto de animación no puede depender de cuántas zonas haya en el mapa |
+| 2026-10-01 | **v1.1: fps medidos en GPU real** (`npm run bench`) | Era el único hueco grande; resulta que el presupuesto va conservador para una RTX 4060 y ahora se sabe cuánto margen hay |
+| 2026-10-01 | Los cronistas tienen cuerpo, y sólo cerca del jugador | Hablar con puntos invisibles era lo más flojo de la Fase 7; once personajes permanentes costarían más que todo lo demás |
+| 2026-10-01 | Escalonado de actualización por distancia (`UpdateScheduler`) | Un animal a doscientos metros no necesita decidir sesenta veces por segundo; se acumula el dt y la física sale igual |
+| 2026-10-01 | Perfil de tiles precalculado en vez de recorrer árboles y edificios | Era decenas de miles de distancias por segundo para responder algo que no cambia nunca |
+| 2026-10-01 | Colisiones: marca de visita, borrado por intercambio, clave sin colisiones | Es el bucle más caliente del juego y creaba un `Set` por iteración |
 | 2026-10-01 | **v1.0: la historia es el fin del juego** (once cronistas, once hitos con fuente) | Pedido del usuario desde el principio; el dato deja de ser decorado y pasa a ser el contenido |
 | 2026-10-01 | Dato y juego separados en archivos distintos (`historia.config.js` / `misiones.config.js`) | El contenido histórico no se toca para hacer el juego más jugable |
 | 2026-10-01 | **v0.9: partículas simuladas enteras en la GPU** | 1.200 partículas no mueven los draw calls; la CPU sólo emite |
@@ -94,7 +99,8 @@ El plan por fases, con presupuestos, equipos de agentes y decisiones abiertas, e
 
 ## Limitaciones conocidas
 
-- **Rendimiento en GPU real sin medir.** Presupuesto en REGLAS.md; medir con la tecla B.
+- Fps medidos en una RTX 4060 (ver MEDICIONES.md). **Falta medir en una máquina floja**, que es para la que
+  existe el presupuesto: una integrada y un portátil viejo.
 - El personaje completo cuesta **11 draw calls y 28.825 triángulos**: cabe para uno, no para treinta. Falta
   fusionar las prendas que comparten material (hay que renumerar los índices de hueso antes de unir las mallas).
 - La versión gratuita del paquete sólo trae una complexión por sexo y dos atuendos; las demás son de pago.
@@ -132,7 +138,9 @@ del municipio. Lo que queda es pulir y medir en GPU real.
 5. ~~Facciones~~ — **hecho** ([iteración 04](../iteraciones/04-facciones-v0.7.0/))
 6. ~~Partículas, luz y sonido~~ — **hecho** ([iteración 06](../iteraciones/06-particulas-luz-v0.9.0/))
 7. ~~La historia de Pitalito~~ — **hecho** ([iteración 07](../iteraciones/07-historia-v1.0.0/))
-8. Rendimiento: director de presupuesto hecho ([RENDIMIENTO.md](RENDIMIENTO.md)); **fps en GPU real, pendiente**
+8. ~~Rendimiento~~ — **hecho**: director de presupuesto ([RENDIMIENTO.md](RENDIMIENTO.md)), optimización de
+   colisiones y aparición por zonas ([OPTIMIZACION.md](OPTIMIZACION.md)) y **fps medidos en GPU real**
+   ([MEDICIONES.md](MEDICIONES.md))
 
 **Siguiente (alto valor, bajo riesgo)**
 - Medir fps en 2–3 GPUs y ajustar presets.

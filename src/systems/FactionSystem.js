@@ -1,5 +1,6 @@
 import { FACTIONS, ZONAS, SPAWN, MEZCLA } from '../config/factions.config.js';
 import { Enemy } from '../entities/combat/Enemy.js';
+import { turno } from './ai/UpdateScheduler.js';
 
 // Zonas de control de las facciones: pobla y retira enemigos según dónde esté el jugador, y lleva la cuenta de
 // lo que pasa en cada zona.
@@ -81,7 +82,10 @@ export class FactionSystem {
         this.enemies.splice(i, 1);
         continue;
       }
-      e.update(dt);
+      // Lo lejos se piensa menos veces, salvo si está peleando: en combate manda la precisión.
+      const cerca = e.objetivo || Math.hypot(e.position.x - p.x, e.position.z - p.z) < 30;
+      const paso = cerca ? dt : turno(e.position, p.x, p.z, dt);
+      if (paso > 0) e.update(paso);
       if (muerto) e.self.timerMuerte = (e.self.timerMuerte || 0) + dt;
     }
 

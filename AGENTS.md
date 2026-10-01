@@ -10,7 +10,8 @@ Resumen operativo. Las reglas completas están en [docs/REGLAS.md](docs/REGLAS.m
 - Documentación: `docs/ARQUITECTURA.md` (cómo está hecho), `docs/DATOS.md` (de dónde sale cada cosa),
   `docs/ESTADO.md` (decisiones y pendientes), `docs/PLAN_JUEGO.md` (**a dónde va**: el salto a juego de acción,
   por fases), `docs/ASSETS_3D.md` (modelos externos y licencias), `docs/HISTORIA.md` (la narrativa con fuentes),
-  `docs/RENDIMIENTO.md` (qué cuesta cada cosa, medido).
+  `docs/RENDIMIENTO.md` (qué cuesta cada cosa), `docs/OPTIMIZACION.md` (las técnicas y por qué),
+  `docs/MEDICIONES.md` (fps reales, lo genera `npm run bench`).
 - **Fin del juego:** reconstruir la historia de Pitalito. GTA para el mundo, Dark Souls para el combate y la luz,
   Minecraft para la construcción. Ver PLAN_JUEGO.md.
 - A pie hay **dos modos que no se pisan**: arma guardada = construir, arma en mano = pelear (tecla X).
@@ -53,8 +54,15 @@ Resumen operativo. Las reglas completas están en [docs/REGLAS.md](docs/REGLAS.m
   es del entorno de prueba, no del juego.
 - **El render sin GPU va a ≈ 0,5 fps** desde que el personaje tiene esqueleto: esperar no sirve para comprobar
   nada que dependa del tiempo. Avanzar la simulación a mano (`game.combatSys.update(0.02)`) — ver VERIFICACION.md.
+  Para medir velocidad de verdad, `npm run bench` (usa la GPU); **no recompilar mientras corre**, Vite recarga la
+  página y el bench se cae.
 - Playwright: `#app` no es "visible" (hijos `position: fixed`); esperar con `state: 'attached'`.
 - Una tecla puede llegar a dos manejadores (InputSystem y Menus); `Menus` ignora la pulsación que abrió el menú.
 - `bakeStatic` fusiona piezas por material: piezas espejadas (escala negativa) ya se corrigen allí.
 - Overpass a veces responde 504; Overture necesita `--no-stac` para este bbox.
 - Scripts con `pkill -f <patrón>` pueden matar la propia terminal si el patrón aparece en el comando.
+- **Y pueden matar el navegador del usuario.** Filtrar procesos de Chromium por `--use-angle` o por `playwright`
+  alcanza también a los procesos hijo del Chromium que la persona tiene abierto, que no llevan los flags del
+  padre. Pasó: se cerró su navegador. Para limpiar instancias de prueba, cerrarlas desde el propio script
+  (`browser.close()` en un `finally`) o filtrar por el directorio de perfil temporal de Playwright, nunca por
+  flags de GPU.
