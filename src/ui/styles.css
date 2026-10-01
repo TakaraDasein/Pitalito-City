@@ -215,7 +215,26 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ink); 
     linear-gradient(var(--text), var(--text)) center / 2px 100% no-repeat,
     linear-gradient(var(--text), var(--text)) center / 100% 2px no-repeat;
   filter: drop-shadow(0 0 2px #000); opacity: .85; }
-#hud-crosshair[hidden], #hud-prompt[hidden], #hud-info[hidden], #hud-hotbar[hidden] { display: none; }
+#hud-crosshair[hidden], #hud-prompt[hidden], #hud-info[hidden], #hud-hotbar[hidden],
+#hud-combat[hidden], #hud-lock[hidden] { display: none; }
+
+/* Combate: vida y resistencia arriba a la izquierda, con el arma debajo */
+#hud-combat { position: absolute; left: 18px; top: 18px; display: flex; flex-direction: column; gap: 7px;
+  padding: 10px 12px; min-width: 230px; }
+.vital { position: relative; height: 17px; border-radius: 999px; overflow: hidden;
+  background: linear-gradient(180deg, #2a1c0c, #4a3418); box-shadow: inset 0 2px 5px rgba(0, 0, 0, .65); }
+.vital-fill { position: absolute; inset: 0 auto 0 0; width: 100%; border-radius: 999px; transition: width .18s linear; }
+#vital-health .vital-fill { background: linear-gradient(180deg, #d4553f, #8e2f1c); }
+#vital-stamina .vital-fill { background: linear-gradient(180deg, #cdd96a, #7d9231); }
+.vital-label { position: absolute; inset: 0; display: grid; place-items: center; font: 800 10px var(--font-ui);
+  letter-spacing: .14em; text-transform: uppercase; color: #fff3dc; text-shadow: 0 1px 2px rgba(0, 0, 0, .8); }
+#hud-weapon { font: 800 13px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: #f0dfb4;
+  text-align: center; margin-top: 2px; }
+/* Retícula del blanco fijado */
+#hud-lock { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; pointer-events: none;
+  border: 2px solid rgba(255, 243, 220, .9); border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(40, 26, 10, .6), 0 0 10px rgba(0, 0, 0, .5); }
+#hud-lock::after { content: ''; position: absolute; inset: 8px; border-radius: 50%; background: #fff3dc; }
 #hud-prompt { position: absolute; left: 50%; top: calc(50% + 34px); transform: translateX(-50%); display: flex; align-items: center; gap: 10px;
   padding: 7px 16px 7px 8px; font-weight: 700; font-size: 14px; max-width: min(620px, 90vw); }
 #hud-prompt kbd { font: 800 13px var(--font-ui); color: #f4f9e6; padding: 4px 9px; border-radius: 999px; white-space: nowrap;

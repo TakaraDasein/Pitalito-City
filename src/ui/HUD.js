@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { pointInPolygon, bbox } from '../geo/geometry.js';
 import { VEHICLES, PLAYER_ROSTER } from '../config/vehicles.config.js';
 import { BLOCKS } from '../config/blocks.config.js';
@@ -41,8 +42,9 @@ export class HUD {
     ev.on('player:mode', (mode) => {
       const walk = mode === 'walk';
       this.el('#hud-crosshair').hidden = !walk;
-      this.el('#hud-hotbar').hidden = !walk;
+      this.el('#hud-hotbar').hidden = !walk || this.armed;
       this.root.classList.toggle('walking', walk);
+      if (this.combatEl) { this.combatEl.hidden = !walk || !this.armed; if (!walk) this.lockEl.hidden = true; }
       if (!walk) { this.prompt.hidden = true; this.infoEl.hidden = true; }
     });
     ev.on('player:target', (t) => {
@@ -52,6 +54,92 @@ export class HUD {
       this.prompt.querySelector('span').textContent = t.label;
     });
     ev.on('player:slot', (i) => this.el('#hud-hotbar').querySelectorAll('.slot').forEach((s, k) => s.classList.toggle('selected', k === i)));
+    this.#bindCombat();
+    this.#bindStory();
+  }
+
+  // ───────────── Historia: cronistas, hitos y nombres ─────────────
+  #bindStory() {
+    const ev = this.events;
+    ev.on('story:prompt', (p) => {
+      if (!p) { if (this.historiaPrompt) { this.prompt.hidden = true; this.historiaPrompt = false; } return; }
+      if (p.aviso) { this.toast(p.texto, 4000); return; }
+      this.historiaPrompt = true;
+      this.prompt.hidden = false;
+      this.prompt.querySelector('kbd').textContent = 'E';
+      this.prompt.querySelector('span').textContent = p.texto;
+    });
+    ev.on('story:encargo', ({ cronista, encargo, recordatorio }) => {
+      this.info(cronista, [encargo], { nota: recordatorio ? 'Todavía falta.' : 'Vuelve cuando esté hecho.' });
+    });
+    ev.on('story:hito', (h) => {
+      const anio = h.anio ? ` · ${h.anio}` : '';
+      this.info(`${h.titulo}${anio}`, [h.texto], {
+        nota: `${h.repetido ? 'Ya lo tenías. ' : ''}Historia: ${h.progreso}. Fuente: ${h.fuente}`,
+        largo: true,
+      });
+    });
+    ev.on('story:nombre', (n) => {
+      this.toast(`«${n.nombre}» — ${n.donde} · ${n.total}`, 5200);
+      if (n.completo) this.toast('Tienes los seis nombres que tuvo el pueblo', 6000);
+    });
+    ev.on('story:final', ({ total }) => {
+      this.info('La historia de Pitalito', [
+        `Has reunido los ${total} hitos del Valle de Laboyos: de los Andaquíes al café.`,
+        'El municipio que recorres es el que cuentan sus fuentes.',
+      ], { nota: 'Fin de la línea de tiempo.', largo: true });
+    });
+  }
+
+  // ───────────── Combate: vida, resistencia, arma y retícula del blanco ─────────────
+  #bindCombat() {
+    const ev = this.events;
+    this.combatEl = this.el('#hud-combat');
+    this.lockEl = this.el('#hud-lock');
+    this.healthFill = this.el('#vital-health .vital-fill');
+    this.staminaFill = this.el('#vital-stamina .vital-fill');
+    guaduaFrame(this.combatEl, { thick: 8 });
+
+    // Con el arma guardada se construye: la barra de bloques y la de combate no se ven a la vez.
+    ev.on('player:armed', (weapon) => {
+      const armed = !!weapon;
+      this.armed = armed;
+      this.combatEl.hidden = !armed;
+      this.el('#hud-hotbar').hidden = armed;
+      this.el('#hud-weapon').textContent = weapon || '';
+      if (!armed) this.lockEl.hidden = true;
+      this.toast(armed ? `${weapon} en mano` : 'Arma guardada');
+    });
+    ev.on('combat:stats', (s) => {
+      if (this.combatEl.hidden) return;
+      this.healthFill.style.width = `${Math.max(0, (s.health / s.maxHealth) * 100)}%`;
+      this.staminaFill.style.width = `${Math.max(0, (s.stamina / s.maxStamina) * 100)}%`;
+    });
+    ev.on('combat:lock', (t) => {
+      this.lockTarget = t;
+      this.lockEl.hidden = !t;
+    });
+    // Entrar a una zona de control es lo único que avisa: no hay marcadores permanentes en pantalla.
+    ev.on('faction:zone', (z) => {
+      if (z) this.toast(`${z.nombre} · territorio de ${z.faccion}`, 4200);
+      else if (this.enZona) this.toast('Fuera del territorio', 2500);
+      this.enZona = !!z;
+    });
+    ev.on('combat:hit', (h) => {
+      if (h.dead) this.toast(h.attacker === 'player' ? 'Abatido' : 'Has caído');
+      else if (h.blocked) this.toast('Bloqueado');
+    });
+  }
+
+  // Coloca la retícula del blanco fijado sobre el enemigo. La llama el bucle del juego.
+  updateLock(camera) {
+    if (!this.lockTarget || this.lockEl.hidden) return;
+    const v = new THREE.Vector3(this.lockTarget.x, this.lockTarget.y ?? 0, this.lockTarget.z);
+    v.project(camera);
+    const visible = v.z < 1;
+    this.lockEl.style.display = visible ? '' : 'none';
+    this.lockEl.style.left = `${(v.x * 0.5 + 0.5) * innerWidth}px`;
+    this.lockEl.style.top = `${(-v.y * 0.5 + 0.5) * innerHeight}px`;
   }
 
   setHotbar(icons) {
@@ -67,13 +155,20 @@ export class HUD {
   }
 
   // Ficha de información de un edificio o lugar real (se cierra sola)
-  info(title, lines) {
+  // `nota` sustituye el pie de fuentes (lo usa la historia para citar el IGAC); `largo` deja la ficha más tiempo,
+  // porque los textos de los hitos son para leerlos.
+  info(title, lines, { nota = null, largo = false } = {}) {
     const el = this.infoEl;
     el.querySelector('h3').textContent = title;
     el.querySelector('ul').replaceChildren(...lines.map((l) => { const li = document.createElement('li'); li.textContent = l; return li; }));
+    const pie = el.querySelector('.hud-info-foot');
+    if (pie) {
+      if (!this.pieOriginal) this.pieOriginal = pie.textContent;
+      pie.textContent = nota || this.pieOriginal;
+    }
     el.hidden = false;
     clearTimeout(this.infoTimer);
-    this.infoTimer = setTimeout(() => { el.hidden = true; }, 7000);
+    this.infoTimer = setTimeout(() => { el.hidden = true; }, largo ? 16000 : 7000);
   }
 
   // ───────────── Decoración ─────────────

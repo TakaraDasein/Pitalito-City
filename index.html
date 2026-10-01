@@ -52,6 +52,12 @@
       <div id="hud-prompt" class="cafe-pill" hidden><kbd></kbd><span></span></div>
       <div id="hud-info" class="cafe-panel" hidden><h3></h3><ul></ul><p class="hud-info-foot">Datos: OpenStreetMap · Google Open Buildings · Microsoft · GHSL</p></div>
       <div id="hud-hotbar" class="cafe-panel" hidden role="toolbar" aria-label="Bloques"></div>
+      <div id="hud-combat" class="cafe-panel" hidden aria-label="Estado de combate">
+        <div class="vital" id="vital-health"><span class="vital-fill"></span><span class="vital-label">Vida</span></div>
+        <div class="vital" id="vital-stamina"><span class="vital-fill"></span><span class="vital-label">Resistencia</span></div>
+        <div id="hud-weapon"></div>
+      </div>
+      <div id="hud-lock" hidden aria-hidden="true"></div>
       <pre id="hud-debug" hidden></pre>
       <div id="hud-attr">Imagen: Esri, Maxar, Earthstar Geographics · © OpenStreetMap · Overture · Google Open Buildings · Copernicus · Meta/WRI</div>
     </div>
@@ -66,8 +72,13 @@
         <dt>C</dt><dd>Cambiar cámara (incluye vista aérea) · arrastrar = orbitar · rueda = zoom</dd>
         <dt>F</dt><dd>Bajarse / subirse (también toma carros del tráfico)</dd>
         <dt>E</dt><dd>Interactuar: sentarse, consultar edificios y lugares</dd>
-        <dt>Clic der. / izq.</dt><dd>A pie: poner / quitar bloque · 1–9 o rueda: elegir bloque</dd>
+        <dt>Clic der. / izq.</dt><dd>A pie, arma guardada: poner / quitar bloque · 1–9 o rueda: elegir bloque</dd>
         <dt>Shift · Espacio</dt><dd>A pie: correr · saltar</dd>
+        <dt>X</dt><dd>Sacar o guardar el arma (guardada se construye, en mano se pelea)</dd>
+        <dt>Z · rueda</dt><dd>Cambiar de arma: manos, machete, peinilla, garrote, azadón, rejo</dd>
+        <dt>Clic izq. / der.</dt><dd>Con el arma en mano: golpear / cubrirse</dd>
+        <dt>Ctrl</dt><dd>Rodar (esquiva: hay un instante invulnerable)</dd>
+        <dt>Q</dt><dd>Fijar blanco</dd>
         <dt>V</dt><dd>Garaje: elegir y pintar vehículo</dd>
         <dt>Esc</dt><dd>Pausa</dd>
         <dt>N</dt><dd>Adelantar 3 horas (día / noche)</dd>

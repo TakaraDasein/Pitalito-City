@@ -31,9 +31,30 @@ Las imágenes quedan en `screenshots/` (ignorada por git). Acciones disponibles:
 | `eval` | `{"eval":"game.state"}` | Evalúa código en la página (imprime el resultado) |
 | `shot` | `{"shot":"nombre"}` | Guarda una captura |
 
-**Advertencia:** Chromium sin GPU renderiza por software (≈ 3 fps reales). Sirve para ver que todo se dibuja y no hay
-errores, **no para medir rendimiento**. Las transiciones CSS también son lentas: esperar ≥ 1,5 s antes de capturar un
-menú.
+**Advertencia:** Chromium sin GPU renderiza por software. Sirve para ver que todo se dibuja y no hay errores,
+**no para medir rendimiento**. Las transiciones CSS también son lentas: esperar ≥ 1,5 s antes de capturar un menú.
+
+**Desde que el personaje tiene esqueleto y ropa, el render por software baja a ≈ 0,5 fotogramas por segundo**
+(medido: `game.time` avanzó 0,56 s en 4 s de reloj). Consecuencia práctica: **nada que dependa del tiempo se puede
+comprobar esperando**. Un ataque que dura 0,76 s no llega a terminar en dos segundos de espera.
+
+## Comprobar lógica que depende del tiempo (combate, animación)
+
+En vez de esperar, se hace avanzar la simulación a mano desde `eval`, con pasos fijos. Es determinista y rápido:
+
+```js
+const P = game.playerSys.combat, D = game.dummies[0].combat, S = game.combatSys;
+const step = (n, dt = 0.02) => { for (let i = 0; i < n; i++) S.update(dt); };
+
+game.playerSys.toggleArmed(true);
+game.playerSys.cycleWeapon(1);   // machete
+game.debugSpawnDummy(1.8);       // muñeco de entrenamiento delante del jugador
+P.attack(); step(50);            // → la vida del muñeco baja 19,5
+```
+
+Así se verificaron las reglas del combate en la iteración 03: daño por arma, que un golpe no cobre dos veces,
+que sin resistencia no se ataque, que cubrirse deje pasar sólo una parte del daño, que rodar dé invulnerabilidad
+y que el combatiente muera y quede en el suelo.
 
 ## Ayudas de depuración (consola del navegador)
 
