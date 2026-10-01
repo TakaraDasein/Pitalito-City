@@ -1,4 +1,7 @@
-// Sonido sintetizado con WebAudio (sin archivos): motor según RPM, pito y golpes.
+// Sonido sintetizado con WebAudio (**sin un solo archivo**): motor según RPM, pito, golpes, combate y ambiente.
+//
+// Que sea sintetizado no es un atajo: evita descargar megas de audio y, sobre todo, evita el problema de licencia
+// que tiene cualquier biblioteca de efectos. Todo se genera con osciladores y ruido en el momento.
 export class AudioSystem {
   constructor(events) {
     this.ctx = null;
@@ -7,6 +10,10 @@ export class AudioSystem {
     this.active = false; // motor audible solo durante la partida
     events.on('horn', () => this.horn(0.25));
     events.on('impact', (s) => this.impact(s));
+    // Combate: el filo al cortar el aire, y el golpe según contra qué entre.
+    events.on('combat:swing', () => this.swing());
+    events.on('combat:impacto', ({ tipo, fuerza = 1 }) => this.golpe(tipo, fuerza));
+    events.on('combat:hit', (h) => { if (h.dead) this.caida(); });
   }
 
   // Debe llamarse desde un gesto del usuario (clic en "Jugar")
@@ -69,6 +76,109 @@ export class AudioSystem {
     g.gain.value = Math.min(0.8, strength * 0.06);
     src.connect(g).connect(this.master);
     src.start(t);
+  }
+
+  // Ráfaga de ruido filtrado que barre de agudo a grave: el machete cortando el aire.
+  swing() {
+    if (!this.ctx || !this.active) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const src = ctx.createBufferSource();
+    src.buffer = this.#ruido(0.22);
+    const f = ctx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.Q.value = 1.6;
+    f.frequency.setValueAtTime(2600, t);
+    f.frequency.exponentialRampToValueAtTime(420, t + 0.2);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.22, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    src.connect(f).connect(g).connect(this.master);
+    src.start(t);
+    src.stop(t + 0.24);
+  }
+
+  /** El golpe al entrar. `tipo`: 'hueso' (seco y agudo), 'metal' (campaneo), 'carne' (sordo). */
+  golpe(tipo = 'carne', fuerza = 1) {
+    if (!this.ctx || !this.active) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const v = Math.min(0.5, 0.18 * fuerza);
+    if (tipo === 'metal') {
+      // Dos parciales inarmónicos: suena a lámina, no a nota.
+      for (const [freq, dur] of [[1850, 0.5], [2730, 0.36]]) {
+        const o = ctx.createOscillator();
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(freq, t);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(v * 0.6, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        o.connect(g).connect(this.master);
+        o.start(t); o.stop(t + dur);
+      }
+      return;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = this.#ruido(0.18);
+    const f = ctx.createBiquadFilter();
+    f.type = tipo === 'hueso' ? 'highpass' : 'lowpass';
+    f.frequency.value = tipo === 'hueso' ? 900 : 420;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(v, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + (tipo === 'hueso' ? 0.14 : 0.2));
+    src.connect(f).connect(g).connect(this.master);
+    src.start(t); src.stop(t + 0.22);
+  }
+
+  // Alguien cae: golpe grave y largo.
+  caida() {
+    if (!this.ctx || !this.active) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(120, t);
+    o.frequency.exponentialRampToValueAtTime(42, t + 0.45);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.3, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    o.connect(g).connect(this.master);
+    o.start(t); o.stop(t + 0.52);
+  }
+
+  /** Chicharras: el ruido de fondo del valle al caer la tarde. `nivel` 0 → 1. */
+  setChicharras(nivel) {
+    if (!this.ctx) return;
+    if (!this.chicharras) {
+      const ctx = this.ctx;
+      const src = ctx.createBufferSource();
+      src.buffer = this.#ruido(2, true);
+      src.loop = true;
+      const f = ctx.createBiquadFilter();
+      f.type = 'bandpass';
+      f.frequency.value = 4800;
+      f.Q.value = 7;
+      // Una modulación lenta da el pulso del coro, que es lo que se reconoce.
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 7.5;
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.value = 0.4;
+      const g = (this.chicharrasGain = ctx.createGain());
+      g.gain.value = 0;
+      lfo.connect(lfoGain).connect(g.gain);
+      src.connect(f).connect(g).connect(this.master);
+      src.start(); lfo.start();
+      this.chicharras = src;
+    }
+    this.chicharrasGain.gain.value = Math.max(0, Math.min(1, nivel)) * 0.045;
+  }
+
+  #ruido(segundos, estereo = false) {
+    const n = Math.floor(this.ctx.sampleRate * segundos);
+    const buf = this.ctx.createBuffer(estereo ? 2 : 1, n, this.ctx.sampleRate);
+    for (let c = 0; c < buf.numberOfChannels; c++) {
+      const d = buf.getChannelData(c);
+      for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    }
+    return buf;
   }
 
   toggleMute() { this.muted = !this.muted; }

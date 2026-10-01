@@ -67,14 +67,27 @@ export class PostFX {
 
   // Noche: más brillo en luces; lluvia: tono más frío y apagado
   setAmbience(night, wet) {
+    this.night = night; this.wet = wet;
     if (this.bloom) {
       this.bloom.threshold = THREE.MathUtils.lerp(6, 1.2, night);
       this.bloom.strength = THREE.MathUtils.lerp(0.18, 0.75, night);
     }
     if (this.grade) {
-      this.grade.uniforms.warmth.value = 0.55 * (1 - night) * (1 - wet);
+      const t = this.tension || 0;
+      this.grade.uniforms.warmth.value = 0.55 * (1 - night) * (1 - wet) * (1 - t * 0.5);
       this.grade.uniforms.wet.value = wet;
+      // Tensión: en combate y bajo el monte cerrado la imagen se cierra y pierde color. Es el contraste con que
+      // el juego distingue "ir caminando" de "esto se puso feo", sin cambiar de escena ni de música.
+      this.grade.uniforms.vignette.value = 0.35 + t * 0.3;
+      this.grade.uniforms.saturation.value = 1.08 - t * 0.28;
+      this.grade.uniforms.contrast.value = 1.05 + t * 0.12;
     }
+  }
+
+  /** 0 = tranquilo, 1 = tensión máxima. Lo mueve AmbienceSystem. */
+  setTension(t) {
+    this.tension = t;
+    this.setAmbience(this.night || 0, this.wet || 0);
   }
 
   setSize(w, h) { this.composer?.setSize(w, h); }

@@ -172,7 +172,8 @@ export class Environment {
     this.renderer.toneMappingExposure = 0.5 + 0.04 * (1 - this.night) + 0.2 * this.night;
     this.materials.setNight(this.night);
     this.scene.environmentIntensity = (0.15 + 0.55 * (1 - this.night)) * (1 - this.wet * 0.35);
-    this.scene.fog.density = this.baseFog * (1 + this.wet * 2.2);
+    // `fogExtra` lo mueve AmbienceSystem: bajo el monte cerrado la niebla se espesa.
+    this.scene.fog.density = this.baseFog * (1 + this.wet * 2.2) * (this.fogExtra ?? 1);
     this.sun.intensity *= 1 - this.wet * 0.7;
     this.#updateEnvMap();
   }
