@@ -309,7 +309,7 @@ export class Game {
       this.#spawnPlayer(type, x, z, heading);
       this.menus.closeAll();
       if (this.garageReturn === 'menu') this.play();
-      else { this.setState('playing'); this.hud.toast(`Vehículo: ${this.player.spec.name}`); }
+      else { this.setState('playing'); this.playerSys.sentarEnVehiculo(); this.hud.toast(`Vehículo: ${this.player.spec.name}`); }
     });
     e.on('settings:changed', ({ key }) => {
       if (key === 'quality') this.applyQuality();
@@ -473,6 +473,8 @@ export class Game {
     this.audio.start();
     this.cameraSys.initialized = false;
     this.setState('playing');
+    // Al arrancar ya se está dentro del vehículo: se sienta al personaje, sin animación de subida.
+    this.playerSys.sentarEnVehiculo();
     this.hud.toast('Bienvenido a Pitalito — M: mapa · V: garaje · Esc: pausa', 4000);
   }
 
@@ -541,8 +543,10 @@ export class Game {
       this.camera.position.set(p.x + Math.sin(a) * d, p.y + 1.6, p.z + Math.cos(a) * d);
       this.camera.lookAt(p.x, p.y + 0.8, p.z);
     } else if (walking) this.playerSys.updateCamera(dt);
-    if (this.state === 'playing') this.hud.updateLock(this.camera);
+    // Ojo con el orden: este `else` cierra la cadena de cámaras de arriba. Meter aquí otra condición deja la
+    // cámara del vehículo sin actualizarse (pasó: al volver a subirse al carro, la cámara no seguía).
     else this.cameraSys.update(dt, p);
+    if (this.state === 'playing') this.hud.updateLock(this.camera);
     this.audio.setEngine(p.spec, walking ? 0 : p.speedKmh, walking ? 0 : p.controls.throttle);
 
     this.routeTimer -= dt;

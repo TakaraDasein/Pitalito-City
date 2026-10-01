@@ -3,6 +3,7 @@ import { Character } from '../entities/character/Character.js';
 import { BLOCKS, REACH } from '../config/blocks.config.js';
 import { VEHICLES } from '../config/vehicles.config.js';
 import { COMBAT, ARSENAL, WEAPONS } from '../config/combat.config.js';
+import { MONTAJE } from '../config/vehicles.config.js';
 import { Combatant } from '../entities/combat/Combatant.js';
 import { pointInPolygon, polygonArea } from '../geo/geometry.js';
 
@@ -13,6 +14,10 @@ import { pointInPolygon, polygonArea } from '../geo/geometry.js';
 // **Dos modos que no se pisan** (ver docs/PLAN_JUEGO.md): con el arma guardada se construye, con el arma en la
 // mano se pelea. X saca o guarda el arma, Z cambia de arma. Con el arma fuera: clic izq. = golpe, clic der. =
 // cubrirse, Ctrl = rodar, Q = fijar blanco.
+//
+// **Subir y bajar del vehículo** no es un corte: el personaje se acerca al asiento con `Sitting_Enter` y se
+// queda conduciendo con `Driving_Loop`, colgado del cuerpo del vehículo. Es **el mismo personaje que creaste**,
+// no el muñeco de cajas — ése sólo lo usan los vehículos del tráfico, donde sale mucho más barato.
 // Interacciones: subir al carro propio o tomar uno del tráfico, sentarse en bancas, y consultar edificios y lugares
 // reales (fuente del dato, altura, calle) — la información sale de los datos del mapa, no se inventa.
 // Emite: player:mode ('drive' | 'walk'), player:target ({ label, key, detail } | null), player:slot (índice).
@@ -31,6 +36,7 @@ export class PlayerSystem {
     // El jugador es un combatiente más (ver src/entities/combat/Combatant.js): la IA de la Fase 5 usará lo mismo.
     this.combat = new Combatant(this.character, { stats: COMBAT.player, team: 'player', weapon: 'manos', events: game.events });
     this.armed = false;          // false = modo construcción; true = modo combate
+    this.montaje = null;         // { fase: 'subiendo'|'bajando', t, desde, hasta, heading }
     this.weaponIndex = 0;
     this.interactables = []; // { x, z, r, label, key, run() }
     this.target = null;
@@ -146,11 +152,15 @@ export class PlayerSystem {
     let x = v.x + lx * w, z = v.z + lz * w;
     const free = this.g.collision.resolveCircle(x, z, 0.4);
     if (free.hit && free.depth > 0.3) { x = v.x - lx * w; z = v.z - lz * w; }
+    // Se desengancha del vehículo y aparece de pie al lado, con la animación de bajarse.
+    const desde = this.character.object.getWorldPosition(new THREE.Vector3());
+    this.#desmontar();
     this.character.place(x, z, v.heading, this.g.terrain.height(x, z));
     this.yaw = v.heading; this.pitch = -0.15;
     this.character.object.visible = true;
     this.mode = 'walk';
-    this.g.rebuildPlayerVehicle({ driver: false });
+    this.montaje = { fase: 'bajando', t: 0, desde, hasta: new THREE.Vector3(x, this.character.y, z) };
+    this.character.trigger('salirAsiento', { lock: MONTAJE.duracion });
     this.g.events.emit('player:mode', 'walk');
     this.g.hud.toast('A pie · E interactuar · clic der. poner bloque · clic izq. quitar · F subir');
   }
@@ -182,14 +192,78 @@ export class PlayerSystem {
   #enter() {
     if (this.armed) this.toggleArmed(false);
     this.mode = 'drive';
-    this.character.object.visible = false;
     this.character.sitting = null;
     this.ghost.visible = false;
     document.exitPointerLock?.();
-    this.g.rebuildPlayerVehicle({ driver: true });
+    // El vehículo del jugador nunca dibuja el muñeco de cajas: el conductor es su propio personaje.
+    this.g.rebuildPlayerVehicle({ driver: false });
+    this.#montar();
     this.g.cameraSys.initialized = false;
     this.g.events.emit('player:mode', 'drive');
     this.#setTarget(null);
+  }
+
+  /** Sienta al personaje en el vehículo actual sin animación de entrada. Para el arranque de la partida y para
+   *  cuando se cambia de vehículo desde el garaje: ahí no se está "subiendo", ya se está dentro. */
+  sentarEnVehiculo() {
+    if (this.walking) return;
+    this.g.rebuildPlayerVehicle({ driver: false });
+    this.#montar();
+    this.montaje = null;                       // sin transición: ya está sentado
+    const v = this.g.player;
+    if (v.spec.seat) this.character.object.position.set(...v.spec.seat);
+  }
+
+  // ───────────── Ir montado en el vehículo ─────────────
+
+  // Cuelga el personaje del cuerpo del vehículo, en el asiento del conductor.
+  #montar() {
+    const v = this.g.player;
+    const asiento = v.spec.seat;
+    if (!asiento || !v.body) { this.character.object.visible = false; return; }
+    const desde = this.character.object.getWorldPosition(new THREE.Vector3());
+    v.body.add(this.character.object);
+    this.character.object.position.set(...asiento);
+    this.character.object.rotation.set(0, 0, 0);
+    this.character.object.visible = true;
+    this.character.driving = true;
+    this.montaje = { fase: 'subiendo', t: 0, desde };
+    this.character.trigger('entrarAsiento', { lock: MONTAJE.duracion });
+  }
+
+  // Lo devuelve a la escena, donde se mueve por su cuenta.
+  #desmontar() {
+    const o = this.character.object;
+    if (o.parent && o.parent !== this.g.scene) this.g.scene.add(o);
+    this.character.driving = false;
+  }
+
+  // Mueve la transición de subir o bajar. Mientras dura, el personaje va interpolando entre el sitio donde
+  // estaba y el asiento (o al revés), que es lo que hace que no aparezca de golpe dentro del carro.
+  #montajeUpdate(dt) {
+    const m = this.montaje;
+    if (!m) return;
+    m.t += dt / MONTAJE.duracion;
+    if (m.t >= 1) {
+      // Al terminar se encaja en el sitio exacto: si no, con fotogramas largos la interpolación se queda a
+      // medias y el personaje acaba descuadrado del asiento.
+      if (m.fase === 'subiendo' && this.g.player.spec.seat) {
+        this.character.object.position.set(...this.g.player.spec.seat);
+      }
+      this.montaje = null;
+      return;
+    }
+    const k = 1 - (1 - m.t) * (1 - m.t);   // frena al llegar
+    const o = this.character.object;
+    if (m.fase === 'subiendo') {
+      // `desde` está en espacio del mundo y el personaje ya cuelga del vehículo: se convierte al espacio local.
+      const local = o.parent.worldToLocal(m.desde.clone());
+      const asiento = new THREE.Vector3(...this.g.player.spec.seat);
+      o.position.lerpVectors(local, asiento, k);
+    } else {
+      o.position.lerpVectors(m.desde, m.hasta, k);
+      o.position.y = Math.max(m.hasta.y, o.position.y);
+    }
   }
 
   // ───────────── Construcción ─────────────
@@ -347,7 +421,15 @@ export class PlayerSystem {
 
   // ───────────── Por frame ─────────────
   update(dt) {
-    if (!this.walking) { this.ghost.visible = false; return; }
+    if (!this.walking) {
+      this.ghost.visible = false;
+      // Montado: no hay física que correr, sólo la animación de conducir y la transición de subida.
+      this.#montajeUpdate(dt);
+      this.character.cameraDistance = 0;
+      this.character.body.apply({ dt, speed: 0, onGround: true, sitting: false, driving: true, armed: false, distance: 0 });
+      return;
+    }
+    this.#montajeUpdate(dt);
     const g = this.g, keys = g.input.keys;
     const on = (...codes) => (g.input.enabled && codes.some((c) => keys.has(c)) ? 1 : 0);
     const input = {

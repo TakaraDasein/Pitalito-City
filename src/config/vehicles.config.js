@@ -4,6 +4,9 @@
 export const VEHICLES = {
   willys: {
     name: 'Jeep Willys', model: 'willys',
+    // Dónde se sienta el conductor, en el espacio del vehículo. El personaje real se cuelga ahí (ver
+    // PlayerSystem.#enter); los vehículos del tráfico siguen usando el muñeco de cajas, que es mucho más barato.
+    seat: [-0.34, 0.47, 0.12],
     description: 'El campero de las veredas del Huila. Aguanta todo, no corre tanto.',
     maxSpeed: 120, reverseSpeed: 25,
     accel: 9, brake: 16, drag: 0.0028, rolling: 0.35,
@@ -14,6 +17,9 @@ export const VEHICLES = {
   },
   taxi: {
     name: 'Taxi', model: 'taxi',
+    // Dónde se sienta el conductor, en el espacio del vehículo. El personaje real se cuelga ahí (ver
+    // PlayerSystem.#enter); los vehículos del tráfico siguen usando el muñeco de cajas, que es mucho más barato.
+    seat: [-0.35, 0.11, 0.02],
     description: 'Hatchback amarillo de servicio público. Ágil en las calles del centro.',
     maxSpeed: 140, reverseSpeed: 30,
     accel: 10.5, brake: 18, drag: 0.0022, rolling: 0.3,
@@ -24,6 +30,9 @@ export const VEHICLES = {
   },
   pickup: {
     name: 'Camioneta de platón', model: 'pickup',
+    // Dónde se sienta el conductor, en el espacio del vehículo. El personaje real se cuelga ahí (ver
+    // PlayerSystem.#enter); los vehículos del tráfico siguen usando el muñeco de cajas, que es mucho más barato.
+    seat: [-0.4, 0.37, -0.18],
     description: 'Doble cabina 4x4 cargada de café. Pesada pero estable.',
     maxSpeed: 150, reverseSpeed: 28,
     accel: 8.8, brake: 17, drag: 0.0025, rolling: 0.32,
@@ -34,6 +43,9 @@ export const VEHICLES = {
   },
   chiva: {
     name: 'Chiva', model: 'chiva',
+    // Dónde se sienta el conductor, en el espacio del vehículo. El personaje real se cuelga ahí (ver
+    // PlayerSystem.#enter); los vehículos del tráfico siguen usando el muñeco de cajas, que es mucho más barato.
+    seat: [-0.55, 0.75, -2.05],
     description: 'Bus escalera de madera pintada. Lenta, enorme y llena de gente.',
     maxSpeed: 85, reverseSpeed: 18,
     accel: 5.5, brake: 10, drag: 0.004, rolling: 0.45,
@@ -44,6 +56,9 @@ export const VEHICLES = {
   },
   motocarro: {
     name: 'Motocarro', model: 'motocarro',
+    // Dónde se sienta el conductor, en el espacio del vehículo. El personaje real se cuelga ahí (ver
+    // PlayerSystem.#enter); los vehículos del tráfico siguen usando el muñeco de cajas, que es mucho más barato.
+    seat: [0, 0.21, -0.25],
     description: 'Mototaxi de tres ruedas. Pequeño, lento y se cuela por todo.',
     maxSpeed: 70, reverseSpeed: 12,
     accel: 7, brake: 12, drag: 0.004, rolling: 0.35,
@@ -54,6 +69,9 @@ export const VEHICLES = {
   },
   moto: {
     name: 'Moto', model: 'moto',
+    // Dónde se sienta el conductor, en el espacio del vehículo. El personaje real se cuelga ahí (ver
+    // PlayerSystem.#enter); los vehículos del tráfico siguen usando el muñeco de cajas, que es mucho más barato.
+    seat: [0, 0.06, -0.2],
     description: 'Moto de trabajo 125 cc. La más rápida en arrancar.',
     maxSpeed: 110, reverseSpeed: 8,
     accel: 11, brake: 14, drag: 0.003, rolling: 0.3,
@@ -67,6 +85,9 @@ export const VEHICLES = {
 // Orden en el garaje
 export const PLAYER_ROSTER = ['willys', 'taxi', 'pickup', 'chiva', 'motocarro', 'moto'];
 // Mezcla del tráfico IA (pesos): en Pitalito abundan motos y taxis
+// Subir y bajar del vehículo: cuánto dura la transición del personaje hasta el asiento.
+export const MONTAJE = { duracion: 0.75 };
+
 export const TRAFFIC_MIX = { moto: 6, taxi: 4, motocarro: 2, pickup: 2, willys: 2, chiva: 1 };
 
 // Barras del garaje (0–1), derivadas de los parámetros físicos reales de cada vehículo

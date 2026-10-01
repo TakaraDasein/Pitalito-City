@@ -19,6 +19,8 @@ const ACTIONS = {
   roll: { clip: C.roll, lock: 0.7, cancelable: false },
   hit: { clip: C.hitChest, lock: 0.5, cancelable: false },
   death: { clip: C.death, lock: Infinity, cancelable: false },
+  entrarAsiento: { clip: C.sitEnter, lock: 0.75, cancelable: false },
+  salirAsiento: { clip: C.sitExit, lock: 0.75, cancelable: false },
 };
 
 export class AnimationGraph {
