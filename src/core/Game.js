@@ -45,6 +45,7 @@ import { ParticleSystem } from '../render/Particles.js';
 import { AmbienceSystem } from '../systems/AmbienceSystem.js';
 import { StorySystem } from '../systems/StorySystem.js';
 import { FrameBudget } from './FrameBudget.js';
+import { TileProfile } from '../world/TileProfile.js';
 import { Character } from '../entities/character/Character.js';
 import { Combatant } from '../entities/combat/Combatant.js';
 import { COMBAT } from '../config/combat.config.js';
@@ -127,9 +128,10 @@ export class Game {
     if (real) this.ground = new ImageryGround(this.scene, this.terrain, renderer);
     else for (const m of buildAreas(global.areas, this.materials)) this.scene.add(m);
 
+    this.tileProfile = new TileProfile();
     this.streamer = new WorldStreamer({
       scene: this.scene, assets: this.assets, materials: this.materials, collision: this.collision,
-      manifest: this.manifest, events: this.events, terrain: this.terrain,
+      manifest: this.manifest, events: this.events, terrain: this.terrain, profile: this.tileProfile,
       builders: real
         ? [RoadBuilder, BuildingBuilder, VegetationBuilder, TrafficSignalBuilder, ...(WORLD.powerLines ? [PowerLineBuilder] : [])]
         : [AreaBuilder, RoadBuilder, BuildingBuilder, VegetationBuilder, StreetLightBuilder],
@@ -502,6 +504,7 @@ export class Game {
       this.wildlife.update(sim);
       this.ambience.update(sim);
       this.story.update(sim);
+      this.story.updateCuerpos(sim);
       this.budget.update(dt);
       this.combatSys.update(sim);
       for (const d of this.dummies) d.update(sim);

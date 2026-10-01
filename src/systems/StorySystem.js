@@ -1,5 +1,6 @@
 import { MISIONES, NOMBRES_EN_EL_MUNDO, MISION, MISIONES_ACTIVAS } from '../config/misiones.config.js';
 import { HITOS_HISTORICOS, NOMBRES_ANTERIORES, TOPONIMIA, EPOCAS, FUENTE_HISTORIA } from '../config/historia.config.js';
+import { Cronista } from '../entities/story/Cronista.js';
 
 // La historia como algo que se juega: cronistas que encargan, sitios a los que hay que ir, y un diario que se
 // va llenando. **Es el fin del juego** (ver docs/PLAN_JUEGO.md): no se gana llegando a un punto, sino
@@ -25,6 +26,7 @@ export class StorySystem {
     this.visitados = new Set();
     this.cerca = null;
     this.acumulado = 0;
+    this.cuerpos = new Map();   // hito → Cronista. Sólo existen los que están cerca.
   }
 
   get misiones() { return MISIONES; }
@@ -108,6 +110,7 @@ export class StorySystem {
     this.acumulado = 0;
 
     const p = this.g.playerSys.character;
+    this.#cuerpos(p);
 
     // ¿Hay un cronista al alcance? Un mismo cronista puede tener varios encargos (la guaquera cuenta dos hitos),
     // así que se prefiere el que **todavía no esté contado**; si no, el que ya se contó, para poder releerlo.
@@ -141,6 +144,26 @@ export class StorySystem {
         completo: this.nombres.size >= NOMBRES_ANTERIORES.length,
       });
     }
+  }
+
+  // Da y quita cuerpo a los cronistas según dónde esté el jugador. Once personajes con esqueleto permanentes
+  // costarían más que todo lo demás junto, y diez estarían siempre lejos de donde se juega.
+  #cuerpos(p) {
+    for (const m of MISIONES) {
+      const d = Math.hypot(m.x - p.x, m.z - p.z);
+      const tiene = this.cuerpos.has(m.hito);
+      if (!tiene && d < MISION.radioAparicion) this.cuerpos.set(m.hito, new Cronista(this.g, m));
+      else if (tiene && d > MISION.radioRetirada) {
+        this.cuerpos.get(m.hito).dispose();
+        this.cuerpos.delete(m.hito);
+      }
+    }
+  }
+
+  /** Mueve los cronistas que tienen cuerpo. Lo llama el bucle del juego. */
+  updateCuerpos(dt) {
+    const p = this.g.playerSys.character;
+    for (const c of this.cuerpos.values()) c.update(dt, p);
   }
 
   #avance(p) {

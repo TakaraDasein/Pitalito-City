@@ -93,8 +93,33 @@ export const NOMBRES_EN_EL_MUNDO = [
   { nombre: 'Pitalito', donde: 'Nomenclatura de la Carrera 4', x: -130, z: 60, radio: 12 },
 ];
 
-// Cuándo se considera cumplido y cómo se avisa.
+// Cuándo se considera cumplido, cómo se avisa, y cuándo existe el cuerpo del cronista.
+//
+// Los cronistas **sólo existen cerca del jugador**, igual que el tráfico, los enemigos y la fauna: once
+// personajes con esqueleto permanentes costarían más que todo el resto junto, y diez de ellos estarían siempre
+// a kilómetros de donde está el jugador.
 export const MISION = {
-  radioCronista: 7,        // a qué distancia se puede hablar con un cronista
+  radioCronista: 7,        // a qué distancia se puede hablar
+  radioAparicion: 70,      // dentro de esto, el cronista tiene cuerpo
+  radioRetirada: 110,      // más allá, se retira
   avisoSegundos: 6,
+};
+
+// Cómo se ve cada cronista. Son ficción: ninguno lleva nombre de una persona real, y el aspecto va con el
+// oficio que dice tener. Se arma con el mismo catálogo que la creación de personaje.
+const look = (ropa, sombrero, piel, pelo, pelocolor = 'negro') => ({
+  cuerpo: 'a', ropa, sombrero, piel, pelo, pelocolor, barba: 'ninguna',
+});
+
+export const CRONISTAS = {
+  'El escribano': look('camino', 'ninguno', '2', 'partido', 'cano'),
+  'El sacristán': look('camino', 'ninguno', '3', 'corto', 'cano'),
+  'La maestra': look('campo', 'ninguno', '2', 'largo'),
+  'La vendedora de la galería': look('campo', 'ninguno', '3', 'monos'),
+  'El secretario': look('camino', 'ninguno', '1', 'partido'),
+  'El pescador': look('campo', 'aguadeno', '4', 'corto'),
+  'El mayordomo': look('campo', 'aguadeno', '3', 'corto-b'),
+  'El arriero': look('campo', 'aguadeno', '3', 'partido', 'cano'),
+  'El cura de la capilla': look('camino', 'ninguno', '2', 'corto', 'cano'),
+  'La guaquera de Ingalí': look('campo', 'aguadeno', '4', 'largo'),
 };

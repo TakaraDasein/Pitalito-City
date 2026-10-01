@@ -52,6 +52,12 @@ export class AnimationGraph {
 
   get busy() { return !!this.action; }
 
+  /** Cambia el clip que se usa estando quieto: 'idle' (por defecto) o 'talk' (los cronistas al contar). */
+  reposo(cual) {
+    this.clipReposo = cual === 'talk' ? C.talk : null;
+    this.state = '';   // fuerza la transición en el siguiente fotograma
+  }
+
   // s: { speed, onGround, sitting, driving, dt, distance }
   update(s) {
     const dt = s.dt;
@@ -70,6 +76,7 @@ export class AnimationGraph {
     else if (this.landing > 0) { this.landing -= dt; this.#set('land', C.jumpLand, FADE.quick); }
     // Con el arma en la mano, quieto se queda en guardia, no en reposo.
     else if (s.armed && s.speed < 0.25) this.#set('guard', C.attackIdle);
+    else if (this.clipReposo && s.speed < 0.25) this.#set('reposo', this.clipReposo);
     else this.#locomotion(s.speed);
 
     // Al tocar suelo tras caer, un aterrizaje corto; sin esto el cambio se ve seco.
