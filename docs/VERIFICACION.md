@@ -38,6 +38,23 @@ Las imágenes quedan en `screenshots/` (ignorada por git). Acciones disponibles:
 (medido: `game.time` avanzó 0,56 s en 4 s de reloj). Consecuencia práctica: **nada que dependa del tiempo se puede
 comprobar esperando**. Un ataque que dura 0,76 s no llega a terminar en dos segundos de espera.
 
+## Medir fps de verdad: `npm run bench`
+
+`tools/screenshot.mjs` fuerza SwiftShader para que las capturas salgan iguales en cualquier máquina, y por eso
+**no sirve para medir velocidad**. `tools/bench.mjs` hace lo contrario: deja que Chromium use la tarjeta.
+
+```bash
+npm run dev                 # en otra terminal
+npm run bench               # los cuatro presets, cinco escenas
+npm run bench -- alta       # un preset
+```
+
+Escribe `docs/MEDICIONES.md` con la tabla y anota en qué máquina se midió, porque las cifras dependen de ella.
+El informe empieza diciendo qué renderizador tocó: **si pone SwiftShader o llvmpipe, la medida no vale**.
+
+**No recompilar mientras corre.** Vite recarga la página al guardar un archivo del juego y el bench se cae con
+«Execution context was destroyed» (pasó la primera vez).
+
 ## Comprobar lógica que depende del tiempo (combate, animación)
 
 En vez de esperar, se hace avanzar la simulación a mano desde `eval`, con pasos fijos. Es determinista y rápido:
