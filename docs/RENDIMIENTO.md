@@ -29,6 +29,30 @@ cuesta 28.825 triángulos y 11 draw calls; un esqueleto uniformado, 10.214 y 10;
 Las partículas merecen un apunte: **1.200 emitidas de golpe no movieron los draw calls** (500 antes y después),
 porque toda la simulación va en la GPU y cada familia es un solo `InstancedMesh`.
 
+## La geometría de los edificios se construye fuera del hilo principal
+
+Era el pico que medía el bench: **26-29 ms** por fotograma frente a 7-10 de media, que se siente como un tirón al
+avanzar por la ciudad. Medido por partes, construir un tile del centro (211 edificios) cuesta:
+
+| | Mediana | Peor |
+|---|---|---|
+| Geometría de fachadas | 5,5 ms | **12,3 ms** |
+| Crear las mallas con su material | 0,6 ms | **0,7 ms** |
+
+La primera parte es aritmética pura y no toca el renderizador, así que se fue a un Worker
+(`src/world/workers/tileWorker.js`); la segunda se queda, porque los materiales pertenecen al hilo principal.
+**El coste en el hilo principal baja de 12,3 ms a 0,7 ms**, un 95 % menos.
+
+Qué se puede mover y qué no:
+
+- **Se va**: todo el cálculo de fachadas, techos, parapetos y balcones, que trabaja sólo con números.
+- **Se queda**: los materiales (pertenecen al renderizador) y la colisión (es barata y vive en una estructura
+  compartida). Por eso el Worker devuelve lotes de arrays, no mallas.
+- three.js funciona en un Worker: lo único que necesita un canvas es el renderizador.
+
+Si el Worker no arranca o falla con un tile, se construye en el hilo principal: el juego nunca se queda sin
+edificios, sólo vuelve a dar el tirón.
+
 ## El director de presupuesto
 
 `src/core/FrameBudget.js` mira dos veces por segundo lo que de verdad se está dibujando y recorta **lo que menos

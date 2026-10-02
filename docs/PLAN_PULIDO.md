@@ -91,7 +91,7 @@ Terminal (197 × 208 m) necesita además las bahías de buses y el edificio de t
 
 | # | Qué | Por qué duele | Dónde |
 |---|---|---|---|
-| 1 | **Streaming de tiles a un Web Worker** | Es el pico de **29 ms** por fotograma que mide el bench: la construcción de tiles bloquea el hilo principal y se nota como un tirón al avanzar | `WorldStreamer` |
+| ~~1~~ | ~~Streaming de tiles a un Web Worker~~ — **hecho**: la geometría de fachadas se construye fuera; el coste en el hilo principal baja de 12,3 ms a 0,7 (ver [RENDIMIENTO.md](RENDIMIENTO.md)) | | `WorldStreamer` |
 | 2 | **Fusionar prendas por material en el pipeline** | Se intentó en el navegador y la malla salía deformada; hecho offline, con el modelo delante, baja de 11 a ~5 draw calls por personaje y permite subir el tope de enemigos | `scripts/` |
 | 3 | **Medir en una máquina floja** | El presupuesto existe para ellas y sólo se ha medido en una RTX 4060 | `pnpm bench` |
 | 4 | Alturas por edificio en vez de por celda de 90 m | Toda la ciudad tiene la altura promedio de su celda; se nota en los hitos y en las manzanas con mezcla de alturas | `build-world.mjs` |

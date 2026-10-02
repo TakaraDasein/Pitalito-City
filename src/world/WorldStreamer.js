@@ -1,12 +1,14 @@
 import * as THREE from 'three';
 import { tileKey, pointInPolygon, polygonCentroid } from '../geo/geometry.js';
 import { GAME } from '../config/game.config.js';
+import { buildingMeshes, BuildingBuilder } from './builders/BuildingBuilder.js';
 
 // Carga/descarga tiles alrededor del jugador. Cada tile se construye con una lista de builders
 // intercambiables (calles, áreas, edificios, vegetación...). Agregar una capa nueva = agregar un builder.
 export class WorldStreamer {
   constructor({ scene, assets, materials, collision, manifest, builders, events, terrain, profile = null }) {
     Object.assign(this, { scene, assets, materials, collision, manifest, builders, events, terrain, profile });
+    this.#arrancarWorker();
     this.available = new Set(manifest.tiles);
     this.tiles = new Map();       // key → { state: 'loading'|'ready'|'built', data, group }
     this.buildQueue = [];
@@ -56,6 +58,42 @@ export class WorldStreamer {
     }
   }
 
+  // ───────────── Construcción fuera del hilo principal ─────────────
+  //
+  // La geometría de los edificios es lo caro de construir un tile: en GPU real daba un pico de 26-29 ms frente a
+  // 7-10 de media (docs/MEDICIONES.md), que se siente como un tirón al avanzar por la ciudad. Esa parte se hace
+  // en un Worker (src/world/workers/tileWorker.js) y aquí sólo se arman las mallas con sus materiales.
+  //
+  // Si el Worker no arranca o falla con un tile, se construye en este hilo: el juego nunca se queda sin
+  // edificios, sólo vuelve a dar el tirón.
+  #arrancarWorker() {
+    this.pendientes = new Map();     // key → grupo esperando la geometría del Worker
+    try {
+      this.worker = new Worker(new URL('./workers/tileWorker.js', import.meta.url), { type: 'module' });
+      this.worker.onmessage = (e) => this.#delWorker(e.data);
+      this.worker.onerror = () => { this.worker = null; };
+      const t = this.terrain;
+      // El relieve va una sola vez; se manda una copia porque este hilo lo sigue usando.
+      if (t?.meta && t.data) this.worker.postMessage({ tipo: 'terreno', meta: t.meta, buffer: t.data.slice().buffer });
+      else this.worker.postMessage({ tipo: 'terreno', meta: null });
+    } catch {
+      this.worker = null;            // sin Worker: todo en este hilo, como antes
+    }
+  }
+
+  #delWorker(msg) {
+    if (msg.tipo !== 'tile' && msg.tipo !== 'error') return;
+    const pend = this.pendientes.get(msg.key);
+    if (!pend) return;               // el tile se descargó mientras tanto
+    this.pendientes.delete(msg.key);
+    const entry = this.tiles.get(msg.key);
+    if (!entry || entry.group !== pend.group) return;
+    const mallas = msg.tipo === 'tile'
+      ? buildingMeshes(msg.lotes, this.materials)
+      : BuildingBuilder.build(pend.data, { materials: this.materials, terrain: this.terrain });
+    for (const m of mallas) pend.group.add(m);
+  }
+
   #build(k) {
     const entry = this.tiles.get(k);
     if (!entry || entry.state !== 'ready') return;
@@ -63,7 +101,13 @@ export class WorldStreamer {
     group.name = `tile:${k}`;
     const ctx = { materials: this.materials, terrain: this.terrain };
     for (const b of this.builders) {
-      for (const obj of b.build(entry.data, ctx)) group.add(obj);
+      // Los edificios los calcula el Worker; el resto (vías, vegetación, semáforos) es barato y va aquí.
+      if (b.id === 'buildings' && this.worker) {
+        this.pendientes.set(k, { group, data: entry.data });
+        this.worker.postMessage({ tipo: 'tile', key: k, data: entry.data });
+      } else {
+        for (const obj of b.build(entry.data, ctx)) group.add(obj);
+      }
       b.collide?.(entry.data, this.collision, k);
     }
     this.scene.add(group);
@@ -83,6 +127,7 @@ export class WorldStreamer {
     }
     this.collision.remove(k);
     this.profile?.quitar(k);
+    this.pendientes?.delete(k);     // si el Worker aún lo está calculando, su respuesta se descarta
     this.tiles.delete(k);
     this.events?.emit('tile:unloaded', { key: k });
   }
