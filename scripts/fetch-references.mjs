@@ -6,7 +6,7 @@
 //   public/textures/<material>/{color,normal,roughness}.jpg → texturas que usa el juego
 //   public/textures/decals/*.png               → imágenes de referencia que el juego usa directamente
 //
-// Uso: npm run refs:fetch
+// Uso: pnpm refs:fetch
 import { mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';

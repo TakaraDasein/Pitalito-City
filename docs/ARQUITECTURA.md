@@ -134,7 +134,7 @@ agregarlo a la lista de `builders` en `Game.js`. Si necesita datos nuevos, emiti
 
 ### Otra ciudad (San Agustín, Neiva, Garzón…)
 Cambiar `bbox` y `origin` en `src/config/world.config.js`, marcar sus hitos en `build-world.mjs` y correr
-`npm run data:fetch && npm run data:build`. Nada del runtime depende de Pitalito salvo los hitos registrados.
+`pnpm data:fetch && pnpm data:build`. Nada del runtime depende de Pitalito salvo los hitos registrados.
 
 ### Escalar
 - **Más detalle en el tile**: el costo de draw calls es por material por tile (≈ 10–14), no por objeto.

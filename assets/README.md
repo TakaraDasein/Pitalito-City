@@ -4,7 +4,7 @@ Material fuente del proyecto. **No se sirve al navegador**: lo que usa el juego 
 
 ```
 assets/
-└── references/                 ← referencias visuales descargadas (npm run refs:fetch)
+└── references/                 ← referencias visuales descargadas (pnpm refs:fetch)
     ├── references.json         ← metadatos: archivo, uso en el juego, autor, licencia, fuente
     ├── CREDITS.md              ← atribuciones legibles (obligatorio conservarlas: CC BY / CC BY-SA)
     ├── landmarks/
@@ -24,13 +24,13 @@ assets/
 
 Convención: cada módulo que modela algo a partir de una referencia la cita en su comentario de cabecera.
 Para agregar una referencia, añádela a `REFERENCES` en `scripts/fetch-references.mjs` (categoría + uso)
-y vuelve a correr `npm run refs:fetch`: el manifiesto y los créditos se regeneran solos.
+y vuelve a correr `pnpm refs:fetch`: el manifiesto y los créditos se regeneran solos.
 
 ## public/ (lo que carga el juego)
 
 ```
 public/
-├── world/          ← generado por npm run data:build (no editar a mano)
+├── world/          ← generado por pnpm data:build (no editar a mano)
 │   ├── manifest.json, map.json, global.json
 │   └── tiles/X_Z.json
 └── textures/

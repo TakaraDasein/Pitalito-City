@@ -26,14 +26,14 @@ Atribuciones detalladas por archivo: [`assets/references/CREDITS.md`](../assets/
 ## Pipeline
 
 ```bash
-npm run data:fetch    # 1. OSM                        (~1 min; Overpass a veces responde 504: el script reintenta y cambia de servidor)
-npm run data:google   # 2. Google Open Buildings      (lee ~680 MB en streaming, guarda solo el bbox)
-npm run data:rasters  # 3. relieve, dosel, satélite, alturas (GDAL; ~4 min)
-npm run data:build    # 4. todo → public/world/       (~3 s)
-npm run refs:fetch    # 5. referencias y texturas
+pnpm data:fetch    # 1. OSM                        (~1 min; Overpass a veces responde 504: el script reintenta y cambia de servidor)
+pnpm data:google   # 2. Google Open Buildings      (lee ~680 MB en streaming, guarda solo el bbox)
+pnpm data:rasters  # 3. relieve, dosel, satélite, alturas (GDAL; ~4 min)
+pnpm data:build    # 4. todo → public/world/       (~3 s)
+pnpm refs:fetch    # 5. referencias y texturas
 ```
 
-`npm run setup` corre 1→5. Los pasos 1–3 dejan archivos en `data/raw/` (ignorado por git, ~310 MB); el paso 4 es
+`pnpm setup` corre 1→5. Los pasos 1–3 dejan archivos en `data/raw/` (ignorado por git, ~310 MB); el paso 4 es
 determinista y rápido, así que se puede iterar sobre `build-world.mjs` sin volver a descargar.
 
 ### Qué hace `build-world.mjs`
@@ -147,4 +147,4 @@ jugabilidad **es una decisión de diseño declarada** en `DERIVADOS` del mismo a
 ## Formato de salida
 
 Ver la tabla "Formato de datos" en [ARQUITECTURA.md](ARQUITECTURA.md#formato-de-datos-publicworld).
-`public/world/` sí se versiona (≈ 12 MB) para que el juego corra con solo `npm install && npm run dev`.
+`public/world/` sí se versiona (≈ 12 MB) para que el juego corra con solo `pnpm install && pnpm dev`.

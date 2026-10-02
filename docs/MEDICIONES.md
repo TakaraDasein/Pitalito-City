@@ -1,7 +1,7 @@
 # Medición de fps en GPU real
 
 > **Medición parcial.** Lo de abajo se midió de verdad, con la tarjeta, no con SwiftShader. Falta completar el
-> barrido: ver "Qué falta" al final. Regenerar con `npm run bench`.
+> barrido: ver "Qué falta" al final. Regenerar con `pnpm bench`.
 
 ## Dónde se midió
 
@@ -39,7 +39,7 @@ distancia y el director de presupuesto, los seis enemigos no son el cuello.
 1. **Los presets baja, media y ultra**, y las escenas de campo y de noche con lluvia. El barrido completo se
    cortó dos veces por error propio (recompilar durante la medición recarga la página y tira el bench) y una
    tercera porque la tarjeta dejó de entregar contexto WebGL a Chromium sin ventana. Se relanza con
-   `npm run bench`.
+   `pnpm bench`.
 2. **Una máquina floja.** Es para la que existe el presupuesto: una gráfica integrada y un portátil viejo. Sin
    eso, no se sabe si el preset "baja" sirve de algo.
 3. **Medir con el panel del juego** (tecla B) jugando de verdad, no sólo en escenas preparadas.

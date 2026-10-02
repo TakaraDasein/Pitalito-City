@@ -78,7 +78,7 @@ El plan por fases, con presupuestos, equipos de agentes y decisiones abiertas, e
 | 2026-09-30 | **El esqueleto se genera, no se descarga** (`scripts/lib/make-skeleton.py`) | Los paquetes de monstruos traen su propio armature: no servirían con los 45 clips ni con el sistema de combate. Generado sobre el rig propio, hereda todo |
 | 2026-09-30 | Árbol de comportamiento compartido en vez de una clase por enemigo | Un enemigo es un árbol + unas cifras; la fauna de la Fase 4 reutiliza la misma pieza |
 | 2026-09-30 | Enemigos que sólo existen cerca del jugador, como el tráfico | El presupuesto de animación no puede depender de cuántas zonas haya en el mapa |
-| 2026-10-01 | **v1.1: fps medidos en GPU real** (`npm run bench`) | Era el único hueco grande; resulta que el presupuesto va conservador para una RTX 4060 y ahora se sabe cuánto margen hay |
+| 2026-10-01 | **v1.1: fps medidos en GPU real** (`pnpm bench`) | Era el único hueco grande; resulta que el presupuesto va conservador para una RTX 4060 y ahora se sabe cuánto margen hay |
 | 2026-10-01 | Los cronistas tienen cuerpo, y sólo cerca del jugador | Hablar con puntos invisibles era lo más flojo de la Fase 7; once personajes permanentes costarían más que todo lo demás |
 | 2026-10-01 | Escalonado de actualización por distancia (`UpdateScheduler`) | Un animal a doscientos metros no necesita decidir sesenta veces por segundo; se acumula el dt y la física sale igual |
 | 2026-10-01 | Perfil de tiles precalculado en vez de recorrer árboles y edificios | Era decenas de miles de distancias por segundo para responder algo que no cambia nunca |

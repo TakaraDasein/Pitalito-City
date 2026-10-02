@@ -23,7 +23,7 @@ esternón, pelvis y cráneo con cuencas y mandíbula. Cada vértice va pegado al
 
 Resultado: **4.184 triángulos, 2 materiales, los mismos 65 huesos**. Hereda todas las animaciones y se viste con
 la misma ropa modular que cualquier personaje. Queda registrado en `assets/models/CREDITS.md` como derivado CC0,
-y se regenera con `npm run models:fetch`.
+y se regenera con `pnpm models:fetch`.
 
 > Primera versión: 9.240 triángulos. Los cuarenta huesos de los dedos se llevaban la mayor parte; ahora van sin
 > epífisis y con menos lados, que a tamaño de juego no se distingue. **−55 %.**

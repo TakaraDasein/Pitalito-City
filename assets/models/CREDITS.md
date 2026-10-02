@@ -3,7 +3,7 @@
 Modelos con esqueleto usados por el juego. **Sólo se versiona material CC0** (dominio público): la atribución
 no es obligatoria, se deja por trazabilidad. Ver [docs/ASSETS_3D.md](../../docs/ASSETS_3D.md).
 
-Regenerar con `npm run models:fetch`.
+Regenerar con `pnpm models:fetch`.
 
 ## Descargados
 

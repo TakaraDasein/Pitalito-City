@@ -5,7 +5,7 @@
 //   data/raw/imagery.tif   Esri World Imagery z17 (~1.2 m)                 → casco urbano (color real de techos)
 //   data/raw/ghsl_h.tif    JRC GHSL altura media de edificios (~90 m)      → casco urbano (alturas)
 //
-// Requiere GDAL en el PATH (gdal_translate). Uso: npm run data:rasters
+// Requiere GDAL en el PATH (gdal_translate). Uso: pnpm data:rasters
 import { execFileSync } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';

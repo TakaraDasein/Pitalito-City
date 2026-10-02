@@ -1,9 +1,9 @@
 // Verificación visual automática con Chromium sin pantalla (ver docs/VERIFICACION.md).
 //
-//   npm run dev                      # en otra terminal
-//   npm run shot -- inicio '[{"wait":6000},{"shot":"calle"},{"press":"KeyC"},{"wait":3000},{"shot":"lejana"}]'
-//   npm run shot -- menu '[{"wait":2000},{"shot":"principal"}]' --stay      # sin pulsar "Jugar"
-//   npm run shot:vehicle -- taxi                                            # un vehículo desde 3 ángulos
+//   pnpm dev                      # en otra terminal
+//   pnpm shot -- inicio '[{"wait":6000},{"shot":"calle"},{"press":"KeyC"},{"wait":3000},{"shot":"lejana"}]'
+//   pnpm shot -- menu '[{"wait":2000},{"shot":"principal"}]' --stay      # sin pulsar "Jugar"
+//   pnpm shot:vehicle -- taxi                                            # un vehículo desde 3 ángulos
 //
 // Acciones: {wait: ms} {press: 'KeyC'} {down/up: 'KeyW'} {click: 'selector'} {eval: 'código'} {shot: 'nombre'}
 // Salida: screenshots/<nombre>-<shot>.png. Variables: CHROMIUM_PATH, BASE_URL (por defecto http://localhost:5173/).

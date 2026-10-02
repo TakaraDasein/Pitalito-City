@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "setup": "npm run data:fetch && npm run data:google && npm run data:rasters && npm run data:build && npm run refs:fetch && npm run models:fetch",
+    "setup": "pnpm data:fetch && pnpm data:google && pnpm data:rasters && pnpm data:build && pnpm refs:fetch && pnpm models:fetch",
     "data:fetch": "node scripts/fetch-osm.mjs",
     "data:google": "node scripts/fetch-google-buildings.mjs",
     "data:rasters": "node scripts/fetch-rasters.mjs",
@@ -32,5 +32,6 @@
   },
   "engines": {
     "node": ">=20"
-  }
+  },
+  "packageManager": "pnpm@11.1.1"
 }

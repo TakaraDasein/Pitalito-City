@@ -5,7 +5,7 @@
 //   public/world/global.json     → geometría grande que siempre está cargada (áreas extensas)
 //   public/world/tiles/X_Z.json  → contenido de cada tile (calles, edificios, áreas, árboles, agua)
 //
-// Uso: npm run data:build
+// Uso: pnpm data:build
 import { readFile, writeFile, mkdir, readdir, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { WORLD } from '../src/config/world.config.js';
@@ -23,7 +23,7 @@ const tileOf = (x, z) => [Math.floor(x / T), Math.floor(z / T)];
 const project = (geom) => geom.flatMap((g) => projection.toWorld(g.lat, g.lon));
 
 const osm = JSON.parse(await readFile('data/raw/pitalito.osm.json', 'utf8'));
-const optRaster = (f) => (existsSync(f) ? loadRaster(f) : (console.warn(`⚠ falta ${f} (npm run data:rasters)`), null));
+const optRaster = (f) => (existsSync(f) ? loadRaster(f) : (console.warn(`⚠ falta ${f} (pnpm data:rasters)`), null));
 const imagery = optRaster('data/raw/imagery.tif');
 const chm = optRaster('data/raw/chm.tif');
 const dem = optRaster('data/raw/dem.tif');

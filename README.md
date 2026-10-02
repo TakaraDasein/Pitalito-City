@@ -14,8 +14,8 @@ Principal José Hilario López, frente a la Torre San Antonio.
 ## Inicio rápido
 
 ```bash
-npm install
-npm run dev        # http://localhost:5173
+pnpm install
+pnpm dev        # http://localhost:5173
 ```
 
 Requisitos: Node ≥ 20 y un navegador con WebGL2. `public/world/` ya viene generado; regenerar los datos requiere
@@ -23,10 +23,10 @@ además GDAL (ver [docs/DATOS.md](docs/DATOS.md)).
 
 | Comando | Qué hace |
 |---|---|
-| `npm run dev` | Servidor de desarrollo |
-| `npm run build` / `preview` | Build estático en `dist/` / servirlo |
-| `npm run setup` | Descarga y regenera todos los datos (`data:fetch`, `data:google`, `data:rasters`, `data:build`, `refs:fetch`) |
-| `npm run shot` / `shot:vehicle` | Capturas automáticas para verificar cambios |
+| `pnpm dev` | Servidor de desarrollo |
+| `pnpm build` / `preview` | Build estático en `dist/` / servirlo |
+| `pnpm setup` | Descarga y regenera todos los datos (`data:fetch`, `data:google`, `data:rasters`, `data:build`, `refs:fetch`) |
+| `pnpm shot` / `shot:vehicle` | Capturas automáticas para verificar cambios |
 
 ## Controles
 

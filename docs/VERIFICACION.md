@@ -5,8 +5,8 @@
 
 ## Lista mínima antes de cada commit
 
-1. `npm run build` termina sin errores.
-2. `npm run dev` y abrir http://localhost:5173: carga hasta el menú principal sin errores en la consola del navegador.
+1. `pnpm build` termina sin errores.
+2. `pnpm dev` y abrir http://localhost:5173: carga hasta el menú principal sin errores en la consola del navegador.
 3. Probar el área tocada (ver tabla abajo).
 4. Tecla **B** en la partida: draw calls y triángulos dentro del presupuesto de [REGLAS.md](REGLAS.md#5-rendimiento-presupuestos).
 
@@ -15,9 +15,9 @@
 Requiere Chromium (`CHROMIUM_PATH`, por defecto `/usr/bin/chromium`) y el servidor de desarrollo corriendo.
 
 ```bash
-npm run shot -- inicio '[{"wait":6000},{"shot":"calle"}]'              # entra a jugar y captura
-npm run shot -- menu '[{"wait":2000},{"shot":"principal"}]' --stay      # se queda en el menú
-npm run shot:vehicle -- chiva                                           # un vehículo desde 3 ángulos
+pnpm shot -- inicio '[{"wait":6000},{"shot":"calle"}]'              # entra a jugar y captura
+pnpm shot -- menu '[{"wait":2000},{"shot":"principal"}]' --stay      # se queda en el menú
+pnpm shot:vehicle -- chiva                                           # un vehículo desde 3 ángulos
 ```
 
 Las imágenes quedan en `screenshots/` (ignorada por git). Acciones disponibles:
@@ -38,15 +38,15 @@ Las imágenes quedan en `screenshots/` (ignorada por git). Acciones disponibles:
 (medido: `game.time` avanzó 0,56 s en 4 s de reloj). Consecuencia práctica: **nada que dependa del tiempo se puede
 comprobar esperando**. Un ataque que dura 0,76 s no llega a terminar en dos segundos de espera.
 
-## Medir fps de verdad: `npm run bench`
+## Medir fps de verdad: `pnpm bench`
 
 `tools/screenshot.mjs` fuerza SwiftShader para que las capturas salgan iguales en cualquier máquina, y por eso
 **no sirve para medir velocidad**. `tools/bench.mjs` hace lo contrario: deja que Chromium use la tarjeta.
 
 ```bash
-npm run dev                 # en otra terminal
-npm run bench               # los cuatro presets, cinco escenas
-npm run bench -- alta       # un preset
+pnpm dev                 # en otra terminal
+pnpm bench               # los cuatro presets, cinco escenas
+pnpm bench -- alta       # un preset
 ```
 
 Escribe `docs/MEDICIONES.md` con la tabla y anota en qué máquina se midió, porque las cifras dependen de ella.
@@ -89,9 +89,9 @@ y que el combatiente muera y quede en el suelo.
 
 | Si cambiaste… | Revisar |
 |---|---|
-| Pipeline / `public/world/` | Superposición sobre el satélite (calles, huellas y árboles alineados), spawn en calle, `npm run data:build` sin avisos |
+| Pipeline / `public/world/` | Superposición sobre el satélite (calles, huellas y árboles alineados), spawn en calle, `pnpm data:build` sin avisos |
 | Builders / materiales | Vista de calle y aérea (tecla C), día y noche (N), lluvia |
-| Vehículos | `npm run shot:vehicle -- <tipo>`, garaje, manejo 10 s sin choques falsos, draw calls por vehículo |
+| Vehículos | `pnpm shot:vehicle -- <tipo>`, garaje, manejo 10 s sin choques falsos, draw calls por vehículo |
 | Física / colisiones | Acelerar 15 s por la Calle 5 desde el spawn sin impactos |
 | Menús / HUD | Navegación solo con teclado (flechas, Enter, Esc), foco visible, pausa ⇄ continuar |
 | Presets de calidad | Cambiar entre los 4 en Opciones sin errores ni pantalla negra |

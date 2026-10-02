@@ -1,7 +1,7 @@
 // Medición de fps con la **GPU de verdad** (no SwiftShader), que es lo que tools/screenshot.mjs no puede hacer.
 //
-//   npm run bench                 # todos los presets, todas las escenas
-//   npm run bench -- alta         # un preset
+//   pnpm bench                 # todos los presets, todas las escenas
+//   pnpm bench -- alta         # un preset
 //
 // Por qué un script aparte: screenshot.mjs fuerza `--use-angle=swiftshader` para que las capturas salgan iguales
 // en cualquier máquina. Eso renderiza por software (≈0,5 fps con el personaje con esqueleto) y **no sirve para
@@ -125,7 +125,7 @@ await mkdir('docs', { recursive: true });
 const info = maquina();
 const md = `# Medición de fps en GPU real
 
-> Generado por \`npm run bench\` el ${new Date().toISOString().slice(0, 10)}. **Las cifras dependen de la máquina.**
+> Generado por \`pnpm bench\` el ${new Date().toISOString().slice(0, 10)}. **Las cifras dependen de la máquina.**
 
 - **GPU:** ${renderer}
 - **Tarjetas del equipo:** ${info.gpu}

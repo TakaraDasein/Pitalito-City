@@ -65,7 +65,7 @@ para convertir lat/lon ↔ metros.
 
 - **Jugar**: navegador con WebGL2 (Chrome, Edge, Firefox, Safari recientes). GPU dedicada o integrada moderna para
   el preset Alta; el preset Baja apaga sombras y posprocesado.
-- **Desarrollar**: Node ≥ 20 y npm. Para regenerar datos: GDAL 3.x en el PATH, conexión a internet; Python con
+- **Desarrollar**: Node ≥ 20 y pnpm. Para regenerar datos: GDAL 3.x en el PATH, conexión a internet; Python con
   `overturemaps` solo si se quieren las huellas de Overture.
 - **Verificar**: Chromium instalado (ruta en `CHROMIUM_PATH`, por defecto `/usr/bin/chromium`).
 

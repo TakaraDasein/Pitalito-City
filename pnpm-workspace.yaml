@@ -1,0 +1,20 @@
+# Este archivo existe por dos motivos.
+#
+# 1. Que pnpm no busque un workspace más arriba. Hay un pnpm-workspace.yaml en la carpeta personal del usuario, y
+#    sin esto pnpm cree que el proyecto forma parte de él, no lo encuentra en su lista y no instala nada
+#    ("Already up to date" sin llegar a crear node_modules).
+packages:
+  - .
+
+# 2. La lista blanca de paquetes con permiso para ejecutar scripts de instalación. pnpm los bloquea **todos** por
+#    defecto, y eso es lo que de verdad cambia al dejar npm: un `postinstall` malicioso en una dependencia
+#    transitiva es el vector de los ataques de cadena de suministro (así se propagó el gusano Shai-Hulud en
+#    septiembre de 2025). npm los ejecuta todos sin preguntar.
+#
+#    Aquí sólo entra esbuild, la herramienta de compilación de Vite. Su binario llega igual como dependencia de
+#    plataforma (@esbuild/linux-x64), así que el script no aporta nada; se autoriza porque pnpm bloquea cualquier
+#    comando mientras haya compilaciones ignoradas. (En pnpm 9 y 10 esta lista se llamaba `onlyBuiltDependencies`.)
+#
+#    Cualquier paquete nuevo que pida ejecutar scripts se añade aquí a mano, con su motivo.
+allowBuilds:
+  esbuild: true

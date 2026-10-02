@@ -11,7 +11,7 @@ Resumen operativo. Las reglas completas están en [docs/REGLAS.md](docs/REGLAS.m
   `docs/ESTADO.md` (decisiones y pendientes), `docs/PLAN_JUEGO.md` (**a dónde va**: el salto a juego de acción,
   por fases), `docs/ASSETS_3D.md` (modelos externos y licencias), `docs/HISTORIA.md` (la narrativa con fuentes),
   `docs/RENDIMIENTO.md` (qué cuesta cada cosa), `docs/OPTIMIZACION.md` (las técnicas y por qué),
-  `docs/MEDICIONES.md` (fps reales, lo genera `npm run bench`).
+  `docs/MEDICIONES.md` (fps reales, lo genera `pnpm bench`).
 - **Fin del juego:** reconstruir la historia de Pitalito. GTA para el mundo, Dark Souls para el combate y la luz,
   Minecraft para la construcción. Ver PLAN_JUEGO.md.
 - A pie hay **dos modos que no se pisan**: arma guardada = construir, arma en mano = pelear (tecla X).
@@ -35,10 +35,20 @@ Resumen operativo. Las reglas completas están en [docs/REGLAS.md](docs/REGLAS.m
 8. Interfaz: estilo café y guadua en **todo** elemento (`src/ui/guadua/`, `src/ui/styles.css`), navegable con teclado;
    la placa de calle conserva el diseño oficial.
 
+## Gestor de paquetes
+
+**pnpm, no npm.** No porque el CLI de npm sea inseguro, sino por el comportamiento por defecto: pnpm **no ejecuta
+los scripts de instalación** de las dependencias, que es el vector de los ataques de cadena de suministro (un
+`postinstall` malicioso en un paquete transitivo). La lista blanca está en `pnpm-workspace.yaml` → `allowBuilds`,
+hoy con un solo paquete (esbuild) y su motivo escrito. Cualquier paquete nuevo que pida ejecutar scripts se
+añade ahí a mano.
+
+Ese mismo archivo evita que pnpm busque un workspace en la carpeta personal del usuario, donde hay uno.
+
 ## Antes de terminar una tarea
 
-- `npm run build` sin errores.
-- Verificación visual con `npm run shot` (el render sin GPU es lento: no medir fps así) — ver docs/VERIFICACION.md.
+- `pnpm build` sin errores.
+- Verificación visual con `pnpm shot` (el render sin GPU es lento: no medir fps así) — ver docs/VERIFICACION.md.
 - Actualizar la documentación afectada y, si cambió el rumbo, la bitácora de docs/ESTADO.md.
 - **Al cerrar una fase:** carpeta nueva en `iteraciones/` con capturas comprimidas y medidas (ver su README).
 
@@ -49,12 +59,12 @@ Resumen operativo. Las reglas completas están en [docs/REGLAS.md](docs/REGLAS.m
 - Algunos dispositivos aparecen como gamepad con botones "presionados" desde el inicio (abrían el mapa solos):
   `InputSystem` solo acepta mapeo estándar y toma la primera lectura como referencia.
 - Las huellas de edificios se recortan contra las calzadas en `build-world.mjs` (`clearRoads`); si se cambian anchos
-  en `roads.config.js`, regenerar con `npm run data:build`.
+  en `roads.config.js`, regenerar con `pnpm data:build`.
 - En Chromium sin GPU las transiciones CSS de `transform` pueden no avanzar (el panel de ayuda parece no abrir):
   es del entorno de prueba, no del juego.
 - **El render sin GPU va a ≈ 0,5 fps** desde que el personaje tiene esqueleto: esperar no sirve para comprobar
   nada que dependa del tiempo. Avanzar la simulación a mano (`game.combatSys.update(0.02)`) — ver VERIFICACION.md.
-  Para medir velocidad de verdad, `npm run bench` (usa la GPU); **no recompilar mientras corre**, Vite recarga la
+  Para medir velocidad de verdad, `pnpm bench` (usa la GPU); **no recompilar mientras corre**, Vite recarga la
   página y el bench se cae.
 - Playwright: `#app` no es "visible" (hijos `position: fixed`); esperar con `state: 'attached'`.
 - Una tecla puede llegar a dos manejadores (InputSystem y Menus); `Menus` ignora la pulsación que abrió el menú.

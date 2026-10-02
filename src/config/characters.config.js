@@ -2,7 +2,7 @@
 //
 // Todo el material es CC0 (Quaternius). Los cuerpos, la ropa, el pelo y los clips comparten un esqueleto de
 // **65 huesos con nombres de Unreal** (`pelvis`, `spine_01`, `Head`, `hand_r`…), así que una animación mueve a la
-// vez la piel y la ropa sin reorientar nada. Descarga y preparación: `npm run models:fetch`
+// vez la piel y la ropa sin reorientar nada. Descarga y preparación: `pnpm models:fetch`
 // (ver scripts/fetch-characters.mjs y docs/ASSETS_3D.md).
 
 const BASE = 'models/characters/';

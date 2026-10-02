@@ -1,7 +1,7 @@
 // Google Open Buildings v3: descarga en streaming la celda S2 que contiene Pitalito y conserva solo
 // los edificios dentro del bbox (sin guardar el archivo completo de ~680 MB).
 //   → data/raw/pitalito.google-buildings.geojson
-// Uso: npm run data:google   (la celda S2 nivel 4 de Pitalito es 8e3)
+// Uso: pnpm data:google   (la celda S2 nivel 4 de Pitalito es 8e3)
 import { createGunzip } from 'node:zlib';
 import { createInterface } from 'node:readline';
 import { Readable } from 'node:stream';

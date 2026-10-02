@@ -8,8 +8,8 @@
 Al cerrar una etapa (antes del commit):
 
 ```bash
-npm run dev                                   # en otra terminal
-npm run shot -- iterN '[{"wait":9000},{"shot":"parque"}, ...]'
+pnpm dev                                   # en otra terminal
+pnpm shot -- iterN '[{"wait":9000},{"shot":"parque"}, ...]'
 node tools/iteracion.mjs NN-nombre-vX.Y.Z     # copia, comprime y crea el README
 ```
 

@@ -1,5 +1,5 @@
 // Descarga los datos crudos de OpenStreetMap del casco urbano de Pitalito (Huila).
-// Uso: npm run data:fetch   → data/raw/pitalito.osm.json
+// Uso: pnpm data:fetch   → data/raw/pitalito.osm.json
 import { writeFile, mkdir } from 'node:fs/promises';
 import { WORLD } from '../src/config/world.config.js';
 

@@ -193,8 +193,8 @@ No es "optimizar al final": son decisiones de arquitectura que se toman ahora.
 
 Además de la lista de [VERIFICACION.md](VERIFICACION.md):
 
-1. `npm run build` sin errores.
-2. Capturas con `npm run shot` de las escenas fijas de comparación (parque, calle, rural, combate).
+1. `pnpm build` sin errores.
+2. Capturas con `pnpm shot` de las escenas fijas de comparación (parque, calle, rural, combate).
 3. **Medidas anotadas:** draw calls, triángulos, peso de descarga, y — lo que falta hoy — **fps en GPU real**.
 4. Carpeta nueva en `iteraciones/` con capturas comprimidas y su README.
 5. Bitácora de ESTADO.md al día si cambió el rumbo.

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GeometryBatch } from '../GeometryBatch.js';
+import { GeometryBatch, geometryFromArrays } from '../GeometryBatch.js';
 import { FACADE_COLORS, ROOF_COLORS } from '../../config/palette.config.js';
 import { polygonArea } from '../../geo/geometry.js';
 
@@ -179,9 +179,10 @@ function balconies(batch, p, gTop, top, color) {
 // Edificios del tile: 4 draw calls (pisos superiores, primer piso, techos planos, techos de teja).
 // Se apoyan en el relieve real: la base arranca en la cota más baja de la huella y el cuerpo mide `h`
 // sobre la más alta. El techo toma el color real muestreado de la imagen satelital (`rc`).
-export const BuildingBuilder = {
-  id: 'buildings',
-  build(tile, { materials, terrain }) {
+// La geometría de las fachadas es la parte cara de construir un tile, y **no toca three más allá de números**:
+// por eso se separa de la creación de mallas. Así puede correr en un Worker (src/world/workers/tileWorker.js) y
+// el hilo principal sólo arma las mallas con el material que toca.
+export function buildingGeometry(tile, terrain) {
     const upper = new GeometryBatch({ colors: true });
     const ground = new GeometryBatch({ colors: true });
     const roofFlat = new GeometryBatch({ colors: true });
@@ -218,16 +219,28 @@ export const BuildingBuilder = {
       if (top > gTop + 2.5 && b.c % 2 === 1) balconies(plain, p, gTop, top, color);
     }
 
-    const out = [];
-    for (const [batch, mat] of [[upper, 'facadeUpper'], [ground, 'facadeGround'], [roofFlat, 'roofFlat'], [roofSheet, 'roofSheet'], [plain, 'wallPlain']]) {
-      const g = batch.build();
-      if (!g) continue;
-      const m = new THREE.Mesh(g, materials.get(mat));
-      m.castShadow = true;
-      m.receiveShadow = true;
-      out.push(m);
-    }
-    return out;
+  const lotes = [];
+  for (const [batch, mat] of [[upper, 'facadeUpper'], [ground, 'facadeGround'], [roofFlat, 'roofFlat'], [roofSheet, 'roofSheet'], [plain, 'wallPlain']]) {
+    const a = batch.arrays();
+    if (a) lotes.push({ mat, a });
+  }
+  return lotes;
+}
+
+/** Arma las mallas a partir de los lotes de geometría. Vale igual si vinieron del Worker o de este hilo. */
+export function buildingMeshes(lotes, materials) {
+  return lotes.map(({ mat, a }) => {
+    const m = new THREE.Mesh(geometryFromArrays(a), materials.get(mat));
+    m.castShadow = true;
+    m.receiveShadow = true;
+    return m;
+  });
+}
+
+export const BuildingBuilder = {
+  id: 'buildings',
+  build(tile, { materials, terrain }) {
+    return buildingMeshes(buildingGeometry(tile, terrain), materials);
   },
   collide(tile, collision, owner) {
     for (const b of tile.buildings) collision.addPolygon(owner, b.p);

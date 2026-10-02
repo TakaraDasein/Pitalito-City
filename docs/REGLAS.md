@@ -97,7 +97,7 @@ detalle) o se deja solo en Ultra.
 
 1. Rama por cambio; commits pequeños con mensaje en español en imperativo ("Agrega semáforos en troncales").
 2. Antes de subir:
-   - `npm run build` sin errores,
+   - `pnpm build` sin errores,
    - verificación visual del área tocada (ver [VERIFICACION.md](VERIFICACION.md)),
    - sin errores nuevos en consola,
    - documentación actualizada si cambió algo de arquitectura, datos, controles o reglas.

@@ -15,7 +15,7 @@ model: opus
    registre fuente, autor, licencia y fecha en un `CREDITS.md`.
 2. **Sólo se versiona CC0 o equivalente.** Lo que no permita redistribución queda en `data/raw/` (ignorado) y se
    pide en vivo. La imagen de Esri **nunca** se versiona.
-3. Si cambias anchos en `roads.config.js`, regenera con `npm run data:build` (el despeje de calzadas depende de eso).
+3. Si cambias anchos en `roads.config.js`, regenera con `pnpm data:build` (el despeje de calzadas depende de eso).
 4. Con combate en marcha, construir tiles en el hilo principal deja de ser aceptable: mover a Worker.
 
 ## Trampas conocidas
@@ -23,4 +23,4 @@ Overpass responde 504 a veces; Overture necesita `--no-stac` para este bbox; un 
 la propia terminal si el patrón aparece en el comando.
 
 ## Terminado cuando
-`npm run build` limpio, el script es repetible desde cero, y `CREDITS.md` está completo.
+`pnpm build` limpio, el script es repetible desde cero, y `CREDITS.md` está completo.

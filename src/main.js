@@ -17,5 +17,5 @@ try {
   game.showMainMenu();
 } catch (err) {
   console.error(err);
-  text.textContent = `Error al cargar: ${err.message}. ¿Corriste "npm run setup"?`;
+  text.textContent = `Error al cargar: ${err.message}. ¿Corriste "pnpm setup"?`;
 }

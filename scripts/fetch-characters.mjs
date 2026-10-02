@@ -7,7 +7,7 @@
 // Sólo se versiona material CC0 (dominio público). Ver docs/ASSETS_3D.md para la decisión y la verificación
 // del esqueleto (53 huesos, 46 clips).
 //
-// Uso: npm run models:fetch
+// Uso: pnpm models:fetch
 import { mkdir, writeFile, rm, readdir, copyFile } from 'node:fs/promises';
 import { existsSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -217,7 +217,7 @@ await writeFile(
 Modelos con esqueleto usados por el juego. **Sólo se versiona material CC0** (dominio público): la atribución
 no es obligatoria, se deja por trazabilidad. Ver [docs/ASSETS_3D.md](../../docs/ASSETS_3D.md).
 
-Regenerar con \`npm run models:fetch\`.
+Regenerar con \`pnpm models:fetch\`.
 
 ## Descargados
 

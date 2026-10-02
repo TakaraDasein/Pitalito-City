@@ -7,7 +7,7 @@ pelo, ropa y sombrero — y se puede elegir todo antes de jugar, con el oficio c
 
 ### Pipeline de modelos: 423 MB → 12,4 MB
 - **`scripts/lib/itch.mjs`** — resuelve la descarga de los paquetes CC0 de itch.io (cookie, csrf, enlace firmado).
-  Antes había que bajarlos a mano; ahora `npm run models:fetch` lo hace todo desde cero.
+  Antes había que bajarlos a mano; ahora `pnpm models:fetch` lo hace todo desde cero.
 - **`scripts/lib/fbx2gltf.py`** — Blender sin interfaz convierte el FBX de animaciones a glTF. **Hacía falta:**
   la exportación del paquete para Godot trae nombres de hueso Rigify (`DEF-head`), que **no coinciden** con los
   de las mallas de personaje, exportadas con nombres de Unreal (`Head`, `spine_01`). La de Unreal sí coincide,

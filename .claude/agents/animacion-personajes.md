@@ -24,4 +24,4 @@ model: opus
 - Presupuesto: ≤ 3.000 triángulos y ≤ 4 draw calls por personaje.
 
 ## Terminado cuando
-`npm run build` pasa, hay captura en `iteraciones/`, y las medidas siguen dentro del presupuesto de REGLAS.md.
+`pnpm build` pasa, hay captura en `iteraciones/`, y las medidas siguen dentro del presupuesto de REGLAS.md.

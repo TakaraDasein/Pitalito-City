@@ -19,6 +19,22 @@ export class GeometryBatch {
 
   get empty() { return this.idx.length === 0; }
 
+  /**
+   * Arrays planos listos para transferir a otro hilo. Es lo mismo que `build()` pero sin tocar three: el Worker
+   * no puede crear BufferGeometry útiles para el renderizador, así que manda los números y el hilo principal
+   * arma la geometría (ver src/world/workers/tileWorker.js).
+   */
+  arrays() {
+    if (this.empty) return null;
+    return {
+      pos: new Float32Array(this.pos),
+      nor: new Float32Array(this.nor),
+      uv: new Float32Array(this.uv),
+      col: this.col ? new Float32Array(this.col) : null,
+      idx: this.count > 65535 ? new Uint32Array(this.idx) : new Uint16Array(this.idx),
+    };
+  }
+
   build() {
     if (this.empty) return null;
     const g = new THREE.BufferGeometry();
@@ -30,6 +46,25 @@ export class GeometryBatch {
     g.computeBoundingSphere();
     return g;
   }
+}
+
+/** Rehace una BufferGeometry a partir de los arrays que devolvió `arrays()`, en el hilo principal. */
+export function geometryFromArrays(a) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(a.pos, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(a.nor, 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(a.uv, 2));
+  if (a.col) g.setAttribute('color', new THREE.BufferAttribute(a.col, 3));
+  g.setIndex(new THREE.BufferAttribute(a.idx, 1));
+  g.computeBoundingSphere();
+  return g;
+}
+
+/** Los buffers de un conjunto de arrays, para pasarlos como transferibles y no copiarlos. */
+export function transferables(lotes) {
+  const out = [];
+  for (const l of lotes) for (const k of ['pos', 'nor', 'uv', 'col', 'idx']) if (l.a[k]) out.push(l.a[k].buffer);
+  return out;
 }
 
 // Cinta plana a lo largo de una polilínea [x,z,...] con uniones en inglete (calles, ríos, líneas).

@@ -11,8 +11,8 @@ model: sonnet
 `tools/screenshot.mjs`, `tools/iteracion.mjs`, `iteraciones/`, `docs/VERIFICACION.md`.
 
 ## Rutina al cerrar una fase
-1. `npm run build` — sin errores.
-2. `npm run dev` en otra terminal; `npm run shot` sobre las **escenas fijas de comparación**: menú, parque en
+1. `pnpm build` — sin errores.
+2. `pnpm dev` en otra terminal; `pnpm shot` sobre las **escenas fijas de comparación**: menú, parque en
    carro, personaje a pie, primera persona, periferia, rural. Más las escenas nuevas de la fase.
 3. Medidas con `game.renderer.info.render` (draw calls, triángulos) y, en GPU real, fps con la tecla **B**.
    Presupuesto: ≤ 700 draw calls, ≤ 1 M triángulos en preset Alta.
