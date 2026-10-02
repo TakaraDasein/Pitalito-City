@@ -48,6 +48,46 @@
     "license": "Public domain"
   },
   {
+    "file": "landmarks/alcaldia/centro-administrativo-municipal-la-chapolera.jpg",
+    "category": "landmarks/alcaldia",
+    "usedFor": "Alcaldía Municipal \"La Chapolera\"",
+    "title": "Centro administrativo municipal LA CHAPOLERA.png",
+    "source": "https://commons.wikimedia.org/wiki/File:Centro_administrativo_municipal_LA_CHAPOLERA.png",
+    "author": "Darwin A. Rivera",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  {
+    "file": "landmarks/coliseo/coliseo-cubierto-de-pitalito.jpg",
+    "category": "landmarks/coliseo",
+    "usedFor": "Coliseo Cubierto: volumen de ladrillo, cubierta metálica a dos aguas, galería de columnas",
+    "title": "Coliseo Cubierto de Pitalito.webp",
+    "source": "https://commons.wikimedia.org/wiki/File:Coliseo_Cubierto_de_Pitalito.webp",
+    "author": "Daalecura",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  {
+    "file": "landmarks/concha-acustica/concha-acustica-de-pitalito-huila-colombia.jpg",
+    "category": "landmarks/concha-acustica",
+    "usedFor": "Concha Acústica: tarima circular, cubierta de celosía metálica sobre cuatro torres",
+    "title": "Concha acústica de Pitalito, Huila, colombia.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Concha_ac%C3%BAstica_de_Pitalito,_Huila,_colombia.jpg",
+    "author": "Jhysus",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  {
+    "file": "landmarks/gemelas-danzantes/gemelas-danzantes-pitalito-huila.jpg",
+    "category": "landmarks/gemelas-danzantes",
+    "usedFor": "Gemelas Danzantes (Bruselas): formación rocosa",
+    "title": "Gemelas Danzantes Pitalito Huila.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Gemelas_Danzantes_Pitalito_Huila.jpg",
+    "author": "Karokunst",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  {
     "file": "city/panoramas/panoramica-pitalito.jpg",
     "category": "city/panoramas",
     "usedFor": "Paleta de color de la ciudad, alturas típicas, cielo y montañas del Valle de Laboyos",

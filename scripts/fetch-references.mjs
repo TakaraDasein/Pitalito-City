@@ -27,7 +27,19 @@ const REFERENCES = {
   },
   'landmarks/alcaldia': {
     usedFor: 'Alcaldía Municipal "La Chapolera"',
-    files: ['Alcaldía de Pitalito.jpg'],
+    files: ['Alcaldía de Pitalito.jpg', 'Centro administrativo municipal LA CHAPOLERA.png'],
+  },
+  'landmarks/coliseo': {
+    usedFor: 'Coliseo Cubierto: volumen de ladrillo, cubierta metálica a dos aguas, galería de columnas',
+    files: ['Coliseo Cubierto de Pitalito.webp'],
+  },
+  'landmarks/concha-acustica': {
+    usedFor: 'Concha Acústica: tarima circular, cubierta de celosía metálica sobre cuatro torres',
+    files: ['Concha acústica de Pitalito, Huila, colombia.jpg'],
+  },
+  'landmarks/gemelas-danzantes': {
+    usedFor: 'Gemelas Danzantes (Bruselas): formación rocosa',
+    files: ['Gemelas Danzantes Pitalito Huila.jpg'],
   },
   'city/panoramas': {
     usedFor: 'Paleta de color de la ciudad, alturas típicas, cielo y montañas del Valle de Laboyos',

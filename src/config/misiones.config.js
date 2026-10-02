@@ -46,9 +46,10 @@ export const MISIONES = [
     objetivo: { tipo: 'visitar', puntos: [[230, 60], [60, 250], [-120, 190]], radio: 18 },
   },
   {
-    hito: 'municipio', cronista: 'El secretario', x: -40, z: 30,
+    hito: 'municipio', cronista: 'El secretario', x: 40, z: 150,
     encargo: 'Lleva el acta hasta la Alcaldía: en 1912 esto dejó de ser aldea.',
-    objetivo: { tipo: 'llegar', x: -36, z: 24, radio: 10 },
+    // Coordenadas reales de la Alcaldía Municipal La Chapolera, de OSM (antes apuntaban a un punto inventado).
+    objetivo: { tipo: 'llegar', x: 73, z: 190, radio: 22 },
   },
   {
     hito: 'san-antonio-de-laboyos', cronista: 'El pescador', x: 620, z: 540,
