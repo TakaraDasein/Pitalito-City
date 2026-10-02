@@ -16,9 +16,16 @@ import { LAYER } from '../../materials/MaterialLibrary.js';
 //    de concreto a su lado, en el lado de la Carrera 4 mirando al parque          (foto Cra 5)
 //  - palmas en alcorques cuadrados con prado en los lados de Carrera 5 y Calle 5  (fotos Cra 5, Cl 5)
 //  - bancas de concreto con espaldar y sombrillas de vendedores                   (fotos Cra 5, Cl 6)
-// ESTIMADO: posición exacta de palmas, bancas y sombrillas (las fotos muestran el patrón, no las coordenadas).
+//  - FUENTE rectangular delante del letrero: vaso largo revestido en mármol gris oscuro, con un canal estrecho
+//    y elevado a un lado que vierte en escalón sobre el vaso bajo, y una pila cuadrada al centro  (fotos may 2025
+//    y fotos de su limpieza aportadas por el usuario, oct 2026; no versionadas por derechos)
+//  - LETRERO «200 PITALITO» del bicentenario: cifras corpóreas azules sobre jardinera, con remates de color y la
+//    leyenda «Bicentenario» debajo, del lado de la Torre                                          (foto oct 2026)
+//  - MONUMENTO AL RECOLECTOR: busto de bronce de un recolector mayor con sombrero de ala ancha, herramienta al
+//    hombro y un abanico de manos detrás, sobre pedestal circular                                  (foto oct 2026)
+// ESTIMADO: posición exacta de palmas, bancas, sombrillas, fuente, letrero del bicentenario y monumento (las
+// fotos muestran qué hay y cómo es, no sus coordenadas exactas).
 // Los árboles grandes del centro vienen del mapa de dosel (datos reales), no de este módulo.
-// Pendiente: la fuente del parque existe (noticia de su restauración) pero no hay foto de su diseño.
 export const ParquePrincipal = {
   id: 'parque-principal',
   name: 'Parque Principal José Hilario López',
@@ -194,6 +201,92 @@ export const ParquePrincipal = {
         b.position.set(x, y, z); b.castShadow = true;
         mon.add(b);
       }
+    }
+
+    // ── Fuente, letrero del bicentenario y monumento al recolector ────────────────────────────────────
+    // Los tres existen y están en las fotos; la fuente llevaba pendiente desde la v0.2 por falta de referencia.
+    {
+      const marmol = new THREE.MeshStandardMaterial({ color: '#4b4f54', roughness: 0.35, metalness: 0.15 });
+      const marmolClaro = new THREE.MeshStandardMaterial({ color: '#b9b4a8', roughness: 0.45 });
+      const agua = materials.get('water');
+      const bronce = new THREE.MeshStandardMaterial({ color: '#6b4a2a', roughness: 0.45, metalness: 0.6 });
+      const conc = materials.get('concrete');
+      const pieza = (parent, geo, mat, x, y, z, ry = 0) => {
+        const m = new THREE.Mesh(geo, mat);
+        m.position.set(x, y, z); m.rotation.y = ry;
+        m.castShadow = true; m.receiveShadow = true;
+        parent.add(m);
+        return m;
+      };
+
+      // FUENTE: delante del letrero, dentro del parque.
+      const [fu, fv] = onSide(signSide, -0.05, 12.5);
+      const fuente = new THREE.Group();
+      fuente.position.set(fu, yAt(fu, fv), fv);
+      fuente.rotation.y = faceIn(signSide);
+      root.add(fuente);
+      const L = 11, A = 4.6;
+      pieza(fuente, new THREE.BoxGeometry(L, 0.75, A), marmol, 0, 0.37, 0);               // vaso
+      pieza(fuente, new THREE.BoxGeometry(L - 0.5, 0.12, A - 0.5), agua, 0, 0.7, 0);      // lámina de agua
+      pieza(fuente, new THREE.BoxGeometry(L, 0.55, 1.1), marmol, 0, 1.0, -A / 2 + 0.55);  // canal alto que vierte
+      pieza(fuente, new THREE.BoxGeometry(L - 0.5, 0.1, 0.8), agua, 0, 1.27, -A / 2 + 0.55);
+      pieza(fuente, new THREE.BoxGeometry(L + 0.5, 0.18, A + 0.5), marmolClaro, 0, 0.09, 0); // zócalo
+      pieza(fuente, new THREE.BoxGeometry(1.1, 1.5, 1.1), marmol, 0, 0.75, 0);            // pila central
+      const [fx, fz] = f.toWorld(fu, fv);
+      collision.addCircle(this.id, fx, fz, 4);
+      info(fu, fv + 4.5, 4, 'Fuente del Parque Principal',
+        ['Vaso rectangular revestido en mármol, con canal elevado que vierte en escalón.',
+         'Detrás, el letrero «Yo ❤ Pitalito» y el tablero del Macizo Colombiano.']);
+
+      // MONUMENTO AL RECOLECTOR: busto sobre pedestal circular, hacia el centro del parque.
+      const [ru, rv] = onSide(signSide, 0.45, 16);
+      const recolector = new THREE.Group();
+      recolector.position.set(ru, yAt(ru, rv), rv);
+      recolector.rotation.y = faceIn(signSide) + 0.6;
+      root.add(recolector);
+      pieza(recolector, new THREE.CylinderGeometry(2.3, 2.5, 0.45, 20), conc, 0, 0.22, 0);        // jardinera
+      pieza(recolector, new THREE.CylinderGeometry(1.1, 1.25, 0.9, 16), marmol, 0, 0.9, 0);       // pedestal
+      // El abanico de manos detrás del busto es lo que hace reconocible el monumento.
+      for (let i = -3; i <= 3; i++) {
+        const dedo = pieza(recolector, new THREE.BoxGeometry(0.22, 2.6, 0.5), bronce, i * 0.42, 2.7, 0.55);
+        dedo.rotation.z = i * 0.075;
+      }
+      pieza(recolector, new THREE.SphereGeometry(0.62, 14, 12).scale(1, 1.15, 0.95), bronce, 0, 2.6, -0.1);  // cabeza
+      pieza(recolector, new THREE.CylinderGeometry(1.5, 1.5, 0.09, 20), bronce, 0, 3.05, -0.1);              // ala
+      pieza(recolector, new THREE.CylinderGeometry(0.62, 0.72, 0.5, 18), bronce, 0, 3.3, -0.1);              // copa
+      const mango = pieza(recolector, new THREE.CylinderGeometry(0.1, 0.1, 3.4, 8), bronce, 0.75, 2.6, 0.3); // herramienta
+      mango.rotation.z = 0.42;
+      pieza(recolector, new THREE.BoxGeometry(0.75, 0.16, 0.5), bronce, 1.5, 3.95, 0.3);
+      const [rx, rz] = f.toWorld(ru, rv);
+      collision.addCircle(this.id, rx, rz, 2.4);
+      info(ru, rv, 4.5, 'Monumento al Recolector',
+        ['Busto en bronce de un recolector de café, con sombrero de ala ancha y la herramienta al hombro.',
+         'El café define la economía del municipio: 22.064 hectáreas de cultivos permanentes (IGAC).']);
+
+      // LETRERO «200 PITALITO» del bicentenario, del lado de la Torre.
+      const ladoTorre = side('Calle 5') || sides[0];
+      const [bu, bv] = onSide(ladoTorre, 0.3, 9);
+      const bicen = new THREE.Group();
+      bicen.position.set(bu, yAt(bu, bv), bv);
+      bicen.rotation.y = faceIn(ladoTorre);
+      root.add(bicen);
+      pieza(bicen, new THREE.CylinderGeometry(3.4, 3.6, 0.5, 22), conc, 0, 0.25, 0);                // jardinera
+      pieza(bicen, new THREE.CylinderGeometry(3.1, 3.1, 0.3, 22), materials.get('lawn') || conc, 0, 0.6, 0);
+      const azul = new THREE.MeshStandardMaterial({ color: '#1b9bd8', roughness: 0.4 });
+      // «200»: dos ceros y un dos, corpóreos. Las letras no se texturizan: a esta escala basta la silueta.
+      pieza(bicen, new THREE.BoxGeometry(0.95, 2.3, 0.45), azul, -1.65, 1.95, 0);
+      for (const x of [0.15, 1.75]) {
+        pieza(bicen, new THREE.TorusGeometry(0.72, 0.26, 8, 18).rotateY(Math.PI / 2), azul, x, 1.95, 0);
+      }
+      pieza(bicen, new THREE.BoxGeometry(4.6, 0.42, 0.3), azul, 0.05, 0.62, 0.1);                   // «PITALITO»
+      for (const [dx, col] of [[-1.9, '#e63946'], [-0.6, '#f4a261'], [0.7, '#2a9d8f'], [2.0, '#e9c46a']]) {
+        pieza(bicen, new THREE.BoxGeometry(0.5, 0.5, 0.4), new THREE.MeshStandardMaterial({ color: col, roughness: 0.5 }), dx, 3.4, 0);
+      }
+      const [bx, bz] = f.toWorld(bu, bv);
+      collision.addCircle(this.id, bx, bz, 3.6);
+      info(bu, bv, 5, 'Pitalito 200 años',
+        ['Letrero del bicentenario, junto a la Torre San Antonio.',
+         'En 1818 el poblado fue denominado Pitalito como corregimiento; en 1912, municipio (IGAC).']);
     }
 
     // ── Palmas en alcorques (Carrera 5 en dos hileras, Calle 5 en una)

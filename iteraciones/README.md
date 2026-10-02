@@ -43,3 +43,4 @@ Si `tools/iteracion.mjs` aún no existe, se hace a mano:
 | 07 | [La historia de Pitalito v1.0.0](07-historia-v1.0.0/) | 2026-09-30 | Fase 7: **el fin del juego**. Once cronistas, once hitos con fuente, los seis nombres del pueblo y la línea de tiempo. |
 | 08 | [Rendimiento v1.0.0](08-rendimiento-v1.0.0/) | 2026-10-01 | Fase 8: director de presupuesto por fotograma. Qué cuesta cada cosa, medido. |
 | 09 | [Cronistas y optimización v1.1.0](09-optimizacion-v1.1.0/) | 2026-10-01 | Fps medidos en GPU real, cronistas con cuerpo, escalonado por distancia, perfil de tiles y colisiones más baratas. |
+| 10 | [Los hitos del centro v1.2.0](10-hitos-centro-v1.2.0/) | 2026-10-01 | P1 del pulido: Alcaldía La Chapolera, la fuente del parque, el Monumento al Recolector y el letrero del bicentenario. |

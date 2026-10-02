@@ -176,7 +176,10 @@ for (const e of osm.elements) {
     const item = { k: kind, p: p.map(r1), ...(t.name ? { n: t.name } : {}) };
     if (e.id === 380471083) { item.k = 'plaza-main'; landmarks.parquePrincipal = { p: item.p, c: polygonCentroid(p).map(r1) }; }
     if (e.id === 729391615) landmarks.catedral = { p: item.p, c: polygonCentroid(p).map(r1) };
-    if (e.id === 729391613) landmarks.alcaldia = { p: item.p, c: polygonCentroid(p).map(r1) };
+    // Recintos deportivos y el terminal: son áreas, no edificios, y se modelan a mano (ver PLAN_PULIDO.md).
+    if (e.id === 282983838) landmarks.villaOlimpica = { p: item.p, c: polygonCentroid(p).map(r1) };
+    if (e.id === 844689287) landmarks.patinodromo = { p: item.p, c: polygonCentroid(p).map(r1) };
+    if (e.id === 360169957 || e.id === 365208734) landmarks.terminal = { p: item.p, c: polygonCentroid(p).map(r1) };
     const b = bbox(p);
     if (b.maxX - b.minX > T || b.maxZ - b.minZ > T) globalAreas.push(item);
     else getTile(...tileOf(...polygonCentroid(p))).areas.push(item);
@@ -253,6 +256,14 @@ function roofColor(p, cx, cz) {
   return (med(0) << 16) | (med(1) << 8) | med(2);
 }
 
+// Qué edificio con nombre corresponde a cada hito modelado a mano.
+const HITOS_EDIFICIO = [
+  [/chapolera/i, 'alcaldia'],
+  [/coliseo cubierto/i, 'coliseo'],
+  [/concha ac/i, 'conchaAcustica'],
+];
+const HITO_POR_NOMBRE = (n) => (n ? HITOS_EDIFICIO.find(([re]) => re.test(n))?.[1] : null);
+
 const allBuildings = [];
 function addBuilding(p, { id, levels, height, name, source }) {
   if (polygonArea(p) < 0) p = reverseRing(p);
@@ -269,6 +280,11 @@ function addBuilding(p, { id, levels, height, name, source }) {
     r: 0, // techo plano con el color real del satélite (la forma del techo no está en los datos)
     ...(name ? { n: name } : {}), ...(source ? { s: source } : {}),
   };
+  // Edificios que se modelan a mano (ver src/world/landmarks/). Se emparejan **por nombre**, no por id: las
+  // huellas llegan por Overture y traen su propio identificador, no el de OSM, aunque el dato sea de OSM.
+  const hito = HITO_POR_NOMBRE(name);
+  if (hito) landmarks[hito] = { p: b.p, c: [r1(x), r1(z)] };
+
   getTile(...tileOf(x, z)).buildings.push(b);
   blockGrid.add({ type: 'building', p }, bbox(p));
   allBuildings.push(b);
