@@ -2,6 +2,7 @@
 const ACTIONS = {
   KeyM: 'map', KeyC: 'camera', KeyV: 'vehicle', KeyN: 'time', KeyH: 'horn', KeyR: 'reset',
   KeyT: 'home', KeyF: 'enterExit', KeyE: 'interact', Escape: 'escape', KeyG: 'clearRoute', F1: 'help', KeyB: 'debug',
+  KeyI: 'inventory',
 };
 
 export class InputSystem {

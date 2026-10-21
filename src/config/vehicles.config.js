@@ -71,7 +71,10 @@ export const VEHICLES = {
     name: 'Moto', model: 'moto',
     // Dónde se sienta el conductor, en el espacio del vehículo. El personaje real se cuelga ahí (ver
     // PlayerSystem.#enter); los vehículos del tráfico siguen usando el muñeco de cajas, que es mucho más barato.
-    seat: [0, 0.06, -0.2],
+    seat: [0, 0.4, -0.2],
+    // A horcajadas: la animación de conducir es la de un carro, así que las manos y los pies se llevan al
+    // manubrio y a los pedales con cinemática inversa (puntos en src/entities/vehicles/models/moto.js).
+    postura: 'moto',
     description: 'Moto de trabajo 125 cc. La más rápida en arrancar.',
     maxSpeed: 110, reverseSpeed: 8,
     accel: 11, brake: 14, drag: 0.003, rolling: 0.3,
@@ -86,7 +89,23 @@ export const VEHICLES = {
 export const PLAYER_ROSTER = ['willys', 'taxi', 'pickup', 'chiva', 'motocarro', 'moto'];
 // Mezcla del tráfico IA (pesos): en Pitalito abundan motos y taxis
 // Subir y bajar del vehículo: cuánto dura la transición del personaje hasta el asiento.
-export const MONTAJE = { duracion: 0.75 };
+// En la moto: `subir` y `bajar` en segundos; `acercarse` es la fracción de la subida que camina hasta el costado.
+export const MONTAJE = { duracion: 0.75, moto: { subir: 1.3, bajar: 0.9, acercarse: 0.3 } };
+
+// Posturas de conducción que la animación del paquete no trae. Puntos en el espacio del vehículo (adelante = −Z).
+// `manos` y `pies` van [izq., der.]: ahí se clavan con cinemática inversa; `codos` y `rodillas` dicen hacia dónde
+// se doblan. `retoque` inclina huesos sobre la animación (radianes, giro local). El modelo de la moto se construye
+// con estas mismas medidas, para que el manubrio y los pedales queden donde el personaje los busca.
+export const POSTURAS = {
+  moto: {
+    sillin: 0.84,
+    manos: [[-0.3, 1.07, -0.4], [0.3, 1.07, -0.4]],
+    pies: [[-0.2, 0.32, 0.05], [0.2, 0.32, 0.05]],
+    codos: [[-0.5, 0.9, 0.2], [0.5, 0.9, 0.2]],
+    rodillas: [[-0.3, 0.75, -0.5], [0.3, 0.75, -0.5]],
+    retoque: { spine_01: [0.55, 0, 0], spine_02: [0.25, 0, 0], neck_01: [-0.3, 0, 0], Head: [-0.25, 0, 0] },
+  },
+};
 
 export const TRAFFIC_MIX = { moto: 6, taxi: 4, motocarro: 2, pickup: 2, willys: 2, chiva: 1 };
 

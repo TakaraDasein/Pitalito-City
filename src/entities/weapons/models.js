@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { mesh, matte, roundBox, bakeStatic } from '../vehicles/models/carkit.js';
+import { FIREARMS } from '../../config/firearms.config.js';
+import { firearmModel } from './firearms.js';
 
 // Arsenal modelado a mano, como los vehículos: ninguna de estas piezas existe en los paquetes CC0, y todas son
 // herramientas reales del sur del Huila. Se modela sólo la forma general; las proporciones son estimadas a partir
@@ -98,6 +100,7 @@ const cache = new Map();
 
 // Devuelve el arma lista para colgar de la mano. Se cachea la geometría: todas las copias comparten material.
 export function weaponModel(id) {
+  if (FIREARMS[id]) return firearmModel(id, 'mano');
   if (!id || !BUILDERS[id]) return null;
   if (!cache.has(id)) {
     const g = new THREE.Group();

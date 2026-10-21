@@ -57,6 +57,11 @@ export class MaterialLibrary {
     this.m.water = flat({ color: '#3f7fa6', roughness: 0.08, metalness: 0.3, transparent: true, opacity: 0.92 });
     this.m.route = flat({ color: '#b04dff', emissive: '#b04dff', emissiveIntensity: 0.9, transparent: true, opacity: 0.85 });
 
+    // Manchas de sangre del combate (src/render/Sangre.js): por encima del suelo, sin escribir profundidad.
+    this.m.sangre = new THREE.MeshStandardMaterial({
+      color: '#4a0606', roughness: 0.35, transparent: true, opacity: 0.85, depthWrite: false,
+      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4,
+    });
     this.m.area = {};
     for (const [kind, color] of Object.entries(AREA_COLORS)) {
       if (kind === 'plaza-main') this.m.area[kind] = this.m.brick;
@@ -110,6 +115,12 @@ export class MaterialLibrary {
   }
 
   get(name) { return this.m[name]; }
+
+  // Color liso cacheado para piezas sencillas (contenedores del botín): uno por color, compartido.
+  plain(color, roughness = 0.75) {
+    const cache = (this.m.plain ??= {});
+    return (cache[`${color}|${roughness}`] ??= new THREE.MeshStandardMaterial({ color, roughness }));
+  }
 
   // Lluvia: superficies mojadas más oscuras y brillantes (reflejan el cielo del mapa de entorno)
   setWet(w) {

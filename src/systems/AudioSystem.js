@@ -129,6 +129,24 @@ export class AudioSystem {
     src.start(t); src.stop(t + 0.22);
   }
 
+  /** Disparo: estallido de ruido con cola grave; más bajo y apagado a lo lejos. */
+  disparo(fuerza = 1, distancia = 0) {
+    if (!this.ctx || !this.active) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const v = Math.min(0.9, 0.55 * fuerza) / (1 + distancia / 25);
+    const src = ctx.createBufferSource();
+    src.buffer = this.#ruido(0.5);
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.setValueAtTime(distancia > 40 ? 900 : 4200, t);
+    f.frequency.exponentialRampToValueAtTime(220, t + 0.35);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(v, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+    src.connect(f).connect(g).connect(this.master);
+    src.start(t); src.stop(t + 0.5);
+  }
+
   // Alguien cae: golpe grave y largo.
   caida() {
     if (!this.ctx || !this.active) return;

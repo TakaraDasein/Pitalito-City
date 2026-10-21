@@ -259,3 +259,38 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ink); 
   #hud-hotbar .slot { width: 40px; height: 40px; } #hud-hotbar .slot img { width: 34px; height: 34px; }
   #hud-hotbar { bottom: 150px; }
 }
+
+/* Mochila (modo supervivencia) */
+#hud-inventario { position: absolute; right: 26px; top: 50%; transform: translateY(-50%); width: min(340px, 86vw); max-height: 70vh; overflow: auto; padding: 18px 20px; pointer-events: auto; }
+#hud-inventario[hidden] { display: none; }
+#hud-inventario h3 { margin: 0 0 2px; font-family: var(--font-display); font-weight: 400; font-size: 24px; color: var(--crema); }
+.inv-peso { margin: 0 0 10px; font-size: 12px; opacity: .7; }
+.inv-lista { display: flex; flex-direction: column; gap: 4px; }
+.inv-item { display: grid; grid-template-columns: 2.6em 1fr auto; align-items: baseline; gap: 8px; width: 100%; padding: 7px 10px; text-align: left; font: inherit; font-size: 13px; color: var(--crema); background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 4px; cursor: pointer; }
+.inv-item:hover, .inv-item:focus-visible { background: rgba(255,255,255,.1); outline: 1px solid var(--m-gold, #c9a45c); }
+.inv-item small { opacity: .55; font-size: 11px; }
+.inv-n { opacity: .7; }
+
+/* Necesidades (modo supervivencia) */
+#hud-vitales { position: absolute; left: 26px; top: 128px; width: min(220px, 60vw); padding: 12px 16px 10px; display: flex; flex-direction: column; gap: 14px; }
+#hud-vitales[hidden] { display: none; }
+#hud-vitales .vital { margin-top: 10px; }
+.vit-vida .vital-fill { background: #c4523c; }
+.vit-hambre .vital-fill { background: #c9a45c; }
+.vit-sed .vital-fill { background: #5f9fc4; }
+.vit-infeccion .vital-fill { background: #7fae4a; }
+#hud-vitales.vit-fiebre .vit-infeccion .vital-fill { background: #a6c93a; box-shadow: 0 0 8px rgba(166, 201, 58, .6); }
+.vit-refugio { margin: 0; font-size: 11px; color: var(--m-gold, #d6ba80); letter-spacing: .06em; }
+
+/* Trueque (modo supervivencia) */
+#hud-trueque { position: absolute; right: 26px; top: 50%; transform: translateY(-50%); width: min(460px, 90vw); max-height: 74vh; overflow: auto; padding: 18px 20px; pointer-events: auto; }
+#hud-trueque[hidden] { display: none; }
+#hud-trueque h3 { margin: 0 0 2px; font-family: var(--font-display); font-weight: 400; font-size: 24px; color: var(--crema); }
+.trato[aria-disabled="true"] { opacity: .45; }
+
+/* Barra de vida del blanco fijado */
+#hud-objetivo { position: absolute; width: 120px; margin-left: -60px; pointer-events: none; text-align: center; }
+#hud-objetivo[hidden] { display: none; }
+#hud-objetivo .obj-nombre { display: block; font: 600 10px var(--font-ui, sans-serif); letter-spacing: .18em; text-transform: uppercase; color: #efe4cc; text-shadow: 0 1px 2px #000; margin-bottom: 4px; }
+#hud-objetivo .vital { height: 4px; }
+#hud-objetivo .vital-fill { background: #c4523c; }

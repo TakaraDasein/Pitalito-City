@@ -45,19 +45,47 @@ export class CombatSystem {
    * @param yaw  hacia dónde mira el jugador
    */
   toggleLock(c, yaw) {
-    if (c.lockTarget) { c.lockTarget = null; this.g.events.emit('combat:lock', null); return null; }
+    if (c.lockTarget) { this.#fijar(c, null); return null; }
+    return this.#fijar(c, this.#buscar(c, yaw));
+  }
+
+  /**
+   * Cambia al siguiente blanco hacia un lado (como en Dark Souls al mover el stick): `lado` +1 = a la derecha de
+   * la mirada, −1 = a la izquierda. Se elige el más cercano en ángulo en ese sentido.
+   */
+  switchLock(c, yaw, lado) {
+    if (!c.lockTarget) return null;
+    const ang = (o) => {
+      let a = Math.atan2(-(o.position.x - c.position.x), -(o.position.z - c.position.z)) - yaw;
+      return Math.atan2(Math.sin(a), Math.cos(a));       // + = a la izquierda
+    };
+    const actual = ang(c.lockTarget);
+    let best = null, mejor = Infinity;
+    for (const { c: o } of this.#enemiesOf(c, COMBAT.lockOn.range)) {
+      if (o === c.lockTarget) continue;
+      const delta = (actual - ang(o)) * lado;        // positivo si está hacia `lado`
+      if (delta > 0 && delta < mejor) { mejor = delta; best = o; }
+    }
+    return best ? this.#fijar(c, best) : c.lockTarget;
+  }
+
+  // El enemigo más cercano dentro del cono de la mirada.
+  #buscar(c, yaw) {
     const { range, angle } = COMBAT.lockOn;
     const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
-    let best = null;
     for (const { c: o, d } of this.#enemiesOf(c, range)) {
       const dx = (o.position.x - c.position.x) / (d || 1), dz = (o.position.z - c.position.z) / (d || 1);
       if (Math.acos(Math.max(-1, Math.min(1, dx * fx + dz * fz))) > angle) continue;
-      best = o;
-      break; // ya vienen ordenados por distancia
+      return o; // ya vienen ordenados por distancia
     }
-    c.lockTarget = best;
-    this.g.events.emit('combat:lock', best ? { x: best.position.x, z: best.position.z } : null);
-    return best;
+    return null;
+  }
+
+  // El HUD recibe el combatiente vivo (no una posición fija): la retícula y su barra de vida lo siguen.
+  #fijar(c, o) {
+    c.lockTarget = o;
+    if (c === this.player) this.g.events.emit('combat:lock', o);
+    return o;
   }
 
   // Resuelve el golpe del combatiente que está en la fase activa de su ataque.
@@ -74,6 +102,9 @@ export class CombatSystem {
       const res = o.takeHit({ damage: w.damage, poise: w.poise, zone });
       if (res) {
         hitSomething = true;
+        // El golpe empuja: más con armas pesadas, más si rompe el temple o lo tumba; casi nada si lo bloquea.
+        const fuerza = res.blocked ? 0.8 : (2 + w.poise / 12) * (res.staggered ? 1.6 : 1) * (res.dead ? 1.8 : 1);
+        o.character.empujar?.(dx * fuerza, dz * fuerza);
         if (c === this.player || o === this.player) this.g.events.emit('combat:hit', { ...res, attacker: c.team });
         // Dónde y contra qué: lo usa el ambiente para las partículas del impacto.
         this.g.events.emit('combat:impacto', {
@@ -99,8 +130,30 @@ export class CombatSystem {
     return hitSomething;
   }
 
+  // Los cuerpos no se atraviesan: dos combatientes a pie más cerca que dos radios se separan, mitad y mitad.
+  // (En la captura del 21-10 la horda y el jugador se metían unos dentro de otros.) Los caídos no estorban.
+  #separar() {
+    const lista = [...this.combatants].filter((c) => c.alive && c.character && (c !== this.player || this.g.playerSys.walking));
+    const min = 0.66;
+    for (let i = 0; i < lista.length; i++) {
+      const a = lista[i].character;
+      for (let j = i + 1; j < lista.length; j++) {
+        const b = lista[j].character;
+        const dx = b.x - a.x, dz = b.z - a.z;
+        if (Math.abs(dx) > min || Math.abs(dz) > min || Math.abs(a.y - b.y) > 1.2) continue;
+        const d = Math.hypot(dx, dz);
+        if (d >= min) continue;
+        const nx = d > 1e-4 ? dx / d : 1, nz = d > 1e-4 ? dz / d : 0;
+        const k = (min - d) / 2;
+        a.x -= nx * k; a.z -= nz * k;
+        b.x += nx * k; b.z += nz * k;
+      }
+    }
+  }
+
   update(dt) {
     if (!COMBAT.enabled) return;
+    this.#separar();
     for (const c of this.combatants) {
       c.update(dt);
       if (c.striking) this.#strike(c);
@@ -108,10 +161,9 @@ export class CombatSystem {
       if (c.lockTarget) {
         const t = c.lockTarget;
         const d = Math.hypot(t.position.x - c.position.x, t.position.z - c.position.z);
-        if (!t.alive || d > COMBAT.lockOn.breakRange) {
-          c.lockTarget = null;
-          if (c === this.player) this.g.events.emit('combat:lock', null);
-        }
+        // Si muere, salta al siguiente más cercano (como en Dark Souls); si se aleja, se suelta.
+        if (!t.alive && c === this.player) this.#fijar(c, this.#buscar(c, Math.atan2(-(t.position.x - c.position.x), -(t.position.z - c.position.z))));
+        else if (!t.alive || d > COMBAT.lockOn.breakRange) this.#fijar(c, null);
       }
     }
     if (this.player) {

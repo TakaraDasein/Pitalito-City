@@ -39,6 +39,16 @@ import { Menus } from '../ui/Menus.js';
 import { Garage } from '../ui/Garage.js';
 import { CharacterCreator } from '../ui/CharacterCreator.js';
 import { CombatSystem } from '../systems/CombatSystem.js';
+import { BaseSystem } from '../systems/BaseSystem.js';
+import { TradePanel } from '../ui/TradePanel.js';
+import { FirearmSystem } from '../systems/FirearmSystem.js';
+import { precargarArmas } from '../entities/weapons/firearms.js';
+import { SurvivalSystem } from '../systems/SurvivalSystem.js';
+import { LootSystem } from '../systems/LootSystem.js';
+import { InventorySystem } from '../systems/InventorySystem.js';
+import { InventoryPanel } from '../ui/InventoryPanel.js';
+import { ZombieSystem } from '../systems/ZombieSystem.js';
+import { SURVIVAL } from '../config/survival.config.js';
 import { FactionSystem } from '../systems/FactionSystem.js';
 import { WildlifeSystem } from '../systems/WildlifeSystem.js';
 import { ParticleSystem } from '../render/Particles.js';
@@ -181,6 +191,16 @@ export class Game {
     this.combatSys.add(this.playerSys.combat, { isPlayer: true });
     this.factions = new FactionSystem(this);
     this.wildlife = new WildlifeSystem(this);
+    this.zombies = new ZombieSystem(this);
+    this.loot = new LootSystem(this);
+    this.inventory = new InventorySystem(this);
+    this.inventoryPanel = new InventoryPanel(this.root.querySelector('#hud') || this.root, this);
+    this.firearms = new FirearmSystem(this);
+    this.bases = new BaseSystem(this);
+    this.tradePanel = new TradePanel(this.root.querySelector('#hud') || this.root, this);
+    precargarArmas(this.assets);
+    this.survival = new SurvivalSystem(this, this.root.querySelector('#hud') || this.root);
+    this.#aplicarModo();
     this.particles = new ParticleSystem(this.scene, { calidad: this.settings.get('quality') });
     this.ambience = new AmbienceSystem(this, this.particles);
     this.story = new StorySystem(this);
@@ -194,7 +214,8 @@ export class Game {
     progress(1, 'Listo');
   }
 
-  #spawnPlayer(type, x, z, heading, { driver = true, color = null } = {}) {
+  // El vehículo del jugador nunca lleva el muñeco de cajas: el conductor es su propio personaje (PlayerSystem).
+  #spawnPlayer(type, x, z, heading, { driver = false, color = null } = {}) {
     if (this.player) this.scene.remove(this.player.object);
     const saved = this.settings.get('vehicle');
     const same = saved.type === type;
@@ -213,6 +234,13 @@ export class Game {
     this.headlamp = lamp;
   }
 
+  // Historia o supervivencia: tráfico, rótulo del menú. Los zombis y las facciones miran el ajuste cada fotograma.
+  #aplicarModo() {
+    const sup = this.settings.get('modo') === 'supervivencia';
+    this.traffic.densidad = sup ? SURVIVAL.trafico : 1;
+    this.menus?.setModo(this.settings.get('modo'));
+  }
+
   // Rehace el vehículo del jugador en la misma posición (con o sin conductor visible, al bajarse/subirse)
   rebuildPlayerVehicle({ driver }) {
     const { type, x, z, heading, modelOpts } = this.player;
@@ -221,7 +249,7 @@ export class Game {
 
   // El jugador toma otro vehículo (p. ej. del tráfico)
   replacePlayerVehicle(type, x, z, heading, color) {
-    this.#spawnPlayer(type, x, z, heading, { driver: true, color });
+    this.#spawnPlayer(type, x, z, heading, { color });
   }
 
   #wireEvents() {
@@ -233,12 +261,20 @@ export class Game {
       }
       if (a === 'map' || (a === 'escape' && this.mapScreen.open)) return this.mapScreen.toggle(a === 'escape' ? false : undefined);
       if (this.mapScreen.open) return;
+      if (a === 'escape' && this.inventoryPanel.abierto) { this.inventoryPanel.toggle(false); return; }
+      if (a === 'escape' && this.tradePanel.abierto) { this.tradePanel.cerrar(); return; }
+      if (a === 'inventory') {
+        if (this.loot.activo) this.inventoryPanel.toggle();
+        return;
+      }
       if (a === 'escape') { this.setState('paused'); this.menus.show('pause'); return; }
       if (a === 'camera' && this.playerSys.walking) { this.playerSys.toggleView(); return; }
       if (a === 'camera') { this.cameraSys.next(); this.hud.toast(`Cámara: ${MODE_LABELS[this.cameraSys.modeName]}`); }
       if (a === 'vehicle') this.openGarage();
       if (a === 'time') { this.env.setHour(this.env.hour + 3); this.hud.toast(`Hora: ${this.env.clock}`); }
       if (a === 'horn') this.audio.horn();
+      // R recarga con un arma de fuego en la mano: no es «volver a la calle».
+      if (a === 'reset' && this.playerSys.fuego) return;
       if (a === 'reset') this.teleport(this.playerSys.focus.x, this.playerSys.focus.z);
       if (a === 'home') {
         const s = this.manifest.spawn;
@@ -256,6 +292,8 @@ export class Game {
       this.settings.set('vehicle', { type, color: VEHICLES[type].colors[0] ?? null, plate: saved.plate });
       const { x, z, heading } = this.player;
       this.#spawnPlayer(type, x, z, heading);
+      // El personaje colgaba del vehículo que se acaba de retirar: se sienta en el nuevo.
+      this.playerSys.sentarEnVehiculo();
       this.hud.toast(`Vehículo: ${this.player.spec.name}`);
     });
     e.on('settings:changed', ({ key, value }) => {
@@ -270,6 +308,10 @@ export class Game {
 
     // Menús
     e.on('menu:play', () => { this.menus.closeAll(); this.play(); });
+    e.on('menu:modo', () => {
+      this.settings.set('modo', this.settings.get('modo') === 'supervivencia' ? 'historia' : 'supervivencia');
+      this.#aplicarModo();
+    });
     e.on('menu:resume', () => { this.menus.closeAll(); this.setState('playing'); });
     e.on('menu:garage', () => this.openGarage());
     e.on('menu:map', () => { this.menus.closeAll(); this.mapScreen.toggle(true); });
@@ -502,7 +544,13 @@ export class Game {
     this.traffic.update(sim, walking ? { x: f.x, z: f.z } : p);
     if (this.state === 'playing') {
       this.playerSys.update(sim);
-      this.factions.update(sim);
+      // En supervivencia no hay facciones: los zombis ocupan su cupo de presupuesto.
+      if (!this.zombies.activo) this.factions.update(sim);
+      this.zombies.update(sim);
+      this.loot.update();
+      this.survival.update(sim);
+      this.firearms.update(sim);
+      this.bases.update(sim);
       this.wildlife.update(sim);
       this.ambience.update(sim);
       this.story.update(sim);

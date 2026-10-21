@@ -1,3 +1,4 @@
+import { Sangre } from '../render/Sangre.js';
 import { PARTICLES } from '../config/particles.config.js';
 import { BOSQUE } from '../config/wildlife.config.js';
 
@@ -17,6 +18,7 @@ export class AmbienceSystem {
     this.ambienteAcumulado = 0;
     this.lluviaAcumulada = 0;
     this.tension = 0;
+    this.sangre = new Sangre(game.scene, game.terrain, game.materials.get('sangre'));
     this.#escuchar();
   }
 
@@ -25,6 +27,8 @@ export class AmbienceSystem {
     // Un golpe que entra suelta algo distinto según a quién: polvo de hueso en los esqueletos, chispas si choca
     // contra metal, polvo si es un animal o una persona.
     e.on('combat:impacto', ({ x, y, z, tipo, fuerza = 1 }) => {
+      // La sangre en el suelo va aunque no haya partículas (calidad baja).
+      if (tipo === 'carne') this.sangre?.poner(x, z, fuerza);
       if (!this.p) return;
       const emision = tipo === 'hueso' ? 'golpeHueso' : tipo === 'metal' ? 'golpeMetal' : 'golpeCarne';
       this.p.emitir(emision, x, y, z, fuerza);
@@ -40,6 +44,7 @@ export class AmbienceSystem {
   }
 
   update(dt) {
+    this.sangre?.update(dt);
     if (!PARTICLES.enabled || !this.p) return;
     const g = this.g;
     const caminando = g.playerSys.walking;

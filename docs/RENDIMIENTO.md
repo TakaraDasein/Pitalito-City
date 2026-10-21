@@ -91,3 +91,11 @@ en vez de hacerlo en el navegador a ciegas.
 verificación (Chromium sin GPU) renderiza a ≈ 0,5 fotogramas por segundo desde que el personaje tiene esqueleto,
 así que **no sirve para medir fps**: sólo para contar lo que se dibuja. Hace falta abrir el juego en dos o tres
 GPUs reales y mirar la tecla **B**.
+
+## Horda de zombis (modo supervivencia)
+
+| Qué | Coste |
+|---|---|
+| Zombi completo (cuerpo + ropa + pelo) | ≈ 28 000 triángulos, ≈ 9 draw calls; tope 6 (`SURVIVAL.maxZombis`, recortable por `FrameBudget.maxEnemigos`) |
+| Zombi de la horda (impostor) | 2 triángulos; **1 draw call por tipo** (3 tipos) para los 140 |
+| Horneado de los atlas | Una vez por partida al activar el modo: 3 × 64 renders de un personaje a 96×192 px |

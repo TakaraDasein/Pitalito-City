@@ -58,7 +58,7 @@ export class Enemy {
       this.character.setWeapon(this.self.weapon.model);
     });
 
-    this.self = new Combatant(this.character, { stats: this.spec.stats, team: 'faccion', weapon: this.spec.weapon });
+    this.self = new Combatant(this.character, { stats: this.spec.stats, team: 'faccion', weapon: this.spec.weapon, nombre: this.spec.nombre });
     this.origen = { x, z };
     this.timers = {};
     this.time = 0;

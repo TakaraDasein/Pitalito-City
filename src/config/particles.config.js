@@ -39,6 +39,11 @@ export const FAMILIAS = {
     max: 240, vida: 0.9, tamano: [0.07, 0.3], gravedad: -2.5, arrastre: 2,
     color: ['#e8e2d0', '#b9b2a0'], opacidad: [0.75, 0], blending: 'normal',
   },
+  // Sangre al golpear a una persona, un zombi o un animal: gotas oscuras que caen rápido.
+  sangre: {
+    max: 360, vida: 0.7, tamano: [0.05, 0.03], gravedad: -9.5, arrastre: 1.4,
+    color: ['#7a0d0d', '#3d0505'], opacidad: [0.95, 0.6], blending: 'normal',
+  },
   // Salpicadura de la lluvia al tocar el suelo.
   salpicadura: {
     max: 400, vida: 0.35, tamano: [0.03, 0.14], gravedad: -5, arrastre: 1.2,
@@ -67,6 +72,6 @@ export const EMISIONES = {
   pasoCorriendo: { familia: 'polvo', n: 6, velocidad: 1.6, dispersion: 0.7 },
   golpeHueso: { familia: 'polvoHueso', n: 14, velocidad: 2.4, dispersion: 1 },
   golpeMetal: { familia: 'chispas', n: 18, velocidad: 3.4, dispersion: 0.9 },
-  golpeCarne: { familia: 'polvo', n: 8, velocidad: 1.8, dispersion: 0.9 },
+  golpeCarne: { familia: 'sangre', n: 16, velocidad: 2.6, dispersion: 1.1 },
   gotaSuelo: { familia: 'salpicadura', n: 1, velocidad: 1.1, dispersion: 0.4 },
 };

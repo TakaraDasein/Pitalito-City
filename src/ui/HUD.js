@@ -115,9 +115,17 @@ export class HUD {
       this.healthFill.style.width = `${Math.max(0, (s.health / s.maxHealth) * 100)}%`;
       this.staminaFill.style.width = `${Math.max(0, (s.stamina / s.maxStamina) * 100)}%`;
     });
+    // Blanco fijado: la retícula y una barra de vida con su nombre, encima de la cabeza, que lo siguen.
+    this.objetivoEl = document.createElement('div');
+    this.objetivoEl.id = 'hud-objetivo';
+    this.objetivoEl.hidden = true;
+    this.objetivoEl.innerHTML = '<span class="obj-nombre"></span><div class="vital"><span class="vital-fill"></span></div>';
+    this.lockEl.after(this.objetivoEl);
     ev.on('combat:lock', (t) => {
       this.lockTarget = t;
       this.lockEl.hidden = !t;
+      this.objetivoEl.hidden = !t;
+      if (t) this.objetivoEl.querySelector('.obj-nombre').textContent = t.nombre || 'Enemigo';
     });
     // Entrar a una zona de control es lo único que avisa: no hay marcadores permanentes en pantalla.
     ev.on('faction:zone', (z) => {
@@ -134,12 +142,16 @@ export class HUD {
   // Coloca la retícula del blanco fijado sobre el enemigo. La llama el bucle del juego.
   updateLock(camera) {
     if (!this.lockTarget || this.lockEl.hidden) return;
-    const v = new THREE.Vector3(this.lockTarget.x, this.lockTarget.y ?? 0, this.lockTarget.z);
-    v.project(camera);
-    const visible = v.z < 1;
-    this.lockEl.style.display = visible ? '' : 'none';
-    this.lockEl.style.left = `${(v.x * 0.5 + 0.5) * innerWidth}px`;
-    this.lockEl.style.top = `${(-v.y * 0.5 + 0.5) * innerHeight}px`;
+    const t = this.lockTarget, p = t.position;
+    const pon = (el, alto) => {
+      const v = new THREE.Vector3(p.x, (p.y ?? 0) + alto, p.z).project(camera);
+      el.style.display = v.z < 1 ? '' : 'none';
+      el.style.left = `${(v.x * 0.5 + 0.5) * innerWidth}px`;
+      el.style.top = `${(-v.y * 0.5 + 0.5) * innerHeight}px`;
+    };
+    pon(this.lockEl, 1.15);          // al pecho
+    pon(this.objetivoEl, 2.15);      // sobre la cabeza
+    this.objetivoEl.querySelector('.vital-fill').style.width = `${Math.max(0, (t.health / t.stats.health) * 100)}%`;
   }
 
   setHotbar(icons) {
@@ -195,9 +207,9 @@ export class HUD {
     svg.innerHTML = `
       <defs><linearGradient id="spd-green" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#b5d672"/><stop offset=".5" stop-color="#6f9f36"/><stop offset="1" stop-color="#2c4a17"/></linearGradient></defs>
-      <circle cx="70" cy="70" r="${r}" fill="none" stroke="rgba(20,12,5,.65)" stroke-width="12"
-        stroke-dasharray="${arcLen} 999" transform="rotate(135 70 70)" stroke-linecap="round"/>
-      <circle id="hud-speed-arc" cx="70" cy="70" r="${r}" fill="none" stroke="url(#spd-green)" stroke-width="9"
+      <circle cx="70" cy="70" r="${r}" fill="none" stroke="rgba(20,12,5,.65)" stroke-width="3"
+        stroke-dasharray="${arcLen} 999" transform="rotate(135 70 70)" stroke-linecap="butt"/>
+      <circle id="hud-speed-arc" cx="70" cy="70" r="${r}" fill="none" stroke="url(#spd-green)" stroke-width="3"
         stroke-dasharray="0 999" transform="rotate(135 70 70)" stroke-linecap="round"/>`;
     sp.prepend(svg);
     sp.prepend(culmRing(size + 16, 12, { nodes: 8 }));

@@ -143,6 +143,31 @@ Se mide **en GPU real**, que es lo que hoy está pendiente. Ver §6.
 
 ---
 
+### Modo supervivencia *(aparte del de historia, ficción declarada)*
+
+Pitalito tras un brote de zombis. Se elige con el botón «Modo» del menú principal; comparte mundo, personaje,
+combate y vehículos. Configuración en `src/config/survival.config.js`.
+
+1. **Hecho:** zombis con clips propios (UAL2, CC0), tres tipos, aparición alrededor del jugador con más cupo de
+   noche y cerca de hospitales, clínicas, CAI e iglesias reales (OSM); tráfico al 12 %; facciones apagadas.
+2. **Hecho:** botín en los lugares reales (`src/config/loot.config.js`, `LootSystem`): 13 tipos de lugar de OSM,
+   11 clases de contenedor, contenido sorteado con semilla fija por contenedor, lo saqueado se recuerda en
+   localStorage. Mochila con tope de 25 kg (`InventorySystem`, tecla I); vendas y botiquines curan.
+3. **Hecho:** horda de hasta 140 zombis como impostores (`src/render/ImpostorAtlas.js` + `HordeRenderer.js`):
+   al cargar se fotografía el zombi real caminando en 8 ángulos × 8 instantes; de lejos cada uno es un plano de
+   2 triángulos, una llamada de dibujo por tipo. A 26 m pasa a completo (tope 6); a 42 m sin perseguir vuelve.
+4. **Hecho:** `SurvivalSystem`: hambre (45 min) y sed (28 min) que bajan más rápido corriendo y a 0 quitan vida;
+   mordida de zombi que infecta (35 %), sube sola, con fiebre baja la resistencia y a 100 quita vida, se trata
+   con antibiótico; refugios en las iglesias y estaciones de policía reales (sin aparición a 60 m, gasto a la
+   mitad, curan, punto de reaparición); al caer se reaparece en el último refugio perdiendo la mitad de la
+   mochila. Pendiente: que los zombis rompan bloques (hoy los bloques del jugador ya los frenan).
+5. **Hecho:** armas de fuego (6 modelos CC0 de Quaternius; `FirearmSystem` con rayo, dispersión, perdigones,
+   paredes que cortan el tiro y ruido que atrae zombis) para el jugador en primera y tercera persona (C cambia,
+   clic dispara, clic der. apunta, R recarga). Bases en lugares reales (`bases.config.js`): dos de comerciantes
+   con trueque objeto por objeto (también son refugio) y dos de saqueadores que disparan y guardan armas largas.
+   Pendiente: vehículos de supervivientes que pasan huyendo.
+6. Interiores de 2 o 3 lugares (Hospital San Antonio, Estación de Policía): estimados, se declaran.
+
 ## 4. Hitos reales que entran
 
 Del municipio (dentro de los ±12 km del mundo), por orden de evidencia fotográfica disponible:

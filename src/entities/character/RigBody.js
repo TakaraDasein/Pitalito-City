@@ -33,11 +33,11 @@ export class RigBody {
     return source ? new RigBody(source, { look, ...options }) : null;
   }
 
-  constructor(source, { look = DEFAULT_LOOK, castShadow = true } = {}) {
+  constructor(source, { look = DEFAULT_LOOK, castShadow = true, clips = null } = {}) {
     this.look = look;
     const tint = tinter(look);
     this.rig = new Rig(source, { castShadow, materialFor: tint });
-    this.graph = new AnimationGraph(this.rig);
+    this.graph = new AnimationGraph(this.rig, clips);
     this.object = this.rig.object;
     this.#hat();
   }
@@ -62,6 +62,13 @@ export class RigBody {
   }
 
   apply(s) { this.graph.update(s); }
+
+  // Postura añadida sobre la animación (ver Rig.setRetoque). `null` la quita.
+  setRetoque(retoque, peso) { this.rig.setRetoque(retoque, peso); }
+
+  setAlcances(alcances) { this.rig.setAlcances(alcances); }
+
+  set retoquePeso(p) { this.rig.retoquePeso = p; }
 
   trigger(name, opts) { return this.graph.trigger(name, opts); }
 

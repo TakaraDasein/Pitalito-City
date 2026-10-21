@@ -14,6 +14,7 @@ const DEFAULTS = {
   cameraSensitivity: 1,
   invertY: false,
   weather: 'auto',                // auto | despejado | lluvia
+  modo: 'historia',               // historia | supervivencia (src/config/survival.config.js)
   vehicle: { type: 'willys', color: null, plate: 'PTL 200' },
 };
 

@@ -14,7 +14,8 @@ export class Combatant {
    * @param stats      cifras propias; por defecto las del jugador
    * @param weapon     id del arma inicial
    */
-  constructor(character, { stats = COMBAT.player, weapon = 'manos', team = 'player', events = null } = {}) {
+  constructor(character, { stats = COMBAT.player, weapon = 'manos', team = 'player', events = null, nombre = '' } = {}) {
+    this.nombre = nombre;     // lo muestra la barra del blanco fijado
     this.events = events;
     this.character = character;
     this.stats = stats;
@@ -32,6 +33,7 @@ export class Combatant {
     this.guarding = false;
     this.lockTarget = null;
     this.rollDir = null;
+    this.regenFactor = 1;     // la fiebre de la infección (supervivencia) lo baja
   }
 
   get alive() { return this.state !== 'dead'; }
@@ -109,6 +111,17 @@ export class Combatant {
     return { damage: dmg, blocked, staggered, dead: false };
   }
 
+  /** Vuelve a la vida (modo supervivencia: reaparecer en un refugio). */
+  revivir(vida = this.stats.health) {
+    this.state = 'idle';
+    this.timer = 0;
+    this.phase = 'none';
+    this.health = vida;
+    this.stamina = this.stats.stamina;
+    this.invulnerable = 2;
+    this.character.body.graph?.cancelar();
+  }
+
   // ───────────── Por frame ─────────────
 
   update(dt) {
@@ -165,6 +178,6 @@ export class Combatant {
   #stamina(dt) {
     if (this.staminaHold > 0) { this.staminaHold -= dt; return; }
     const drain = this.guarding ? COMBAT.guard.drainPerSecond : 0;
-    this.stamina = Math.max(0, Math.min(this.stats.stamina, this.stamina + (this.stats.staminaRegen - drain) * dt));
+    this.stamina = Math.max(0, Math.min(this.stats.stamina, this.stamina + (this.stats.staminaRegen * (this.regenFactor ?? 1) - drain) * dt));
   }
 }

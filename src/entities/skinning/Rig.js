@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { solveTwoBone } from './ik.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { CHARACTERS } from '../../config/characters.config.js';
@@ -35,7 +36,7 @@ function loadGltf(assets, file) {
 function cleanClips(animations) {
   // Se descartan también las pistas del objeto raíz del esqueleto ("Rig.position"…): el juego mueve al personaje
   // por física, no por la animación, y three avisaría por cada una.
-  const drop = /_end_[lr]\.|^Rig\./;
+  const drop = /_(end|leaf)_[lr]\.|^(Rig|Armature|Mannequin)\./;
   return animations.map((clip) => {
     const tracks = clip.tracks.filter((t) => !drop.test(t.name));
     return tracks.length === clip.tracks.length ? clip : new THREE.AnimationClip(clip.name, clip.duration, tracks);
@@ -44,7 +45,12 @@ function cleanClips(animations) {
 
 export async function loadClips(assets) {
   if (!clipsPromise) {
-    clipsPromise = loadGltf(assets, CHARACTERS.animations).then((g) => (g ? cleanClips(g.animations) : null));
+    // Biblioteca principal + las complementarias (p. ej. los clips de zombi de la UAL2, mismo esqueleto). Si una
+    // complementaria falta, el juego sigue con la principal.
+    const files = [CHARACTERS.animations, ...(CHARACTERS.extraAnimations || [])];
+    clipsPromise = Promise.all(files.map((f) => loadGltf(assets, f))).then(([main, ...extra]) => (main
+      ? cleanClips([main, ...extra.filter(Boolean)].flatMap((g) => g.animations))
+      : null));
   }
   return clipsPromise;
 }
@@ -80,6 +86,8 @@ function rebind(mesh, boneByName) {
   const bones = mesh.skeleton.bones.map((b) => boneByName.get(b.name) || b);
   mesh.bind(new THREE.Skeleton(bones, mesh.skeleton.boneInverses), mesh.bindMatrix);
 }
+
+const _q = new THREE.Quaternion(), _t = new THREE.Vector3(), _p = new THREE.Vector3();
 
 export class Rig {
   // source: lo que devuelve loadCharacter(). materialFor: (material original, malla) => material, opcional.
@@ -237,12 +245,51 @@ export class Rig {
   // dt en segundos. distance: distancia a la cámara, para bajar la frecuencia de mezcla de lejos.
   update(dt, distance = 0) {
     const lod = CHARACTERS.animationLod.find((l) => distance < l.distance) || CHARACTERS.animationLod.at(-1);
-    if (lod.hz === 0) { this.mixer.update(dt); return; }
+    if (lod.hz === 0) { this.#deshacer(); this.mixer.update(dt); this.#retocar(); return; }
     this.timeSinceUpdate += dt;
     const step = 1 / lod.hz;
     if (this.timeSinceUpdate >= step) {
+      this.#deshacer();
       this.mixer.update(this.timeSinceUpdate);
       this.timeSinceUpdate = 0;
+      this.#retocar();
+    }
+  }
+
+  /**
+   * Retoque de pose encima de la animación: `{ hueso: [x, y, z] }` en radianes (giro local añadido) y un peso
+   * 0–1. Sirve para posturas que el paquete no trae, como ir a horcajadas en la moto. `null` lo quita.
+   * Se aplica justo después de mezclar y se deshace justo antes: un hueso que el clip no anima (la columna en
+   * `Driving_Loop`) no se reescribe, y sin deshacer el giro se acumularía fotograma a fotograma.
+   */
+  setRetoque(retoque, peso = 1) {
+    this.#deshacer();
+    this.retoque = retoque
+      ? Object.entries(retoque).map(([name, e]) => [this.bones.get(name), new THREE.Quaternion().setFromEuler(new THREE.Euler(...e)), new THREE.Quaternion()]).filter(([b]) => b)
+      : null;
+    this.retoquePeso = peso;
+  }
+
+  /**
+   * Manos y pies clavados a puntos de otro objeto (manubrio, pedales), con cinemática inversa de dos huesos.
+   * `alcances`: [{ huesos: ['upperarm_l', 'lowerarm_l', 'hand_l'], objetivo: Object3D, polo: Object3D }].
+   */
+  setAlcances(alcances) {
+    this.alcances = alcances?.map((a) => ({ ...a, cadena: a.huesos.map((n) => this.bones.get(n)) })).filter((a) => a.cadena.every(Boolean)) || null;
+  }
+
+  #deshacer() {
+    if (this.retoque) for (const [bone, , puesto] of this.retoque) { bone.quaternion.multiply(_q.copy(puesto).invert()); puesto.identity(); }
+  }
+
+  #retocar() {
+    const peso = this.retoquePeso ?? 0;
+    if (peso <= 0) return;
+    if (this.retoque) for (const [bone, q, puesto] of this.retoque) bone.quaternion.multiply(puesto.identity().slerp(q, peso));
+    if (!this.alcances?.length) return;
+    this.object.updateWorldMatrix(true, true);
+    for (const a of this.alcances) {
+      solveTwoBone(a.cadena, a.objetivo.getWorldPosition(_t), a.polo.getWorldPosition(_p), peso);
     }
   }
 

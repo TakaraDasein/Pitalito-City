@@ -12,6 +12,9 @@ export const CHARACTERS = {
   useRig: true,
 
   animations: BASE + 'animations.glb',
+  // Complementos con el mismo esqueleto: clips de zombi de la Universal Animation Library 2 (CC0, Quaternius),
+  // recortados con scripts/lib/gltf-clips.py (ver scripts/fetch-characters.mjs).
+  extraAnimations: [BASE + 'zombie.glb'],
   playerHeight: 1.75,   // altura del personaje en el juego, en metros
   modelHeight: 1.8,     // altura del modelo tal como viene
 
@@ -58,6 +61,11 @@ export const CHARACTERS = {
     sitIdle: 'Sitting_Idle_Loop',
     sitExit: 'Sitting_Exit',
     sitTalk: 'Sitting_Talking_Loop',
+    levantarse: 'LayToIdle',
+    pistolIdle: 'Pistol_Idle_Loop',
+    pistolAim: 'Pistol_Aim_Neutral',
+    pistolShoot: 'Pistol_Shoot',
+    pistolReload: 'Pistol_Reload',            // de zombie.glb (UAL2)
     interact: 'Interact',
     pickUp: 'PickUp_Table',
     push: 'Push_Loop',
@@ -140,6 +148,8 @@ export const APPEARANCE = {
   // Tonos de piel: se aplican como tinte sobre la textura del cuerpo.
   piel: [
     { id: 'hueso', nombre: 'Hueso', color: '#d8d2c0', oculto: true },
+    { id: 'muerto', nombre: 'Muerto', color: '#8f9a7c', oculto: true },     // zombis (modo supervivencia)
+    { id: 'muerto2', nombre: 'Muerto', color: '#a59a86', oculto: true },
     { id: '1', nombre: 'Claro', color: '#e8c39e' },
     { id: '2', nombre: 'Medio', color: '#c68a5e' },
     { id: '3', nombre: 'Trigueño', color: '#a0714f' },

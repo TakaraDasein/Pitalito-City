@@ -12,20 +12,25 @@ const { clips: C, locomotionSpeeds: SPEED, fade: FADE } = CHARACTERS;
 
 // Acciones puntuales: qué clip usan, cuánto bloquean la locomoción y si se puede cancelar moviéndose.
 const ACTIONS = {
-  interact: { clip: C.interact, lock: 0.9, cancelable: true },
-  pickUp: { clip: C.pickUp, lock: 1.1, cancelable: true },
-  swing: { clip: C.punchJab, lock: 0.45, cancelable: false },
-  attack: { clip: C.attack, lock: 0.8, cancelable: false },
-  roll: { clip: C.roll, lock: 0.7, cancelable: false },
-  hit: { clip: C.hitChest, lock: 0.5, cancelable: false },
-  death: { clip: C.death, lock: Infinity, cancelable: false },
-  entrarAsiento: { clip: C.sitEnter, lock: 0.75, cancelable: false },
-  salirAsiento: { clip: C.sitExit, lock: 0.75, cancelable: false },
+  interact: { clip: 'interact', lock: 0.9, cancelable: true },
+  pickUp: { clip: 'pickUp', lock: 1.1, cancelable: true },
+  swing: { clip: 'punchJab', lock: 0.45, cancelable: false },
+  attack: { clip: 'attack', lock: 0.8, cancelable: false },
+  roll: { clip: 'roll', lock: 0.7, cancelable: false },
+  hit: { clip: 'hitChest', lock: 0.5, cancelable: false },
+  death: { clip: 'death', lock: Infinity, cancelable: false },
+  entrarAsiento: { clip: 'sitEnter', lock: 0.75, cancelable: false },
+  salirAsiento: { clip: 'sitExit', lock: 0.75, cancelable: false },
+  levantarse: { clip: 'levantarse', lock: 2.2, cancelable: false },
+  disparar: { clip: 'pistolShoot', lock: 0.18, cancelable: true },
+  recargar: { clip: 'pistolReload', lock: 1.4, cancelable: false },   // del suelo a de pie (zombis)
 };
 
 export class AnimationGraph {
-  constructor(rig) {
+  // `clips` cambia clips concretos para este personaje (p. ej. un zombi camina con `Zombie_Walk_Fwd_Loop`).
+  constructor(rig, clips = null) {
     this.rig = rig;
+    this.C = clips ? { ...C, ...clips } : C;
     this.state = 'idle';
     this.action = null;      // { name, left }
     this.wasOnGround = true;
@@ -40,7 +45,8 @@ export class AnimationGraph {
   trigger(name, opts = {}) {
     const def = ACTIONS[name];
     if (!def) return false;
-    const clip = opts.clip && this.rig.has(C[opts.clip] || opts.clip) ? (C[opts.clip] || opts.clip) : def.clip;
+    const C = this.C;
+    const clip = opts.clip && this.rig.has(C[opts.clip] || opts.clip) ? (C[opts.clip] || opts.clip) : C[def.clip];
     if (!this.rig.has(clip)) return false;
     if (this.action && !ACTIONS[this.action.name].cancelable) return false;
     const lock = opts.lock ?? def.lock;
@@ -49,14 +55,18 @@ export class AnimationGraph {
     const clipDur = this.rig.clips.get(clip)?.duration || 1;
     const timeScale = lock !== Infinity && lock > 0 ? Math.min(2.5, Math.max(0.5, clipDur / lock)) : 1;
     this.rig.play(clip, { fade: FADE.quick, once: lock !== Infinity, timeScale });
+    this.state = '';   // al terminar, el estado continuo vuelve a pedir su clip
     return true;
   }
 
   get busy() { return !!this.action; }
 
+  /** Corta la acción en curso (incluida la muerte, que no termina sola). */
+  cancelar() { this.action = null; this.state = ''; }
+
   /** Cambia el clip que se usa estando quieto: 'idle' (por defecto) o 'talk' (los cronistas al contar). */
   reposo(cual) {
-    this.clipReposo = cual === 'talk' ? C.talk : null;
+    this.clipReposo = cual === 'talk' ? this.C.talk : null;
     this.state = '';   // fuerza la transición en el siguiente fotograma
   }
 
@@ -72,12 +82,15 @@ export class AnimationGraph {
       else { this.rig.update(dt, s.distance); return; }
     }
 
+    const C = this.C;
     if (s.driving) this.#set('drive', C.drive);
     else if (s.sitting) this.#set('sit', C.sitIdle);
     else if (!s.onGround) this.#set('air', s.speed > 0.1 ? C.jumpLoop : C.fall);
     else if (this.landing > 0) { this.landing -= dt; this.#set('land', C.jumpLand, FADE.quick); }
     // Con el arma en la mano, quieto se queda en guardia, no en reposo.
-    else if (s.armed && s.speed < 0.25) this.#set('guard', C.attackIdle);
+    // Arma de fuego: apuntando manda sobre todo (se camina despacio con los brazos extendidos).
+    else if (s.apuntando) this.#set('aim', C.pistolAim);
+    else if (s.armed && s.speed < 0.25) this.#set(`guard:${s.reposoArma || ''}`, s.reposoArma || C.attackIdle);
     else if (this.clipReposo && s.speed < 0.25) this.#set('reposo', this.clipReposo);
     else this.#locomotion(s.speed);
 
@@ -98,7 +111,7 @@ export class AnimationGraph {
         // El clip se acelera o frena un poco para cuadrar con la velocidad real (evita el patinaje).
         const nominal = lo + (hi - lo) * t;
         const scale = nominal > 0.2 ? Math.min(1.4, Math.max(0.7, speed / nominal)) : 1;
-        this.rig.blend(C[a], C[b], t, a === 'idle' && t < 0.01 ? 1 : scale);
+        this.rig.blend(this.C[a], this.C[b], t, a === 'idle' && t < 0.01 ? 1 : scale);
         this.state = t > 0.5 ? b : a;
         return;
       }

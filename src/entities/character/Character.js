@@ -31,6 +31,7 @@ export class Character {
     this.radius = RADIUS;
     this.height = HEIGHT;
     this.cameraDistance = 0;
+    this.empuje = { x: 0, z: 0 };
   }
 
   // Monta el cuerpo con esqueleto si el modelo está disponible. Si no, se queda con el de cajas.
@@ -73,7 +74,8 @@ export class Character {
       else { this.#animate(dt, 0); return; }
     }
     const len = Math.hypot(input.forward, input.strafe);
-    const speed = input.run ? RUN : WALK;
+    // `speed` (m/s) lo fija quien no camina como una persona: un zombi arrastra los pies.
+    const speed = input.speed ?? (input.run ? RUN : WALK);
     let tx = 0, tz = 0;
     if (len > 0.01) {
       const f = input.forward / len, s = input.strafe / len;
@@ -90,7 +92,9 @@ export class Character {
     this.vz += (tz - this.vz) * Math.min(1, dt * accel);
 
     // Movimiento horizontal con colisión: paredes (2D) y bloques más altos que un escalón
-    let nx = this.x + this.vx * dt, nz = this.z + this.vz * dt;
+    let nx = this.x + (this.vx + this.empuje.x) * dt, nz = this.z + (this.vz + this.empuje.z) * dt;
+    const apaga = Math.exp(-dt * 6);
+    this.empuje.x *= apaga; this.empuje.z *= apaga;
     const r = collision.resolveCircle(nx, nz, RADIUS);
     nx = r.x; nz = r.z;
     [nx, nz] = blocks.pushOut(nx, nz, RADIUS, this.y + STEP, this.y + HEIGHT);
@@ -120,6 +124,16 @@ export class Character {
     if (this.y < ground) { this.y = ground; this.vy = 0; this.onGround = true; }
   }
 
+  /**
+   * Empujón (m/s) que el golpe le da al cuerpo. Va aparte de la velocidad de andar (que la aceleración
+   * corregiría en una décima) y se apaga en ≈ 0,4 s: un escopetazo echa atrás medio metro o más.
+   */
+  empujar(vx, vz) {
+    if (this.sitting) return;
+    this.empuje.x += vx;
+    this.empuje.z += vz;
+  }
+
   sitAt(x, z, y, heading) {
     this.sitting = { x, z, y, heading };
     this.x = x; this.z = z; this.y = y; this.heading = heading;
@@ -133,6 +147,8 @@ export class Character {
       sitting: !!this.sitting,
       driving: this.driving,
       armed: this.armed,
+      apuntando: this.apuntando,
+      reposoArma: this.reposoArma,
       distance: this.cameraDistance,
     });
     this.object.position.set(this.x, this.y, this.z);

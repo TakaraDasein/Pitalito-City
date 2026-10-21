@@ -14,7 +14,9 @@ const pickWeighted = (weights) => {
 // Tráfico IA: vehículos cinemáticos que recorren el grafo vial por el carril derecho,
 // frenan detrás de otros vehículos y del jugador, y aparecen/desaparecen alrededor del jugador.
 export class TrafficSystem {
-  constructor({ scene, network, materials, events }) {
+  // `signals` es opcional: sin él el tráfico se comporta como antes, ignorando los semáforos.
+  constructor({ scene, network, materials, events, signals = null }) {
+    this.signals = signals;
     Object.assign(this, { scene, network, materials, events });
     this.cars = [];
     this.pool = new Map(); // tipo → vehículos libres (reutilizables)
@@ -87,7 +89,9 @@ export class TrafficSystem {
 
   // player: { x, z, radius, vehicle }
   update(dt, player) {
-    const { maxCars, despawnRadius } = GAME.traffic;
+    const { despawnRadius } = GAME.traffic;
+    // `densidad` la baja el modo supervivencia: casi nadie conduce ya (SURVIVAL.trafico).
+    const maxCars = Math.round(GAME.traffic.maxCars * (this.densidad ?? 1));
     this.spawnTimer -= dt;
     if (this.cars.length < maxCars && this.spawnTimer <= 0) { this.#spawn(player.x, player.z); this.spawnTimer = 0.12; }
 
@@ -105,6 +109,10 @@ export class TrafficSystem {
       };
       check(player.x, player.z);
       for (const o of this.cars) if (o !== car) check(o.v.x, o.v.z);
+      // Semáforo en rojo: cuenta como un obstáculo más adelante. Los 99 cruces son dato real de OSM y hasta
+      // ahora la IA no los miraba (ver src/systems/SignalSystem.js).
+      const rojo = this.signals?.distanciaAlRojo(v.x, v.z, v.heading) ?? Infinity;
+      if (rojo < Infinity) block = Math.min(block, rojo);
       car.stopTimer = Math.max(0, car.stopTimer - dt);
       const target = car.stopTimer > 0 || block < 5 ? 0 : block < 16 ? car.maxSpeed * ((block - 5) / 11) : car.maxSpeed;
       car.speed += (target - car.speed) * Math.min(1, dt * (target < car.speed ? 4 : 1.2));

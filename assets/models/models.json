@@ -19,6 +19,26 @@
       "usedFor": "Los 45 clips de animación y el esqueleto de 65 huesos que comparten todos los personajes"
     },
     {
+      "key": "animation-library-2",
+      "file": "models/characters/zombie.glb",
+      "bytes": 777372,
+      "count": 1,
+      "title": "Universal Animation Library 2 (Standard)",
+      "author": "Quaternius",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "home": "https://quaternius.itch.io/universal-animation-library-2",
+      "url": "https://opengameart.org/sites/default/files/universal_animation_library_2standard.zip",
+      "clips": [
+        "Zombie_Idle_Loop",
+        "Zombie_Walk_Fwd_Loop",
+        "Zombie_Scratch",
+        "Hit_Knockback",
+        "LayToIdle"
+      ],
+      "usedFor": "Zombis del modo supervivencia"
+    },
+    {
       "key": "base-characters",
       "file": "models/characters/base/",
       "bytes": 3488622,
@@ -90,6 +110,18 @@
       "from": "base/Superhero_Male_FullBody.gltf",
       "out": "enemies/skeleton.glb",
       "usedFor": "Cuerpo de los enemigos de las facciones: comparte los 65 huesos, así hereda los 45 clips y la ropa"
+    },
+    {
+      "key": "guns",
+      "file": "models/weapons/",
+      "bytes": 340540,
+      "count": 6,
+      "title": "50+ LowPoly Guns",
+      "author": "Quaternius",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "home": "https://quaternius.itch.io/50-lowpoly-guns",
+      "usedFor": "Armas de fuego del modo supervivencia"
     }
   ],
   "pendientes": [

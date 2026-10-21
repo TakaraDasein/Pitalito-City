@@ -3,7 +3,9 @@ import { Character } from '../entities/character/Character.js';
 import { BLOCKS, REACH } from '../config/blocks.config.js';
 import { VEHICLES } from '../config/vehicles.config.js';
 import { COMBAT, ARSENAL, WEAPONS } from '../config/combat.config.js';
-import { MONTAJE } from '../config/vehicles.config.js';
+import { MONTAJE, POSTURAS } from '../config/vehicles.config.js';
+import { FIREARMS, PRUEBAS } from '../config/firearms.config.js';
+import { firearmModel } from '../entities/weapons/firearms.js';
 import { Combatant } from '../entities/combat/Combatant.js';
 import { pointInPolygon, polygonArea } from '../geo/geometry.js';
 
@@ -32,12 +34,24 @@ export class PlayerSystem {
     this.character.object.visible = false;
     game.scene.add(this.character.object);
     // El modelo con esqueleto llega por red: mientras tanto el personaje usa el cuerpo de cajas (ver Character.js).
-    this.character.useRig(game.assets, game.settings.get('look')).then((ok) => { if (ok) game.events.emit('player:rig', true); });
+    this.character.useRig(game.assets, game.settings.get('look')).then((ok) => {
+      if (!ok) return;
+      // Si ya iba montado en la moto con el cuerpo de cajas, el esqueleto recién llegado toma la postura.
+      if (!this.walking) this.#postura(this.g.player);
+      game.events.emit('player:rig', true);
+    });
     // El jugador es un combatiente más (ver src/entities/combat/Combatant.js): la IA de la Fase 5 usará lo mismo.
     this.combat = new Combatant(this.character, { stats: COMBAT.player, team: 'player', weapon: 'manos', events: game.events });
     this.armed = false;          // false = modo construcción; true = modo combate
     this.montaje = null;         // { fase: 'subiendo'|'bajando', t, desde, hasta, heading }
     this.weaponIndex = 0;
+    // Armas de fuego: balas en el cargador de cada una, gatillo, mira y el arma de primera persona.
+    this.cargador = {};
+    this.gatillo = false;
+    this.apuntando = false;
+    this.cadencia = 0;
+    this.recargando = 0;
+    this.vista = null;           // modelo del arma pegado a la cámara (primera persona)
     this.interactables = []; // { x, z, r, label, key, run() }
     this.target = null;
     this.raycaster = new THREE.Raycaster();
@@ -66,6 +80,18 @@ export class PlayerSystem {
     });
     dom.addEventListener('mousedown', (e) => {
       if (!active() || document.pointerLockElement !== dom) return;
+      // Clic de la rueda: fijar o soltar blanco (como en Dark Souls). Si no hay arma en la mano, la saca.
+      if (e.button === 1) {
+        e.preventDefault();
+        if (!this.armed && COMBAT.enabled) this.toggleArmed(true);
+        this.g.combatSys.toggleLock(this.combat, this.yaw);
+        return;
+      }
+      if (this.armed && this.fuego) {
+        if (e.button === 0) { this.gatillo = true; this.tiroPendiente = true; }
+        if (e.button === 2) this.apuntando = true;
+        return;
+      }
       if (this.armed) {
         if (e.button === 0) this.combat.attack();
         if (e.button === 2) this.combat.setGuard(true);
@@ -74,9 +100,14 @@ export class PlayerSystem {
       if (e.button === 0) this.breakBlock();
       if (e.button === 2) this.placeBlock();
     });
-    addEventListener('mouseup', (e) => { if (e.button === 2) this.combat.setGuard(false); });
+    addEventListener('mouseup', (e) => {
+      if (e.button === 2) { this.combat.setGuard(false); this.apuntando = false; }
+      if (e.button === 0) this.gatillo = false;
+    });
     dom.addEventListener('wheel', (e) => {
       if (!active()) return;
+      // Con blanco fijado, la rueda cambia de blanco hacia un lado; si no, de arma.
+      if (this.combat.lockTarget) { this.g.combatSys.switchLock(this.combat, this.yaw, e.deltaY > 0 ? 1 : -1); return; }
       if (this.armed) this.cycleWeapon(e.deltaY > 0 ? 1 : -1);
       else this.selectSlot((this.slot + (e.deltaY > 0 ? 1 : -1) + BLOCKS.length) % BLOCKS.length);
     }, { passive: true });
@@ -89,6 +120,7 @@ export class PlayerSystem {
       if (e.code === 'KeyZ' && this.armed) this.cycleWeapon();
       if (e.code === 'KeyQ' && this.armed) this.g.combatSys.toggleLock(this.combat, this.yaw);
       if (e.code === 'ControlLeft' && this.armed) this.#roll();
+      if (e.code === 'KeyR' && this.fuego) this.recargar();
     });
     this.g.events.on('action', (a) => {
       if (this.g.state !== 'playing' || this.g.mapScreen.open) return;
@@ -105,6 +137,16 @@ export class PlayerSystem {
   // ───────────── Combate ─────────────
 
   // Saca o guarda el arma. Guardada, el clic vuelve a construir; fuera, pelea.
+  /** Armas disponibles: las de mano siempre; las de fuego, si están en la mochila (modo supervivencia). */
+  get arsenal() {
+    const fuego = PRUEBAS.todasLasArmas ? Object.keys(FIREARMS)
+      : this.g.loot?.activo ? Object.keys(FIREARMS).filter((id) => this.g.inventory?.items.get(id)) : [];
+    return [...ARSENAL, ...fuego];
+  }
+
+  /** Id del arma de fuego en la mano, o null. */
+  get fuego() { return this.armed && FIREARMS[this.combat.weapon.id] ? this.combat.weapon.id : null; }
+
   toggleArmed(on = !this.armed) {
     this.armed = on;
     this.combat.setGuard(false);
@@ -113,17 +155,118 @@ export class PlayerSystem {
       this.g.events.emit('combat:lock', null);
       this.character.setWeapon(null);
     } else {
-      this.character.setWeapon(WEAPONS[ARSENAL[this.weaponIndex]].model);
-      this.combat.setWeapon(ARSENAL[this.weaponIndex]);
+      const lista = this.arsenal;
+      this.weaponIndex %= lista.length;
+      this.character.setWeapon(WEAPONS[lista[this.weaponIndex]].model);
+      this.combat.setWeapon(lista[this.weaponIndex]);
     }
-    this.g.events.emit('player:armed', on ? this.combat.weapon.nombre : null);
+    this.#cambioDeArma();
+    this.g.events.emit('player:armed', on ? this.#rotuloArma() : null);
   }
 
   cycleWeapon(step = 1) {
-    this.weaponIndex = (this.weaponIndex + step + ARSENAL.length) % ARSENAL.length;
-    const w = this.combat.setWeapon(ARSENAL[this.weaponIndex]);
+    const lista = this.arsenal;
+    this.weaponIndex = (this.weaponIndex + step + lista.length) % lista.length;
+    const w = this.combat.setWeapon(lista[this.weaponIndex]);
     this.character.setWeapon(w.model);
-    this.g.events.emit('player:armed', w.nombre);
+    this.#cambioDeArma();
+    this.g.events.emit('player:armed', this.#rotuloArma());
+  }
+
+  // ───────────── Armas de fuego ─────────────
+
+  #rotuloArma() {
+    const id = this.fuego;
+    if (!id) return this.combat.weapon.nombre;
+    const f = FIREARMS[id];
+    const reserva = PRUEBAS.municionInfinita ? '∞' : this.g.inventory?.items.get(f.municion) || 0;
+    return `${f.nombre} · ${this.cargador[id] ?? 0} / ${reserva}`;
+  }
+
+  #cambioDeArma() {
+    const id = this.fuego;
+    this.apuntando = false;
+    this.gatillo = false;
+    this.recargando = 0;
+    this.character.reposoArma = id ? 'Pistol_Idle_Loop' : null;
+    if (this.vista) { this.vista.removeFromParent(); this.vista = null; }
+    if (id) {
+      this.cargador[id] ??= 0;
+      this.vista = firearmModel(id, 'primeraPersona');
+      if (this.vista) { this.vista.visible = false; this.g.scene.add(this.vista); }
+    }
+  }
+
+  /** Recarga con la munición de la mochila. */
+  recargar() {
+    const id = this.fuego;
+    if (!id || this.recargando > 0) return;
+    const f = FIREARMS[id], inv = this.g.inventory;
+    const hay = PRUEBAS.municionInfinita ? Infinity : inv.items.get(f.municion) || 0;
+    const falta = f.cargador - (this.cargador[id] || 0);
+    if (falta <= 0) return;
+    if (!hay) { this.g.hud.toast('No tienes munición para esta arma'); return; }
+    const k = Math.min(hay, falta);
+    if (!PRUEBAS.municionInfinita) inv.quitar(f.municion, k);
+    this.recargando = f.recarga;
+    this.recargaCuantas = k;
+    this.character.trigger('recargar', { lock: f.recarga });
+  }
+
+  #fuegoUpdate(dt) {
+    const id = this.fuego;
+    this.character.apuntando = !!id && this.apuntando;
+    if (!id) return;
+    const f = FIREARMS[id];
+    this.cadencia -= dt;
+    if (this.recargando > 0) {
+      this.recargando -= dt;
+      if (this.recargando <= 0) {
+        this.cargador[id] = (this.cargador[id] || 0) + this.recargaCuantas;
+        this.g.events.emit('player:armed', this.#rotuloArma());
+      }
+      return;
+    }
+    const quiere = f.automatica ? this.gatillo : this.tiroPendiente;
+    this.tiroPendiente = false;
+    if (!quiere || this.cadencia > 0) return;
+    if (!this.cargador[id]) { this.recargar(); return; }
+    this.cadencia = f.cadencia;
+    this.cargador[id]--;
+    // El tiro sale de la cámara hacia el centro de la pantalla (la mira); el fogonazo, de la boca del arma.
+    const cam = this.g.camera;
+    const dir = cam.getWorldDirection(new THREE.Vector3());
+    // Con blanco fijado, el tiro va a su pecho (la cámara sigue libre): es la ayuda de apuntado del fijado.
+    const t = this.combat.lockTarget;
+    if (t?.alive) dir.set(t.position.x - cam.position.x, t.position.y + 1.2 - cam.position.y, t.position.z - cam.position.z).normalize();
+    // El personaje encara hacia donde dispara.
+    this.character.heading = t?.alive ? Math.atan2(-(t.position.x - this.character.x), -(t.position.z - this.character.z)) : this.yaw;
+    const boca = this.view === 'first' && this.vista
+      ? this.vista.localToWorld(this.vista.userData.boca.clone())
+      : new THREE.Vector3(this.character.x - Math.sin(this.yaw) * 0.6, this.character.y + 1.4, this.character.z - Math.cos(this.yaw) * 0.6);
+    this.g.firearms.disparar(this.combat, cam.position.clone(), dir, id, { precision: this.apuntando ? 0.5 : 1.4, boca });
+    this.retroceso = f.retroceso;
+    this.pitch = Math.min(1.2, this.pitch + f.retroceso * 0.6);
+    this.character.trigger('disparar');
+    this.g.events.emit('player:armed', this.#rotuloArma());
+  }
+
+  // Arma de primera persona: pegada a la cámara, con un poco de retroceso.
+  #vistaUpdate(dt) {
+    const v = this.vista;
+    if (!v) return;
+    v.visible = this.walking && this.view === 'first' && !!this.fuego;
+    if (!v.visible) return;
+    const cam = this.g.camera;
+    this.retroceso = Math.max(0, (this.retroceso || 0) - dt * 0.5);
+    v.position.copy(cam.position);
+    v.quaternion.copy(cam.quaternion);
+    // Apuntando, el arma se centra; si no, a la derecha y abajo.
+    const k = this.apuntando ? 1 : 0;
+    const larga = FIREARMS[this.fuego].larga;
+    v.translateX((larga ? -0.2 : -0.17) * k);
+    v.translateY((larga ? 0.1 : 0.06) * k);
+    v.translateZ(this.retroceso * 1.5);
   }
 
   // Rueda hacia donde se está moviendo; quieto, hacia donde mira la cámara.
@@ -152,6 +295,18 @@ export class PlayerSystem {
     let x = v.x + lx * w, z = v.z + lz * w;
     const free = this.g.collision.resolveCircle(x, z, 0.4);
     if (free.hit && free.depth > 0.3) { x = v.x - lx * w; z = v.z - lz * w; }
+    // En la moto se baja pasando la pierna por encima del sillín, todavía montado; al terminar se pone de pie.
+    if (this.postura) {
+      if (this.montaje) return;
+      this.montaje = { fase: 'bajandoMoto', t: 0, x, z };
+      return;
+    }
+    this.#bajarEn(x, z, true);
+  }
+
+  // Lo deja de pie en (x, z), junto al vehículo. `animar`: con la animación de levantarse del asiento.
+  #bajarEn(x, z, animar) {
+    const v = this.g.player;
     // Se desengancha del vehículo y aparece de pie al lado, con la animación de bajarse.
     const desde = this.character.object.getWorldPosition(new THREE.Vector3());
     this.#desmontar();
@@ -159,8 +314,10 @@ export class PlayerSystem {
     this.yaw = v.heading; this.pitch = -0.15;
     this.character.object.visible = true;
     this.mode = 'walk';
-    this.montaje = { fase: 'bajando', t: 0, desde, hasta: new THREE.Vector3(x, this.character.y, z) };
-    this.character.trigger('salirAsiento', { lock: MONTAJE.duracion });
+    if (animar) {
+      this.montaje = { fase: 'bajando', t: 0, desde, hasta: new THREE.Vector3(x, this.character.y, z) };
+      this.character.trigger('salirAsiento', { lock: MONTAJE.duracion });
+    } else this.montaje = null;
     this.g.events.emit('player:mode', 'walk');
     this.g.hud.toast('A pie · E interactuar · clic der. poner bloque · clic izq. quitar · F subir');
   }
@@ -208,8 +365,7 @@ export class PlayerSystem {
   sentarEnVehiculo() {
     if (this.walking) return;
     this.g.rebuildPlayerVehicle({ driver: false });
-    this.#montar();
-    this.montaje = null;                       // sin transición: ya está sentado
+    this.#montar({ animar: false });          // sin transición: ya está sentado
     const v = this.g.player;
     if (v.spec.seat) this.character.object.position.set(...v.spec.seat);
   }
@@ -217,7 +373,7 @@ export class PlayerSystem {
   // ───────────── Ir montado en el vehículo ─────────────
 
   // Cuelga el personaje del cuerpo del vehículo, en el asiento del conductor.
-  #montar() {
+  #montar({ animar = true } = {}) {
     const v = this.g.player;
     const asiento = v.spec.seat;
     if (!asiento || !v.body) { this.character.object.visible = false; return; }
@@ -227,6 +383,15 @@ export class PlayerSystem {
     this.character.object.rotation.set(0, 0, 0);
     this.character.object.visible = true;
     this.character.driving = true;
+    this.#postura(v);
+    if (!animar) { this.montaje = null; return; }
+    if (this.postura) {
+      // Giro con el que llega respecto a la moto, para enderezarlo mientras se acerca.
+      const yaw0 = Math.atan2(Math.sin(this.character.heading - v.heading), Math.cos(this.character.heading - v.heading));
+      this.montaje = { fase: 'subiendoMoto', t: 0, desde, yaw0 };
+      this.#montajeUpdate(0);
+      return;
+    }
     this.montaje = { fase: 'subiendo', t: 0, desde };
     this.character.trigger('entrarAsiento', { lock: MONTAJE.duracion });
   }
@@ -235,7 +400,62 @@ export class PlayerSystem {
   #desmontar() {
     const o = this.character.object;
     if (o.parent && o.parent !== this.g.scene) this.g.scene.add(o);
+    o.rotation.set(0, 0, 0);
     this.character.driving = false;
+    this.#postura(null);
+  }
+
+  // Postura a horcajadas (moto): puntos de agarre colgados del vehículo y cinemática inversa en brazos y piernas.
+  // Sin postura (carros, o a pie) se quita. Sólo la toma el cuerpo con esqueleto.
+  #postura(v) {
+    const body = this.character.body;
+    if (this.postura) for (const o of this.postura.puntos) o.removeFromParent();
+    this.postura = null;
+    body.setRetoque?.(null);
+    body.setAlcances?.(null);
+    const p = v && POSTURAS[v.spec.postura];
+    if (!p || !body.setAlcances || !v.body) return;
+    const puntos = [];
+    const punto = (xyz) => { const o = new THREE.Object3D(); o.position.set(...xyz); v.body.add(o); puntos.push(o); return o; };
+    const P = { p, puntos, mano: p.manos.map(punto), pie: p.pies.map(punto), codo: p.codos.map(punto), rodilla: p.rodillas.map(punto) };
+    body.setRetoque(p.retoque, 1);
+    body.setAlcances([0, 1].flatMap((i) => {
+      const s = i ? 'r' : 'l';
+      return [
+        { huesos: [`upperarm_${s}`, `lowerarm_${s}`, `hand_${s}`], objetivo: P.mano[i], polo: P.codo[i] },
+        { huesos: [`thigh_${s}`, `calf_${s}`, `foot_${s}`], objetivo: P.pie[i], polo: P.rodilla[i] },
+      ];
+    }));
+    this.postura = P;
+  }
+
+  // Subirse a la moto, k de 0 (de pie junto al pedal izquierdo) a 1 (sentado). Bajarse es lo mismo al revés.
+  // La pierna izquierda se queda en el suelo mientras la derecha pasa por encima de la parte trasera del sillín.
+  #horcajadas(k) {
+    const P = this.postura, p = P.p, o = this.character.object;
+    const seat = this.g.player.spec.seat;
+    const lado = p.pies[0][0] - 0.35;                        // de pie, a la izquierda de la moto
+    const e = THREE.MathUtils.smoothstep(k, 0.15, 0.85);
+    o.position.set(THREE.MathUtils.lerp(seat[0] + lado, seat[0], e), seat[1] + Math.sin(Math.PI * e) * 0.1, seat[2]);
+    o.rotation.set(0, 0, Math.sin(Math.PI * e) * 0.12);     // se ladea hacia la moto al pasar la pierna
+    // Pie izquierdo: en el suelo hasta que la derecha ya pasó; luego sube al pedal.
+    const [pl, pr] = p.pies;
+    const subeL = THREE.MathUtils.smoothstep(k, 0.75, 1);
+    P.pie[0].position.set(THREE.MathUtils.lerp(lado + 0.12, pl[0], subeL), THREE.MathUtils.lerp(0.04, pl[1], subeL), pl[2]);
+    // Pie derecho: curva por encima de la parte trasera del sillín.
+    const r = THREE.MathUtils.smoothstep(k, 0.1, 0.8), q = 1 - r;
+    const a = [lado + 0.3, 0.04, pl[2] + 0.1], b = [0.05, p.sillin + 0.45, 0.55];
+    P.pie[1].position.set(...[0, 1, 2].map((i) => q * q * a[i] + 2 * q * r * b[i] + r * r * pr[i]));
+    // La rodilla derecha apunta hacia arriba y atrás mientras la pierna pasa, y adelante al llegar al pedal.
+    P.rodilla[1].position.set(0.3, THREE.MathUtils.lerp(1.4, p.rodillas[1][1], r), THREE.MathUtils.lerp(0.4, p.rodillas[1][2], r));
+  }
+
+  #horcajadasFin() {
+    const P = this.postura, p = P.p;
+    p.pies.forEach((xyz, i) => P.pie[i].position.set(...xyz));
+    p.rodillas.forEach((xyz, i) => P.rodilla[i].position.set(...xyz));
+    this.character.object.position.set(...this.g.player.spec.seat);
+    this.character.object.rotation.set(0, 0, 0);
   }
 
   // Mueve la transición de subir o bajar. Mientras dura, el personaje va interpolando entre el sitio donde
@@ -243,6 +463,7 @@ export class PlayerSystem {
   #montajeUpdate(dt) {
     const m = this.montaje;
     if (!m) return;
+    if (m.fase === 'subiendoMoto' || m.fase === 'bajandoMoto') return this.#montajeMoto(m, dt);
     m.t += dt / MONTAJE.duracion;
     if (m.t >= 1) {
       // Al terminar se encaja en el sitio exacto: si no, con fotogramas largos la interpolación se queda a
@@ -264,6 +485,41 @@ export class PlayerSystem {
       o.position.lerpVectors(m.desde, m.hasta, k);
       o.position.y = Math.max(m.hasta.y, o.position.y);
     }
+  }
+
+  // Subir: primero camina hasta el costado izquierdo (con la animación de caminar), luego pasa la pierna.
+  // Bajar: pasa la pierna de vuelta y queda de pie a la izquierda, ya libre.
+  #montajeMoto(m, dt) {
+    const M = MONTAJE.moto, o = this.character.object, body = this.character.body;
+    if (!this.postura) { this.montaje = null; return; }
+    if (m.fase === 'bajandoMoto') {
+      m.t += dt / M.bajar;
+      if (m.t >= 1) {
+        // Ya está de pie al lado: se suelta de la moto donde quedó.
+        const p = o.getWorldPosition(new THREE.Vector3());
+        this.#bajarEn(p.x, p.z, false);
+        return;
+      }
+      this.#horcajadas(1 - m.t);
+      return;
+    }
+    m.t += dt / M.subir;
+    if (m.t >= 1) { this.#horcajadasFin(); body.retoquePeso = 1; this.montaje = null; return; }
+    if (m.t < M.acercarse) {
+      // Camina desde donde estaba hasta el costado, enderezándose con la moto. Sin postura: va de pie.
+      const k = m.t / M.acercarse;
+      const seat = this.g.player.spec.seat;
+      const lado = new THREE.Vector3(seat[0] + this.postura.p.pies[0][0] - 0.35, 0, seat[2]);
+      const local = o.parent.worldToLocal(m.desde.clone());
+      o.position.lerpVectors(local, lado, k);
+      o.rotation.set(0, m.yaw0 * (1 - k), 0);
+      m.aPie = true;
+      body.retoquePeso = 0;
+      return;
+    }
+    m.aPie = false;
+    body.retoquePeso = 1;
+    this.#horcajadas((m.t - M.acercarse) / (1 - M.acercarse));
   }
 
   // ───────────── Construcción ─────────────
@@ -319,7 +575,7 @@ export class PlayerSystem {
     // 2) mundo (edificios, suelo, hitos, vehículos)
     this.raycaster.set(origin, dir);
     this.raycaster.far = Math.min(far, aim.t);
-    const hits = this.raycaster.intersectObjects(this.#worldTargets(), true);
+    const hits = this.raycaster.intersectObjects(this.worldTargets(), true);
     const hit = hits.find((h) => h.object.visible && h.object !== this.ghost && !isDescendant(h.object, c.object));
     if (hit && hit.distance < aim.t) {
       const n = hit.face ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld) : new THREE.Vector3(0, 1, 0);
@@ -347,7 +603,8 @@ export class PlayerSystem {
     }
   }
 
-  #worldTargets() {
+  /** Lo que corta un rayo: edificios, hitos, suelo, vehículos (también lo usa FirearmSystem). */
+  worldTargets() {
     const out = [];
     for (const t of this.g.streamer.tiles.values()) if (t.group) out.push(t.group);
     for (const l of this.g.landmarkRoots) out.push(l);
@@ -366,6 +623,11 @@ export class PlayerSystem {
     for (const car of this.g.traffic.cars) {
       if (Math.hypot(car.v.x - c.x, car.v.z - c.z) < car.v.spec.length / 2 + 2.2) return { key: 'F', label: `Tomar ${car.v.spec.name.toLowerCase()} del tráfico`, run: () => this.takeTraffic(car) };
     }
+    // botín del modo supervivencia (contenedores junto a los lugares reales)
+    const trato = this.g.loot?.activo && this.g.bases?.interaccion(c.x, c.z);
+    if (trato) return trato;
+    const botin = this.g.loot?.activo && this.g.loot.interaccion(c.x, c.z);
+    if (botin) return botin;
     // objetos registrados (bancas, letreros, hitos)
     let best = null;
     for (const it of this.interactables) {
@@ -426,7 +688,8 @@ export class PlayerSystem {
       // Montado: no hay física que correr, sólo la animación de conducir y la transición de subida.
       this.#montajeUpdate(dt);
       this.character.cameraDistance = 0;
-      this.character.body.apply({ dt, speed: 0, onGround: true, sitting: false, driving: true, armed: false, distance: 0 });
+      const aPie = !!this.montaje?.aPie;   // acercándose a la moto: camina
+      this.character.body.apply({ dt, speed: aPie ? 1.6 : 0, onGround: true, sitting: false, driving: !aPie, armed: false, distance: 0 });
       return;
     }
     this.#montajeUpdate(dt);
@@ -452,7 +715,7 @@ export class PlayerSystem {
     } else {
       // Atacando o aturdido no se camina, pero sí se sigue cayendo.
       const locked = c.state === 'attack' || c.state === 'hit' || c.state === 'dead';
-      const slowed = c.guarding ? 0.45 : 1;
+      const slowed = c.guarding || (this.fuego && this.apuntando) ? 0.45 : 1;
       this.character.update(dt, locked
         ? { ...input, forward: 0, strafe: 0, run: false, jump: false }
         : { ...input, forward: input.forward * slowed, strafe: input.strafe * slowed, run: input.run && !c.guarding },
@@ -464,8 +727,36 @@ export class PlayerSystem {
       }
     }
 
+    this.#chocarConVehiculos();
+    this.#fuegoUpdate(dt);
+    if (this.fuego && (this.apuntando || this.gatillo) && !c.lockTarget?.alive) this.character.heading = this.yaw;
     this.#aimUpdate();
     this.#setTarget(this.armed ? null : this.#findInteraction());
+  }
+
+  // A pie, los vehículos (el propio estacionado y los del tráfico) son sólidos: el personaje se empuja fuera de
+  // su caja (largo × ancho del vehículo, orientada con su rumbo) por el lado de menor penetración.
+  #chocarConVehiculos() {
+    const c = this.character;
+    if (c.sitting) return;
+    const vehiculos = [this.g.player, ...this.g.traffic.cars.map((car) => car.v)];
+    for (const v of vehiculos) {
+      const hx = (v.spec.width || 1.6) / 2 + c.radius, hz = v.spec.length / 2 + c.radius;
+      const dx = c.x - v.x, dz = c.z - v.z;
+      if (Math.abs(dx) > hz + 1 || Math.abs(dz) > hz + 1) continue;
+      if (c.y > v.y + 1.6) continue;                    // encima del techo (saltando) no estorba
+      // A espacio del vehículo: adelante = −Z local.
+      const cos = Math.cos(v.heading), sin = Math.sin(v.heading);
+      const lx = dx * cos - dz * sin, lz = dx * sin + dz * cos;
+      const px = hx - Math.abs(lx), pz = hz - Math.abs(lz);
+      if (px <= 0 || pz <= 0) continue;
+      let nx = lx, nz = lz;
+      if (px < pz) nx = Math.sign(lx || 1) * hx; else nz = Math.sign(lz || 1) * hz;
+      c.x = v.x + nx * cos + nz * sin;
+      c.z = v.z - nx * sin + nz * cos;
+      c.vx = c.vz = 0;
+    }
+    c.object.position.set(c.x, c.y, c.z);
   }
 
   updateCamera(dt) {
@@ -479,17 +770,20 @@ export class PlayerSystem {
       c.object.visible = true;
       // por encima del hombro derecho; se acerca si hay pared o suelo detrás
       const right = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
-      let dist = 3.6;
+      // Apuntando con arma de fuego, la cámara se acerca al hombro.
+      let dist = this.fuego && this.apuntando ? 1.7 : 3.6;
       const back = eye.clone().addScaledVector(right, 0.55);
       this.raycaster.set(back, dir.clone().negate());
       this.raycaster.far = dist;
-      const hit = this.raycaster.intersectObjects(this.#worldTargets().filter((o) => o !== this.g.player.object), true)[0];
+      const hit = this.raycaster.intersectObjects(this.worldTargets().filter((o) => o !== this.g.player.object), true)[0];
       if (hit) dist = Math.max(0.6, hit.distance - 0.3);
       cam.position.copy(back).addScaledVector(dir, -dist);
       cam.position.y = Math.max(cam.position.y, this.g.terrain.height(cam.position.x, cam.position.z) + 0.4);
     }
     cam.lookAt(eye.clone().addScaledVector(dir, 20));
-    if (cam.fov !== 62) { cam.fov = 62; cam.updateProjectionMatrix(); }
+    const fov = this.fuego && this.apuntando ? (this.view === 'first' ? 45 : 50) : 62;
+    if (cam.fov !== fov) { cam.fov = fov; cam.updateProjectionMatrix(); }
+    this.#vistaUpdate(dt);
   }
 
   toggleView() {

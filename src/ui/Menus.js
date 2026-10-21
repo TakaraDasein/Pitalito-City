@@ -18,7 +18,7 @@ export class Menus {
             <div class="gd-stack">
               <button class="culm-btn" data-act="play">Jugar <small>ENTER</small></button>
               <button class="culm-btn" data-act="creator">Personaje</button>
-            <button class="culm-btn" data-act="historia">Historia</button>
+              <button class="culm-btn" data-act="modo" id="btn-modo">Modo: Historia</button>
               <button class="culm-btn" data-act="historia">Historia</button>
               <button class="culm-btn" data-act="garage">Garaje</button>
               <button class="culm-btn" data-act="options">Opciones</button>
@@ -93,6 +93,12 @@ export class Menus {
     });
     this.#buildOptions();
     addEventListener('keydown', (e) => this.#key(e));
+  }
+
+  /** Rótulo del botón de modo del menú principal. */
+  setModo(modo) {
+    const b = this.root.querySelector('#btn-modo');
+    if (b) b.textContent = modo === 'supervivencia' ? 'Modo: Supervivencia' : 'Modo: Historia';
   }
 
   get current() { return this.stack[this.stack.length - 1] || null; }

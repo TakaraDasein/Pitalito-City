@@ -1,3 +1,4 @@
+import { FIREARMS } from './firearms.config.js';
 // Combate: números del sistema de pelea y arsenal. Nada de esto se escribe dentro de la lógica.
 //
 // Diseño (ver docs/PLAN_JUEGO.md § Fase 3): pelea con peso, no botón repetido. La resistencia se gasta al atacar,
@@ -62,6 +63,13 @@ export const COMBAT = {
 //   poise    cuánto temple rompe
 
 export const WEAPONS = {
+  // Ataque de zombi (modo supervivencia): zarpazo con las manos, lento de cargar y con poco alcance. No está en
+  // ARSENAL: el jugador no puede elegirlo.
+  zarpazo: {
+    id: 'zarpazo', nombre: 'Zarpazo', detalle: 'Arañazo de un muerto.',
+    model: null, clip: 'Zombie_Scratch',
+    damage: 9, stamina: 6, reach: 1.25, arc: 0.6, windup: 0.45, active: 0.2, recover: 0.5, poise: 12,
+  },
   manos: {
     id: 'manos', nombre: 'Manos', detalle: 'Sin nada. Rápido y sin alcance.',
     model: null, clip: 'punchJab', alt: 'punchCross',
@@ -93,6 +101,15 @@ export const WEAPONS = {
     damage: 11, stamina: 12, reach: 3.1, arc: 0.35, windup: 0.22, active: 0.12, recover: 0.3, poise: 12,
   },
 };
+
+// Armas de fuego (supervivencia): entran en WEAPONS para que Combatant y el HUD las traten como cualquier arma; el
+// tiro lo resuelve FirearmSystem, no el golpe cuerpo a cuerpo (por eso alcance y daño de golpe van a 0).
+for (const [id, f] of Object.entries(FIREARMS)) {
+  WEAPONS[id] = {
+    id, nombre: f.nombre, detalle: 'Arma de fuego', model: id, clip: 'pistolShoot', idle: 'pistolIdle', fuego: true,
+    damage: 0, stamina: 0, reach: 0, arc: 0, windup: 0.05, active: 0.01, recover: 0.05, poise: 0,
+  };
+}
 
 // Orden en que se recorren con la tecla de cambiar arma.
 export const ARSENAL = ['manos', 'machete', 'peinilla', 'garrote', 'azadon', 'rejo'];

@@ -37,6 +37,21 @@ const MODELS = {
     out: 'animations.glb',
     usedFor: 'Los 45 clips de animación y el esqueleto de 65 huesos que comparten todos los personajes',
   },
+  'animation-library-2': {
+    title: 'Universal Animation Library 2 (Standard)',
+    author: 'Quaternius',
+    license: 'CC0 1.0',
+    licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
+    home: 'https://quaternius.itch.io/universal-animation-library-2',
+    url: 'https://opengameart.org/sites/default/files/universal_animation_library_2standard.zip',
+    mirror: 'https://opengameart.org/content/universal-animation-library-2',
+    // Mismo esqueleto y nombres de hueso que la primera biblioteca. Del GLB de 43 clips sólo se guardan los que
+    // usa el modo supervivencia (scripts/lib/gltf-clips.py): 8 MB → 0,7 MB.
+    pick: 'Universal Animation Library 2 [Standard]/Unreal-Godot/UAL2_Standard.glb',
+    clips: ['Zombie_Idle_Loop', 'Zombie_Walk_Fwd_Loop', 'Zombie_Scratch', 'Hit_Knockback', 'LayToIdle'],
+    out: 'zombie.glb',
+    usedFor: 'Zombis del modo supervivencia: caminar, reposo, zarpazo, retroceso al recibir y levantarse del suelo',
+  },
   'base-characters': {
     title: 'Universal Base Characters (Standard)',
     author: 'Quaternius',
@@ -129,6 +144,8 @@ for (const [key, m] of Object.entries(MODELS)) {
       // Blender sin interfaz: FBX → GLB, sin la malla del maniquí y con los nombres de clip limpios.
       console.log(`· convirtiendo ${path.basename(m.pick)} con Blender…`);
       sh('blender', ['--background', '--python', 'scripts/lib/fbx2gltf.py', '--', path.join(dir, m.pick), dest]);
+    } else if (m.clips) {
+      sh('python3', ['-I', 'scripts/lib/gltf-clips.py', path.join(dir, m.pick), dest, ...m.clips]);
     } else await copyFile(path.join(dir, m.pick), dest);
     const bytes = statSync(dest).size;
     console.log(`  → ${dest} (${(bytes / 1048576).toFixed(1)} MB)`);
@@ -184,6 +201,33 @@ for (const [key, m] of Object.entries(MODELS)) {
   }
   console.log(`\r  → ${destDir}: ${found.length} modelo(s), ${(bytes / 1048576).toFixed(1)} MB`.padEnd(70));
   registry.push({ key, file: `models/characters/${m.outDir}/`, bytes, count: found.length, out: m.outDir + '/', ...m });
+}
+
+// Armas de fuego (modo supervivencia): un FBX por arma, convertido con Blender a public/models/weapons/.
+const ARMAS = {
+  title: '50+ LowPoly Guns', author: 'Quaternius', license: 'CC0 1.0',
+  licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
+  home: 'https://quaternius.itch.io/50-lowpoly-guns', itch: 'https://quaternius.itch.io/50-lowpoly-guns',
+  fbx: ['Pistol_1', 'Revolver_1', 'Shotgun_1', 'Shotgun_SawedOff', 'AssaultRifle_1', 'SniperRifle_1'],
+  usedFor: 'Pistola, revólver, escopetas, fusil y rifle de cacería (src/config/firearms.config.js)',
+};
+{
+  const zip = path.join(RAW, 'guns.zip');
+  if (!existsSync(zip)) {
+    console.log(`· descargando ${ARMAS.title}…`);
+    sh('curl', ['-sSL', '--fail', '--max-time', '600', '-o', zip, (await itchFileUrl(ARMAS.itch)).url]);
+  }
+  const dir = path.join(RAW, 'guns');
+  sh('unzip', ['-q', '-o', zip, 'FBX/*', '-d', dir]);
+  await mkdir('public/models/weapons', { recursive: true });
+  let bytes = 0;
+  for (const n of ARMAS.fbx) {
+    const dest = `public/models/weapons/${n}.glb`;
+    sh('blender', ['--background', '--python', 'scripts/lib/fbx-model.py', '--', path.join(dir, 'FBX', `${n}.fbx`), dest]);
+    bytes += statSync(dest).size;
+  }
+  console.log(`  → public/models/weapons/: ${ARMAS.fbx.length} armas`);
+  registry.push({ key: 'guns', file: 'models/weapons/', bytes, count: ARMAS.fbx.length, ...ARMAS });
 }
 
 // Derivados: se generan después, porque necesitan los descargados.
