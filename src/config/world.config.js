@@ -26,5 +26,5 @@ export const WORLD = {
   // Demarcación y andenes no están en los datos, por eso van apagados.
   roads: { opacity: 0.55, markings: false, sidewalks: false },
   // Postes de energía con cables: ubicación ESTIMADA (no está en los datos). false para quitarlos.
-  powerLines: true,
+  powerLines: false, // quitados: estorbaban al caminar y su ubicación no es dato real
 };

@@ -24,7 +24,10 @@ function makeShared() {
     paint(new THREE.BoxGeometry(0.34, 0.95, 0.3).translate(0, 4.85, -3.1), '#141414'),
   ]);
   const lens = new THREE.CircleGeometry(0.1, 12);
-  const lights = ['#ff2a1a', '#ffb000', '#1aff5a'].map((c) => new THREE.MeshStandardMaterial({ color: '#222', emissive: c, emissiveIntensity: 0.05 }));
+  // Dos juegos de lentes, uno por fase del cruce: los que van norte-sur y los que van oriente-poniente. Con un
+  // solo juego, los cuatro semáforos de un cruce se ponían en verde a la vez.
+  const lights = [0, 1].map(() =>
+    ['#ff2a1a', '#ffb000', '#1aff5a'].map((c) => new THREE.MeshStandardMaterial({ color: '#222', emissive: c, emissiveIntensity: 0.05 })));
   return { pole, lens, yellow, lights };
 }
 
@@ -48,7 +51,12 @@ function spots(tile) {
       }
       if (best) break;
     }
-    if (best) out.push({ x: best[0], z: best[1], rot: Math.atan2(-(nx - best[0]), -(nz - best[1])) }); // brazo (−Z) hacia el cruce
+    if (best) {
+      const rot = Math.atan2(-(nx - best[0]), -(nz - best[1])); // brazo (−Z) hacia el cruce
+      // Fase que controla este semáforo: la del rumbo al que mira su brazo.
+      const fase = Math.abs(Math.cos(rot)) >= Math.abs(Math.sin(rot)) ? 0 : 1;
+      out.push({ x: best[0], z: best[1], rot, fase, cx: nx, cz: nz });
+    }
   }
   return out;
 }
@@ -62,21 +70,31 @@ export const TrafficSignalBuilder = {
     if (!list.length) return [];
     const q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1), m4 = new THREE.Matrix4();
     const pole = new THREE.InstancedMesh(shared.pole, shared.yellow, list.length);
-    const lens = shared.lights.map((m) => new THREE.InstancedMesh(shared.lens, m, list.length * 2));
+    // Un juego de lentes por fase; cada semáforo sólo llena el suyo.
+    const porFase = [0, 1].map((f) => list.filter((s) => s.fase === f).length);
+    const lens = [0, 1].flatMap((f) => shared.lights[f].map((m) => new THREE.InstancedMesh(shared.lens, m, Math.max(1, porFase[f]) * 2)));
+    const usados = [0, 0];
     list.forEach((s, i) => {
       const pos = new THREE.Vector3(s.x, terrain.height(s.x, s.z), s.z);
       q.setFromAxisAngle(up, s.rot);
       m4.compose(pos, q, one);
       pole.setMatrixAt(i, m4);
-      // lentes en ambas caras de la caja
+      // lentes en ambas caras de la caja, en el juego de su fase
+      const slot = usados[s.fase]++;
       [0.3, 0, -0.3].forEach((dy, li) => {
         for (const [face, dz] of [[0, -0.155], [1, 0.155]]) {
           const lm = new THREE.Matrix4().compose(new THREE.Vector3(0, 4.85 + dy, -3.1 + dz), new THREE.Quaternion().setFromAxisAngle(up, face ? 0 : Math.PI), one);
-          lens[li].setMatrixAt(i * 2 + face, m4.clone().multiply(lm));
+          lens[s.fase * 3 + li].setMatrixAt(slot * 2 + face, m4.clone().multiply(lm));
         }
       });
     });
     pole.castShadow = true;
+    // Las instancias que sobran se mandan fuera de vista: el contador se fijó por fase, no por tile.
+    for (const f of [0, 1]) for (let k = usados[f]; k < Math.max(1, porFase[f]); k++) {
+      for (let li = 0; li < 3; li++) for (const face of [0, 1]) {
+        lens[f * 3 + li].setMatrixAt(k * 2 + face, new THREE.Matrix4().makeTranslation(0, -9999, 0));
+      }
+    }
     for (const m of [pole, ...lens]) m.computeBoundingSphere();
     return [pole, ...lens];
   },
@@ -84,11 +102,22 @@ export const TrafficSignalBuilder = {
     if (!tile.signals?.length) return;
     for (const s of spots(tile)) collision.addCircle(owner, s.x, s.z, 0.2);
   },
-  // Ciclo simple verde 8 s → amarillo 2 s → rojo 8 s (el mismo para todos; la IA aún no lo respeta)
-  update(t) {
+  /**
+   * Enciende la lente que toca en cada fase. El ciclo y las fases los decide SignalSystem, que es quien también
+   * responde a la IA del tráfico: así lo que se ve y lo que obedecen los carros es lo mismo.
+   */
+  update(t, signals) {
     if (!shared) return;
-    const c = t % 18;
-    const on = c < 8 ? 2 : c < 10 ? 1 : 0;
-    shared.lights.forEach((m, i) => { m.emissiveIntensity = i === on ? 2.5 : 0.04; });
+    const SEM = signals?.constructor?.SEMAFORO || null;
+    const verde = SEM ? SEM.verde : 9, amarillo = SEM ? SEM.amarillo : 2.5;
+    const medio = verde + amarillo, ciclo = medio * 2;
+    for (const fase of [0, 1]) {
+      const c = t % ciclo;
+      const dentro = c % medio;
+      const enVerde = dentro <= verde && (c < medio ? 0 : 1) === fase;
+      const enAmarillo = dentro > verde && (c < medio ? 0 : 1) === fase;
+      const on = enVerde ? 2 : enAmarillo ? 1 : 0;
+      shared.lights[fase].forEach((m, i) => { m.emissiveIntensity = i === on ? 2.5 : 0.04; });
+    }
   },
 };

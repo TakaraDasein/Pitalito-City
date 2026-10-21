@@ -1,0 +1,161 @@
+/* Capa minimalista sobre la estética café y guadua (REGLAS §7).
+   Mismo concepto, menos ornamento: paneles de café espresso translúcido, filetes de guadua de 1 px con
+   nudos marcados, la guadua viva (verde) solo como acento de lo seleccionado. Se carga después de
+   styles.css y menus.css; quitar el <link> devuelve el estilo anterior. */
+:root {
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --m-bg: rgba(20, 13, 8, .78);
+  --m-bg-solid: #17100a;
+  --m-line: rgba(214, 186, 128, .28);
+  --m-line-strong: rgba(214, 186, 128, .6);
+  --m-text: #efe4cc;
+  --m-muted: rgba(239, 228, 204, .58);
+  --m-gold: #d6ba80;
+  --m-green: #9cc25a;
+  --m-green-bg: rgba(111, 159, 54, .16);
+  --m-blur: blur(14px) saturate(1.2);
+}
+
+/* ── Superficies ───────────────────────── */
+.esterilla, .cafe-panel {
+  color: var(--m-text); background: var(--m-bg); border-radius: 2px;
+  border: 1px solid var(--m-line); box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
+  -webkit-backdrop-filter: var(--m-blur); backdrop-filter: var(--m-blur);
+}
+/* Filete superior: una caña con dos nudos */
+.esterilla::before, .cafe-panel::before {
+  content: ''; position: absolute; left: -1px; right: -1px; top: -1px; height: 2px; pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0 18%, var(--m-bg-solid) 18% calc(18% + 3px), transparent calc(18% + 3px) 82%, var(--m-bg-solid) 82% calc(82% + 3px), transparent calc(82% + 3px)),
+    linear-gradient(90deg, rgba(214, 186, 128, .2), var(--m-gold) 30%, var(--m-gold) 70%, rgba(214, 186, 128, .2));
+}
+.cafe-pill { color: var(--m-text); background: var(--m-bg); border: 1px solid var(--m-line); border-radius: 999px;
+  -webkit-backdrop-filter: var(--m-blur); backdrop-filter: var(--m-blur); box-shadow: 0 8px 24px rgba(0, 0, 0, .35); }
+.cafe-pill::before { content: none; }
+.guadua-frame-layer, .panel-deco, .plate-lash, #hud-minimap .bean-a, #hud-minimap .bean-b, .map-panel .panel-bean { display: none; }
+#menus .screen.dim { background: linear-gradient(90deg, rgba(12, 8, 4, .82) 0%, rgba(12, 8, 4, .4) 45%, transparent 75%); }
+
+/* ── Tipografía ────────────────────────── */
+.gd-title, .brand h1 { font-family: var(--font-display); font-weight: 600; font-style: normal; color: var(--m-text);
+  letter-spacing: .01em; text-shadow: 0 2px 30px rgba(0, 0, 0, .6); }
+.gd-sub, .brand p { color: var(--m-gold); font-weight: 600; font-size: 11px; letter-spacing: .5em; }
+.gd-panel { padding: 34px 32px 28px; width: min(340px, 100%); }
+.gd-panel h2, .map-panel h2, #help h3, #hud-info h3, .hud-menu-title, .garage-name {
+  font-family: var(--font-display); font-weight: 600; color: var(--m-text); letter-spacing: .01em; }
+.gd-panel h2 { font-size: 40px; margin: 0 0 22px; }
+.gd-panel h2::after { content: ''; display: block; width: 28px; height: 1px; margin-top: 12px; background: var(--m-gold); }
+.gd-stack { gap: 2px; }
+
+/* ── Botones: texto sobre un hilo, el nudo verde marca la selección ── */
+.culm-btn {
+  min-height: 44px; padding: 0 14px 0 18px; border-radius: 0; background: transparent; box-shadow: none;
+  border-bottom: 1px solid rgba(214, 186, 128, .12);
+  font: 600 13px var(--font-ui); letter-spacing: .2em; text-transform: uppercase; color: var(--m-muted); text-shadow: none;
+  transition: color .15s, background-color .15s, padding-left .15s;
+}
+.culm-btn::before { content: ''; position: absolute; left: 0; top: 50%; width: 2px; height: 0; background: var(--m-green);
+  transform: translateY(-50%); transition: height .15s; }
+.culm-btn small { font-size: 10px; letter-spacing: .12em; opacity: .55; border: 1px solid currentColor; border-radius: 2px; padding: 2px 5px; }
+.culm-btn:hover, .culm-btn:focus-visible, .culm-btn.selected {
+  background: linear-gradient(90deg, var(--m-green-bg), transparent); color: var(--m-text); text-shadow: none; padding-left: 24px; }
+.culm-btn:hover::before, .culm-btn:focus-visible::before, .culm-btn.selected::before { height: 60%; }
+.culm-btn:focus-visible { box-shadow: none; outline: 1px solid var(--m-line-strong); outline-offset: -1px; }
+.culm-btn:active { transform: none; box-shadow: none; }
+.culm-btn.small { min-height: 34px; font-size: 11px; padding: 0 14px; border: 1px solid var(--m-line); }
+.culm-btn.small:hover, .culm-btn.small.selected { padding-left: 14px; border-color: var(--m-green); }
+.culm-btn.small::before { content: none; }
+
+/* Pestañas, campos, deslizadores */
+.culm-tab { font: 600 10px var(--font-ui); letter-spacing: .16em; padding: 6px 10px; border-radius: 0;
+  border: 1px solid var(--m-line); background: transparent; color: var(--m-muted); }
+.culm-tab:hover, .culm-tab:focus-visible, .culm-tab.selected { background: var(--m-green-bg); color: var(--m-text); border-color: var(--m-green); }
+.gd-field > span, .gd-sub-small { font: 600 10px var(--font-ui); letter-spacing: .2em; color: var(--m-gold); opacity: 1; }
+.gd-range { height: 2px; background: var(--m-line-strong); box-shadow: none; }
+.gd-range::-webkit-slider-thumb { width: 14px; height: 14px; background: var(--m-text); border: 3px solid var(--m-bg-solid);
+  box-shadow: 0 0 0 1px var(--m-gold); }
+.gd-range::-moz-range-thumb { width: 10px; height: 10px; background: var(--m-text); border: 3px solid var(--m-bg-solid);
+  box-shadow: 0 0 0 1px var(--m-gold); }
+.gd-stat { font-size: 10px; letter-spacing: .16em; color: var(--m-muted); }
+.gd-stat .track { height: 3px; border-radius: 0; background: rgba(214, 186, 128, .15); box-shadow: none; }
+.gd-stat .fill { border-radius: 0; background: var(--m-green); }
+.swatch { width: 28px; height: 28px; box-shadow: 0 0 0 1px var(--m-line); }
+.swatch.selected, .swatch:focus-visible { box-shadow: 0 0 0 2px var(--m-bg-solid), 0 0 0 3px var(--m-green); }
+.gd-input { font: 600 16px var(--font-ui); border: 1px solid var(--m-line-strong); border-radius: 0; background: rgba(0, 0, 0, .3); color: var(--m-text); }
+.gd-hint, .creator-origen, .creator-hint { color: var(--m-muted); }
+.gd-hint { background: var(--m-bg); border-radius: 0; border: 1px solid var(--m-line); }
+.creator-opt { font-size: 12px; letter-spacing: .1em; padding: 10px 14px 10px 18px; }
+.creator-swatch { width: 14px; height: 14px; box-shadow: 0 0 0 1px var(--m-line-strong); }
+
+/* ── HUD ───────────────────────────────── */
+#hud-bar { padding: 6px 8px; gap: 10px; }
+#hud-clock { font: 600 15px var(--font-ui); letter-spacing: .14em; color: var(--m-text); min-width: 0; }
+#hud-gps { font-size: 11px; letter-spacing: .08em; border-radius: 0; }
+.hud-chip { height: 30px; padding: 0 12px; border-radius: 0; background: transparent; box-shadow: none;
+  border: 1px solid var(--m-line); color: var(--m-text); font: 600 11px var(--font-ui); letter-spacing: .16em; text-transform: uppercase; }
+.hud-chip:hover, .hud-chip[aria-expanded="true"], .hud-chip:focus-visible { background: var(--m-green-bg); border-color: var(--m-green); }
+.hud-group { background: none; gap: 2px; padding: 0; }
+.hud-btn { width: 32px; height: 32px; border-radius: 0; background: transparent; color: var(--m-muted); box-shadow: none;
+  border: 1px solid transparent; }
+.hud-btn:hover, .hud-btn:focus-visible { background: rgba(214, 186, 128, .08); color: var(--m-text); border-color: var(--m-line); }
+.hud-btn.active { background: var(--m-green-bg); color: var(--m-green); border-color: rgba(156, 194, 90, .5); }
+#hud-vehicles { gap: 0; }
+#hud-vehicles .culm-btn { font-size: 11px; min-height: 36px; }
+.paint-dot { width: 10px; height: 10px; box-shadow: 0 0 0 1px var(--m-line-strong); }
+
+/* Minimapa: aro fino en lugar del culmo */
+#hud-minimap .hud-ring { opacity: 0; }
+.minimap { box-shadow: 0 0 0 1px var(--m-line-strong), 0 0 0 5px rgba(20, 13, 8, .55), 0 12px 30px rgba(0, 0, 0, .5); }
+.plate-post { display: none; }
+.plate { border-width: 2px; border-radius: 3px; height: 50px; box-shadow: 0 8px 20px rgba(0, 0, 0, .4); }
+.plate-green { font-size: 19px; }
+#hud-zone { font-family: var(--font-display); font-weight: 600; font-style: italic; font-size: 48px; text-shadow: 0 2px 24px rgba(0, 0, 0, .8); }
+
+/* Velocímetro: número limpio sobre un disco translúcido */
+#hud-speed { width: 128px; height: 128px; background: radial-gradient(circle, rgba(20, 13, 8, .7) 0 60%, transparent 62%); }
+#hud-speed > .culm-ring { opacity: 0; }
+#hud-speed .speed-arc { inset: 4px; width: 120px; height: 120px; }
+#hud-speed-value { font: 300 40px var(--font-ui); font-style: normal; letter-spacing: -.02em; text-shadow: none; }
+#hud-speed small { font-size: 9px; letter-spacing: .3em; color: var(--m-gold); }
+
+/* Mensajes, ayuda, info */
+#hud-toast { border-radius: 0; font: 600 12px var(--font-ui); letter-spacing: .12em; text-transform: uppercase; padding: 10px 20px; }
+#help dt { color: var(--m-gold); font-weight: 600; font-size: 11px; letter-spacing: .1em; }
+#help dd { color: var(--m-muted); }
+#hud-debug { border-radius: 0; border-left: 1px solid var(--m-green); }
+
+/* ── Combate: barras finas, sin marco ─── */
+#hud-combat { background: none; border: 0; box-shadow: none; padding: 0; gap: 10px; min-width: 220px;
+  -webkit-backdrop-filter: none; backdrop-filter: none; }
+#hud-combat::before { content: none; }
+.vital { height: 4px; border-radius: 0; overflow: visible; background: rgba(0, 0, 0, .45); box-shadow: 0 0 0 1px rgba(214, 186, 128, .18); }
+.vital-fill { border-radius: 0; }
+#vital-health .vital-fill { background: #c4523c; box-shadow: 0 0 8px rgba(196, 82, 60, .5); }
+#vital-stamina .vital-fill { background: #b9c46a; }
+.vital-label { inset: auto auto 7px 0; display: block; font: 600 9px var(--font-ui); letter-spacing: .24em; color: var(--m-muted); text-shadow: 0 1px 2px #000; }
+#vital-health { margin-top: 14px; } #vital-stamina { margin-top: 14px; }
+#hud-weapon { text-align: left; font: italic 600 20px var(--font-display); letter-spacing: .02em; text-transform: none; color: var(--m-text); text-shadow: 0 1px 6px #000; }
+#hud-lock { width: 22px; height: 22px; margin: -11px 0 0 -11px; border: 1px solid rgba(239, 228, 204, .9); box-shadow: 0 0 6px rgba(0, 0, 0, .6); transform: rotate(45deg); border-radius: 0; }
+#hud-lock::after { inset: 8px; border-radius: 0; background: #c4523c; }
+#hud-crosshair { width: 6px; height: 6px; border-radius: 50%; background: var(--m-text); opacity: .7; }
+
+/* ── Construcción: barra de bloques sobria ─ */
+#hud-hotbar { gap: 4px; padding: 6px; }
+#hud-hotbar .slot { width: 52px; height: 52px; border-radius: 0; background: rgba(0, 0, 0, .25); box-shadow: inset 0 0 0 1px rgba(214, 186, 128, .14); }
+#hud-hotbar .slot img { width: 40px; height: 40px; }
+#hud-hotbar .slot span { font: 600 9px var(--font-ui); color: var(--m-muted); }
+#hud-hotbar .slot em { border-radius: 0; font: 600 10px var(--font-ui); letter-spacing: .14em; text-transform: uppercase; background: var(--m-bg); border: 1px solid var(--m-line); }
+#hud-hotbar .slot.selected { background: var(--m-green-bg); box-shadow: inset 0 0 0 1px var(--m-green), inset 0 -2px 0 var(--m-green); }
+#hud-prompt { border-radius: 0; font: 600 12px var(--font-ui); letter-spacing: .08em; padding: 6px 14px 6px 6px; }
+#hud-prompt kbd { border-radius: 0; background: var(--m-text); color: var(--m-bg-solid); font-size: 11px; }
+
+/* ── Mapa y carga ──────────────────────── */
+.map-panel { border-left: 1px solid var(--m-line); border-image: none; }
+#map-close { border-radius: 0; background: transparent; border: 1px solid var(--m-line); color: var(--m-text); }
+#map-close:hover, #map-close:focus-visible { background: var(--m-green-bg); border-color: var(--m-green); }
+#map-search { border-radius: 0; background: rgba(0, 0, 0, .3); color: var(--m-text); border: 1px solid var(--m-line); }
+#map-search::placeholder { color: var(--m-muted); }
+#map-places button { border-radius: 0; border-bottom-color: rgba(214, 186, 128, .08); }
+#loading { background: radial-gradient(ellipse at 50% 45%, #2a1a0e, #0e0905 70%); }
+.progress { height: 2px; padding: 0; border-radius: 0; background: rgba(214, 186, 128, .18); box-shadow: none; }
+#loading-bar { border-radius: 0; background: var(--m-gold); }
+#loading-text { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--m-muted); }
