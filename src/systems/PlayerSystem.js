@@ -149,6 +149,7 @@ export class PlayerSystem {
 
   toggleArmed(on = !this.armed) {
     this.armed = on;
+    this.character.armed = on;   // sin esto la animación nunca pasaba a la guardia en reposo
     this.combat.setGuard(false);
     if (!on) {
       this.combat.lockTarget = null;
@@ -188,7 +189,10 @@ export class PlayerSystem {
     this.apuntando = false;
     this.gatillo = false;
     this.recargando = 0;
-    this.character.reposoArma = id ? 'Pistol_Idle_Loop' : null;
+    // Armas largas: en reposo, bajas al frente y a dos manos (la pose de pistola las deja colgando).
+    // Armas largas: en reposo, la pose de apuntar con el brazo bajado («listo bajo», RigBody.listoBajo).
+    this.character.reposoArma = id ? (FIREARMS[id].larga ? 'Pistol_Aim_Neutral' : 'Pistol_Idle_Loop') : null;
+    if (!id || !FIREARMS[id].larga) this.character.body.listoBajo?.(false);
     if (this.vista) { this.vista.removeFromParent(); this.vista = null; }
     if (id) {
       this.cargador[id] ??= 0;
@@ -217,6 +221,7 @@ export class PlayerSystem {
     const id = this.fuego;
     this.character.apuntando = !!id && this.apuntando;
     if (!id) return;
+    if (FIREARMS[id].larga) this.character.body.listoBajo?.(!this.apuntando && !this.gatillo && this.cadencia < -0.4);
     const f = FIREARMS[id];
     this.cadencia -= dt;
     if (this.recargando > 0) {
@@ -246,9 +251,21 @@ export class PlayerSystem {
       : new THREE.Vector3(this.character.x - Math.sin(this.yaw) * 0.6, this.character.y + 1.4, this.character.z - Math.cos(this.yaw) * 0.6);
     this.g.firearms.disparar(this.combat, cam.position.clone(), dir, id, { precision: this.apuntando ? 0.5 : 1.4, boca });
     this.retroceso = f.retroceso;
+    this.patada = f.retroceso * 5;            // el cañón sube y vuelve (también en la mano, en tercera persona)
     this.pitch = Math.min(1.2, this.pitch + f.retroceso * 0.6);
     this.character.trigger('disparar');
     this.g.events.emit('player:armed', this.#rotuloArma());
+  }
+
+  // Retroceso del arma: la patada sube el cañón y lo echa atrás, y vuelve en ≈ 0,2 s.
+  #patadaUpdate(dt) {
+    this.patada = Math.max(0, (this.patada || 0) - dt * 2.4);
+    for (const arma of [this.character.body.weapon, this.vista]) {
+      const p = arma?.userData.patada;
+      if (!p) continue;
+      p.rotation.x = this.patada * 0.9;
+      p.position.z = this.patada * 0.12;
+    }
   }
 
   // Arma de primera persona: pegada a la cámara, con un poco de retroceso.
@@ -728,6 +745,7 @@ export class PlayerSystem {
     }
 
     this.#chocarConVehiculos();
+    this.character.guardia = c.guarding;
     this.#fuegoUpdate(dt);
     if (this.fuego && (this.apuntando || this.gatillo) && !c.lockTarget?.alive) this.character.heading = this.yaw;
     this.#aimUpdate();
@@ -783,6 +801,7 @@ export class PlayerSystem {
     cam.lookAt(eye.clone().addScaledVector(dir, 20));
     const fov = this.fuego && this.apuntando ? (this.view === 'first' ? 45 : 50) : 62;
     if (cam.fov !== fov) { cam.fov = fov; cam.updateProjectionMatrix(); }
+    this.#patadaUpdate(dt);
     this.#vistaUpdate(dt);
   }
 

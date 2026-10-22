@@ -71,12 +71,15 @@ determinista y rápido, así que se puede iterar sobre `build-world.mjs` sin vol
 | 99 semáforos | OSM `highway=traffic_signals` | **Real** (esquina del poste y ciclo estimados) |
 | Forma del techo (lámina 1–2 aguas / terraza con tanque) | Forma y tamaño de la huella | Estimado |
 | Fachadas (ventanas, avisos, portones, balcones, color) | Procedural con paleta de fotos | Estimado |
+| Mochila inicial de cada oficio (supervivencia) | Diseño de juego (`ORIGENES[].mochila`) | Estimado — se apaga con `PARTIDA.entregar` |
 | Postes de energía y cables | Cada ~32 m (`WORLD.powerLines`) | Estimado |
 | Forma del árbol (palma / samán / frondoso) | Proporción altura/copa | Estimado |
 | Parque Principal: adoquín con retícula, bolardos, prado de la Calle 6, muro de la Cra 4, mariposa, letrero YO ❤ PITALITO, estructura de concreto | Fotos may 2025 | Modelado a mano |
 | Palmas, bancas y sombrillas del parque | Patrón de las fotos | Estimado (posición) |
 | Fuente del parque | Existe (noticia de su restauración), sin foto de su diseño | **Pendiente** — no se modela sin referencia |
 | Iglesia San Antonio (nave de ladrillo a la vista, frente blanco) y Torre San Antonio en la esquina de la Calle 5 | Fotos may 2025 + polígono OSM + satélite | Modelado a mano |
+| Iglesia por dentro y atrio: tres naves con arcadas y capiteles dorados, bóveda de cañón, vitrales, bancas, presbiterio con baldaquino; atrio en damero salmón y gris con escalones; fachada de tres cuerpos con festón y arquivoltas salmón | Street View abr 2013 / 2015 (Calle 5), foto nocturna del frente y foto de la nave (aportadas por el usuario, no versionadas) | Modelado a mano; **medidas estimadas** de las fotos |
+| Escalera interior de la Torre San Antonio (tramos alrededor de un núcleo hasta el campanario a 24 m) | Sin planos ni fotos del interior | **Estimado** — necesario para subir; declarado en la cabecera de CatedralSanAntonio.js |
 | Tráfico | Simulado sobre el grafo real | Simulado |
 
 Apagados por no tener datos: relleno procedural de manzanas (`proceduralFill: false`), demarcación y andenes

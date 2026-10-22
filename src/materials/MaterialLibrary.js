@@ -101,6 +101,24 @@ export class MaterialLibrary {
     const eb = P.exposedBrick();
     eb.repeat.set(0.5, 0.5);
     this.m.exposedBrick = new THREE.MeshStandardMaterial({ map: eb, roughness: 0.92 });
+    // Iglesia San Antonio (fotos del atrio, la fachada y la nave)
+    this.m.trimSalmon = new THREE.MeshStandardMaterial({ color: '#d08a74', roughness: 0.8 });
+    const at = P.atrioTiles();
+    at.repeat.set(0.5, 0.5);
+    this.m.atrioTiles = new THREE.MeshStandardMaterial({ map: at, roughness: 0.7 });
+    // interior encalado: ambos lados (bóveda vista desde abajo) y un poco de luz propia para que la nave no
+    // quede negra a la sombra del techo
+    this.m.plasterInside = new THREE.MeshStandardMaterial({ ...pbr(plaster), color: '#f3f0e9', roughness: 0.9, side: THREE.DoubleSide, emissive: '#fff4e2', emissiveIntensity: 0.3 });
+    // la bóveda mira hacia abajo y recibe el color "suelo" de la luz hemisférica: más luz propia
+    this.m.plasterVault = this.m.plasterInside.clone();
+    this.m.plasterVault.emissiveIntensity = 0.6;
+    this.m.gilded = new THREE.MeshStandardMaterial({ color: '#c9a24a', roughness: 0.35, metalness: 0.75, emissive: '#3a2a08', emissiveIntensity: 0.4 });
+    this.m.marbleFloor = new THREE.MeshStandardMaterial({ color: '#d8d0c2', roughness: 0.35, emissive: '#2a2620', emissiveIntensity: 0.3 });
+    this.m.pewWood = new THREE.MeshStandardMaterial({ color: '#5e3519', roughness: 0.6 });
+    this.m.bronze = new THREE.MeshStandardMaterial({ color: '#7a5a2c', roughness: 0.4, metalness: 0.85 });
+    const sg = P.stainedGlass(), rose = P.roseWindow();
+    this.m.stainedGlass = new THREE.MeshStandardMaterial({ map: sg, emissiveMap: sg, emissive: '#ffffff', emissiveIntensity: 0.75, roughness: 0.3, side: THREE.DoubleSide });
+    this.m.roseWindow = new THREE.MeshStandardMaterial({ map: rose, emissiveMap: rose, emissive: '#ffffff', emissiveIntensity: 0.6, roughness: 0.3, side: THREE.DoubleSide });
     this.m.darkMetal = new THREE.MeshStandardMaterial({ color: '#2a2d30', roughness: 0.5, metalness: 0.6 });
     this.m.wood = new THREE.MeshStandardMaterial({ color: '#7b4b2a', roughness: 0.8 });
     this.m.glass = new THREE.MeshStandardMaterial({ color: '#1d2a36', roughness: 0.1, metalness: 0.8 });

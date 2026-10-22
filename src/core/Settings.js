@@ -11,6 +11,7 @@ const KEY = 'pitalito:settings:v1';
 const DEFAULTS = {
   quality: 'alta',
   volume: 0.7,
+  musica: 0.6,                    // volumen de la música generativa (src/audio/Musica.js)
   cameraSensitivity: 1,
   invertY: false,
   weather: 'auto',                // auto | despejado | lluvia

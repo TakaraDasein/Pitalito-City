@@ -1,0 +1,21 @@
+// Sonido: niveles y carácter de la mezcla. Todo es sintetizado (ver src/systems/AudioSystem.js), así que aquí no
+// hay archivos: sólo cuánto suena cada cosa y cómo.
+
+export const AUDIO = {
+  // Mezcla general: un poco de reverberación a todo da la sensación de valle abierto; el compresor redondea los
+  // picos (disparos, choques) para que nada salte de golpe.
+  reverb: { segundos: 3.2, caida: 2.6, envio: 0.22 },
+  calidez: 7200,                  // paso bajo general (Hz): quita el filo a todo lo sintetizado
+
+  // Música (src/audio/Musica.js): un tintineo de campanitas en bucle suave, con silencios entre notas.
+  musica: {
+    volumen: 0.55,                // relativo al volumen general (Opciones → Música)
+    tempo: 76,                    // pulsos por minuto; cada nota cae en corchea (el ánimo lo frena de noche)
+  },
+
+  // Ambiente: un viento apenas audible (más alto se oía como siseo); pájaros de día; insectos al anochecer.
+  ambiente: { viento: 0.012, pajaros: 0.04, insectos: 0.02 },
+
+  // Motor: más redondo que antes (seno + triángulo, filtrado bajo) y callado al bajarse del vehículo.
+  motor: { nivel: 0.035, acelerador: 0.04, filtro: [260, 700] },
+};

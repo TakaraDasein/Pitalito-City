@@ -71,6 +71,12 @@ cada píxel una sola vez, así las vías translúcidas no se oscurecen en los cr
 registrados por dueño (clave de tile o id de hito) para poder retirarlos. El vehículo usa tres círculos a lo largo del
 chasis.
 
+**Sólidos 3D (`world/SolidWorld.js`)**: cajas orientadas con franja de altura para los interiores de los hitos (pisos,
+escalones, bancas, la escalera de la torre). `BlockWorld` suma sus consultas (`floorAt`, `ceilingAt`, `pushOut`) a
+las de los bloques, así el personaje y los zombis se apoyan en ellos sin saber de dónde salen. Los muros siguen en
+`CollisionWorld` (2D) con huecos en las puertas; una puerta cerrada es un segmento con dueño propio que se quita al
+abrirla.
+
 **Física (`entities/vehicles/Vehicle.js`)**: modelo bicicleta arcade: aceleración y frenado longitudinal, velocidad
 lateral absorbida por el agarre (el freno de mano lo reduce → derrapes), tope de aceleración lateral y rebote contra
 paredes. El tráfico IA reutiliza la clase solo para la parte visual y avanza de forma cinemática sobre las aristas

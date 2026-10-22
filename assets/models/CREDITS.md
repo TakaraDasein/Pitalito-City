@@ -10,7 +10,8 @@ Regenerar con `pnpm models:fetch`.
 | Archivo | Uso en el juego | Autor | Licencia | Fuente |
 |---|---|---|---|---|
 | animations.glb | Los 45 clips de animación y el esqueleto de 65 huesos que comparten todos los personajes | Quaternius | CC0 1.0 | [Fuente](https://quaternius.com/packs/universalanimationlibrary.html) · [espejo](https://opengameart.org/content/universal-animation-library) |
-| zombie.glb | Zombis del modo supervivencia: caminar, reposo, zarpazo, retroceso al recibir y levantarse del suelo (5 de los 43 clips) | Quaternius | CC0 1.0 | [Fuente](https://quaternius.itch.io/universal-animation-library-2) · [espejo](https://opengameart.org/content/universal-animation-library-2) |
+| ual2.glb | Zombis del modo supervivencia: caminar, reposo, zarpazo, retroceso al recibir y levantarse del suelo (5 de los 43 clips) | Quaternius | CC0 1.0 | [Fuente](https://quaternius.itch.io/universal-animation-library-2) · [espejo](https://opengameart.org/content/universal-animation-library-2) |
+| ../weapons/styloo_*.glb (4) | Pistola, escopeta, fusil y rifle del modo supervivencia | Styloo | CC0 1.0 | [Fuente](https://styloo.itch.io/guns-asset-pack) |
 | ../weapons/ (6 archivos) | Armas de fuego del modo supervivencia: pistola, revólver, escopetas, fusil y rifle de cacería | Quaternius | CC0 1.0 | [Fuente](https://quaternius.itch.io/50-lowpoly-guns) |
 | base/ (10 archivos) | Cuerpos base de la creación de personaje (complexiones y peinados), mismo esqueleto que las animaciones | Quaternius | CC0 1.0 | [Fuente](https://quaternius.itch.io/universal-base-characters) |
 | animals/ (5 archivos) | Animales de finca, repartidos según el inventario pecuario real del municipio | Quaternius | CC0 1.0 | [Fuente](https://quaternius.itch.io/lowpoly-animated-animals) |

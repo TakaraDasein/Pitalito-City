@@ -48,9 +48,10 @@ const MODELS = {
     // Mismo esqueleto y nombres de hueso que la primera biblioteca. Del GLB de 43 clips sólo se guardan los que
     // usa el modo supervivencia (scripts/lib/gltf-clips.py): 8 MB → 0,7 MB.
     pick: 'Universal Animation Library 2 [Standard]/Unreal-Godot/UAL2_Standard.glb',
-    clips: ['Zombie_Idle_Loop', 'Zombie_Walk_Fwd_Loop', 'Zombie_Scratch', 'Hit_Knockback', 'LayToIdle'],
-    out: 'zombie.glb',
-    usedFor: 'Zombis del modo supervivencia: caminar, reposo, zarpazo, retroceso al recibir y levantarse del suelo',
+    clips: ['Zombie_Idle_Loop', 'Zombie_Walk_Fwd_Loop', 'Zombie_Scratch', 'Hit_Knockback', 'LayToIdle',
+      'Sword_Regular_A', 'Sword_Regular_B', 'Sword_Regular_C', 'Sword_Block', 'Melee_Hook', 'TreeChopping_Loop'],
+    out: 'ual2.glb',
+    usedFor: 'Zombis (caminar, reposo, zarpazo, levantarse) y combate (combos de espada, bloqueo, gancho, hachazo)',
   },
   'base-characters': {
     title: 'Universal Base Characters (Standard)',
@@ -228,6 +229,31 @@ const ARMAS = {
   }
   console.log(`  → public/models/weapons/: ${ARMAS.fbx.length} armas`);
   registry.push({ key: 'guns', file: 'models/weapons/', bytes, count: ARMAS.fbx.length, ...ARMAS });
+}
+
+// Armas con más detalle (Styloo, CC0): textura pintada y normales. Se reducen las texturas a 512 px en JPG.
+{
+  const STYLOO = {
+    title: 'Guns Asset Pack', author: 'Styloo', license: 'CC0 1.0',
+    licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/', home: 'https://styloo.itch.io/guns-asset-pack',
+    glb: ['pew', 'shotgun', 'ak47', 'awp'], usedFor: 'Pistola, escopeta, fusil y rifle (src/config/firearms.config.js)',
+  };
+  const zip = path.join(RAW, 'styloo-guns.zip');
+  if (!existsSync(zip)) {
+    console.log(`· descargando ${STYLOO.title}…`);
+    sh('curl', ['-sSL', '--fail', '--max-time', '600', '-o', zip, (await itchFileUrl(STYLOO.home, /GLTF/i)).url]);
+  }
+  const dir = path.join(RAW, 'styloo');
+  sh('unzip', ['-q', '-o', zip, '*/Normal version Color and NormalMap/GLB/*', '-d', dir]);
+  const glbDir = path.join(dir, 'Styloo Guns Asset Pack GLTF FBX V1.1', 'Normal version Color and NormalMap', 'GLB');
+  let bytes = 0;
+  for (const n of STYLOO.glb) {
+    const dest = `public/models/weapons/styloo_${n}.glb`;
+    sh('blender', ['--background', '--python', 'scripts/lib/glb-compactar.py', '--', path.join(glbDir, `${n}.glb`), dest, '512']);
+    bytes += statSync(dest).size;
+  }
+  console.log(`  → public/models/weapons/styloo_*: ${STYLOO.glb.length} armas`);
+  registry.push({ key: 'styloo-guns', file: 'models/weapons/styloo_*.glb', bytes, count: STYLOO.glb.length, ...STYLOO });
 }
 
 // Derivados: se generan después, porque necesitan los descargados.

@@ -32,7 +32,7 @@ export class Superviviente {
     this.self = new Combatant(this.character, { stats: TIRADOR.stats, team, weapon: this.arma || 'manos', nombre: this.nombre || (this.rol === 'tirador' ? 'Saqueador' : 'Guardia') });
     this.character.useRig(game.assets, look).then((ok) => {
       if (!ok) return;
-      if (this.arma) { this.character.setWeapon(this.arma); this.character.reposoArma = 'Pistol_Idle_Loop'; this.character.armed = true; }
+      if (this.arma) { this.character.setWeapon(this.arma); this.character.reposoArma = FIREARMS[this.arma]?.larga ? 'Pistol_Aim_Neutral' : 'Pistol_Idle_Loop'; this.character.armed = true; }
       if (this.rol === 'comerciante') this.character.body.graph?.reposo('talk');
     });
     this.puesto = { x, z };
@@ -91,6 +91,8 @@ export class Superviviente {
       return;
     }
     const obj = this.#elegir();
+    // Arma larga sin blanco: baja el arma («listo bajo»); con blanco, la levanta para disparar.
+    if (FIREARMS[this.arma]?.larga) this.character.body.listoBajo?.(!obj);
     // Al ver a alguien tarda en reaccionar: da tiempo a ponerse a cubierto.
     if (obj && !this.objetivo) this.siguiente = Math.max(this.siguiente, this.t + TIRADOR.reaccion);
     this.objetivo = obj;

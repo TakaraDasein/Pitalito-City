@@ -11,7 +11,8 @@ huesos y la misma pose de enlace, así que no hay que reorientar nada entre mode
 | Paquete | Para qué | Licencia |
 |---|---|---|
 | [Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html) | Todas las animaciones | CC0 |
-| [Universal Animation Library 2](https://quaternius.itch.io/universal-animation-library-2) | Zombis (modo supervivencia): `Zombie_Walk_Fwd_Loop`, `Zombie_Idle_Loop`, `Zombie_Scratch`, `Hit_Knockback`, `LayToIdle` — se recortan a `zombie.glb` con `scripts/lib/gltf-clips.py` | CC0 |
+| [Universal Animation Library 2](https://quaternius.itch.io/universal-animation-library-2) | Zombis (modo supervivencia): `Zombie_Walk_Fwd_Loop`, `Zombie_Idle_Loop`, `Zombie_Scratch`, `Hit_Knockback`, `LayToIdle` — se recortan a `ual2.glb` con `scripts/lib/gltf-clips.py` | CC0 |
+| [Guns Asset Pack (Styloo)](https://styloo.itch.io/guns-asset-pack) | Pistola (`pew`), escopeta, fusil (`ak47`) y rifle (`awp`): textura pintada y normales, ≈ 2 000 triángulos; texturas reducidas a 512 px JPG con `scripts/lib/glb-compactar.py` | CC0 |
 | [50+ LowPoly Guns](https://quaternius.itch.io/50-lowpoly-guns) | Armas de fuego (supervivencia): `Pistol_1`, `Revolver_1`, `Shotgun_1`, `Shotgun_SawedOff`, `AssaultRifle_1`, `SniperRifle_1` → FBX a GLB con Blender, escaladas al largo real | CC0 |
 | [Universal Base Characters](https://quaternius.itch.io/universal-base-characters) | Cuerpos base (6 complexiones, 20 peinados) → creación de personaje | CC0 |
 | [Modular Character Outfits](https://quaternius.itch.io/modular-character-outfits-fantasy) | 62 piezas de ropa intercambiables → sombrero, ruana, uniforme | CC0 |

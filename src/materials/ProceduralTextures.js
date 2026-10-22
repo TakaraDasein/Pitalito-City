@@ -350,3 +350,61 @@ export function macizoBoard() {
   ctx.fillText('MACIZO', 256, 70); ctx.fillText('COLOMBIANO', 256, 128);
   return toTexture(c, { repeat: false });
 }
+
+// Baldosa del atrio de la Iglesia San Antonio (Street View, Calle 5): damero de baldosas salmón y gris claro
+// en grupos de 2 × 2. Una repetición = 2 m (baldosas de 0,25 m, grupos de 0,5 m).
+export function atrioTiles() {
+  const S = 512;
+  const [c, ctx] = canvas(S, S);
+  const rand = rng(21);
+  const t = S / 8;
+  for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) {
+    const salmon = ((i >> 1) + (j >> 1)) % 2 === 0;
+    const k = rand() * 14 - 7;
+    ctx.fillStyle = salmon ? `rgb(${196 + k},${128 + k},${110 + k})` : `rgb(${222 + k},${218 + k},${210 + k})`;
+    ctx.fillRect(i * t, j * t, t, t);
+    ctx.strokeStyle = 'rgba(90,70,60,0.35)'; ctx.lineWidth = 2;
+    ctx.strokeRect(i * t + 1, j * t + 1, t - 2, t - 2);
+  }
+  return toTexture(c);
+}
+
+// Vitral de ventana en arco: piezas de color entre plomos negros, figura central clara (foto interior).
+export function stainedGlass() {
+  const W = 128, H = 256;
+  const [c, ctx] = canvas(W, H);
+  const rand = rng(33);
+  const colors = ['#b8322a', '#2b4f9e', '#d9a520', '#2f7d4a', '#7a3e8f', '#e2c27a'];
+  ctx.fillStyle = '#111'; ctx.fillRect(0, 0, W, H);
+  const cell = 16;
+  for (let y = 0; y < H; y += cell) for (let x = 0; x < W; x += cell) {
+    ctx.fillStyle = colors[Math.floor(rand() * colors.length)];
+    ctx.fillRect(x + 1.5, y + 1.5, cell - 3, cell - 3);
+  }
+  // medallón central con la figura del santo (silueta clara)
+  ctx.fillStyle = '#111'; ctx.beginPath(); ctx.ellipse(W / 2, H * 0.45, 34, 60, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#e8d9b0'; ctx.beginPath(); ctx.ellipse(W / 2, H * 0.45, 30, 56, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#6b4a2a'; ctx.fillRect(W / 2 - 10, H * 0.38, 20, 50);
+  ctx.fillStyle = '#f0c8a0'; ctx.beginPath(); ctx.arc(W / 2, H * 0.33, 9, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#d9a520'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(W / 2, H * 0.33, 13, 0, Math.PI * 2); ctx.stroke();
+  return toTexture(c, { repeat: false });
+}
+
+// Rosetón del óculo de la fachada: pétalos de color alrededor de un centro dorado.
+export function roseWindow() {
+  const S = 256;
+  const [c, ctx] = canvas(S, S);
+  ctx.fillStyle = '#141414'; ctx.fillRect(0, 0, S, S);
+  const colors = ['#2b4f9e', '#b8322a', '#d9a520', '#2f7d4a'];
+  for (let ring = 3; ring >= 1; ring--) {
+    const n = ring * 8, r = (ring / 3) * S * 0.47;
+    for (let i = 0; i < n; i++) {
+      ctx.fillStyle = colors[(i + ring) % colors.length];
+      ctx.beginPath(); ctx.moveTo(S / 2, S / 2);
+      ctx.arc(S / 2, S / 2, r, (i / n) * Math.PI * 2 + 0.02, ((i + 1) / n) * Math.PI * 2 - 0.02);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  ctx.fillStyle = '#e2b84a'; ctx.beginPath(); ctx.arc(S / 2, S / 2, S * 0.1, 0, Math.PI * 2); ctx.fill();
+  return toTexture(c, { repeat: false });
+}

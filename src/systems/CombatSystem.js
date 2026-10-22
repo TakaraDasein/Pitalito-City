@@ -99,7 +99,7 @@ export class CombatSystem {
       // La zona depende de la diferencia de altura: sirve para el sistema y evita cajas por hueso.
       const dy = o.position.y - c.position.y;
       const zone = dy > 1.2 ? 'head' : dy < 0.4 ? 'limb' : 'body';
-      const res = o.takeHit({ damage: w.damage, poise: w.poise, zone });
+      const res = o.takeHit({ damage: w.damage * (c.multGolpe || 1), poise: w.poise * (c.multGolpe || 1), zone });
       if (res) {
         hitSomething = true;
         // El golpe empuja: más con armas pesadas, más si rompe el temple o lo tumba; casi nada si lo bloquea.

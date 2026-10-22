@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { Character } from '../entities/character/Character.js';
-import { APPEARANCE, ORIGENES, DEFAULT_LOOK, CHARACTERS } from '../config/characters.config.js';
-import { guaduaFrame, coffeeBean } from './guadua/culm.js';
+import { APPEARANCE, ORIGENES, DEFAULT_LOOK, PARTIDA } from '../config/characters.config.js';
+import { WEAPONS } from '../config/combat.config.js';
+import { ITEMS } from '../config/loot.config.js';
+import { iconoOpcion, iconoCategoria } from './creatorIcons.js';
 
 // Creación de personaje: escena 3D propia (tarima de guadua, como el garaje) más un panel de opciones en café y
 // guadua, navegable con teclado. El personaje se ve girando en vivo mientras se cambian las opciones.
@@ -11,19 +13,34 @@ import { guaduaFrame, coffeeBean } from './guadua/culm.js';
 // economía real del municipio (ver src/config/characters.config.js y src/config/municipio.config.js).
 //
 // Lo elegido se guarda en los ajustes (`look`), así que el personaje del mundo y el de esta pantalla son el mismo.
+// Además se pueden guardar varios personajes con nombre (Settings → `personajes`), cada uno con su modo de juego:
+// el oficio y el modo deciden la partida (arma en mano y, en supervivencia, la mochila; ver ORIGENES).
 
-// Categorías del panel, en orden. `lista` es la del catálogo; `color` pinta muestras en vez de nombres.
+// Categorías del panel, en orden. `lista` es la del catálogo; `color` pinta muestras en vez de figuras.
+// `apagado` marca las que se encienden y se apagan con un clic en su icono: es el id de "sin nada".
 const CATEGORIAS = [
   { key: 'origen', titulo: 'Oficio', lista: () => ORIGENES },
   // `oculto` deja fuera lo que no es para el jugador (el cuerpo de esqueleto de las facciones).
   { key: 'cuerpo', titulo: 'Complexión', lista: () => APPEARANCE.cuerpo.filter((o) => !o.oculto) },
   { key: 'piel', titulo: 'Piel', lista: () => APPEARANCE.piel.filter((o) => !o.oculto), color: true },
-  { key: 'pelo', titulo: 'Pelo', lista: () => APPEARANCE.pelo },
-  { key: 'pelocolor', titulo: 'Color de pelo', lista: () => APPEARANCE.pelocolor, color: true },
-  { key: 'barba', titulo: 'Barba', lista: () => APPEARANCE.barba },
-  { key: 'ropa', titulo: 'Ropa', lista: () => APPEARANCE.ropa.filter((o) => !o.oculto) },
-  { key: 'sombrero', titulo: 'Sombrero', lista: () => APPEARANCE.sombrero },
+  { key: 'pelo', titulo: 'Pelo', lista: () => APPEARANCE.pelo, apagado: 'ninguno' },
+  { key: 'pelocolor', titulo: 'Tinte', lista: () => APPEARANCE.pelocolor, color: true },
+  { key: 'barba', titulo: 'Barba', lista: () => APPEARANCE.barba, apagado: 'ninguna' },
+  { key: 'ropa', titulo: 'Ropa', lista: () => APPEARANCE.ropa.filter((o) => !o.oculto), apagado: 'ninguna' },
+  { key: 'sombrero', titulo: 'Sombrero', lista: () => APPEARANCE.sombrero, apagado: 'ninguno' },
+  { key: 'capucha', titulo: 'Capucha', lista: () => APPEARANCE.capucha, apagado: 'no' },
+  { key: 'hombreras', titulo: 'Hombrera', lista: () => APPEARANCE.hombreras, apagado: 'no' },
 ];
+
+// Lo que no puede ir junto: encender uno apaga el otro.
+const CHOCAN = { sombrero: 'capucha', capucha: 'sombrero' };
+
+const MODOS = [
+  { id: 'historia', nombre: 'Historia' },
+  { id: 'supervivencia', nombre: 'Supervivencia' },
+];
+
+const esc = (t) => String(t).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 export class CharacterCreator {
   constructor({ renderer, assets, settings, events, root }) {
@@ -31,6 +48,10 @@ export class CharacterCreator {
     this.open = false;
     this.look = { ...DEFAULT_LOOK, ...(settings.get('look') || {}) };
     this.cat = 0;
+    this.ultimo = {};   // la última opción encendida de cada categoría, para volver a ella al reactivar
+    this.activo = null; // id del personaje guardado que se está editando (null = uno nuevo)
+    this.nombre = PARTIDA.nombrePorDefecto;
+    this.modo = settings.get('modo') || 'historia';
     this.pending = 0; // recargas de modelo en curso: evita pisar una apariencia con otra más vieja
 
     this.scene = new THREE.Scene();
@@ -99,55 +120,138 @@ export class CharacterCreator {
 
   #buildUI() {
     this.ui = this.root.querySelector('#screen-creator');
+    // Composición abierta alrededor del personaje, sin caja ni scroll: identidad arriba a la izquierda, iconos de
+    // categoría en una columna, opciones a la derecha y las acciones abajo.
     this.ui.innerHTML = `
-      <div class="gd-panel esterilla creator-panel">
-        <h2>Tu personaje</h2>
-        <p class="creator-origen" id="creator-origen"></p>
-        <div class="creator-cats" id="creator-cats" role="tablist"></div>
-        <div class="creator-opts" id="creator-opts" role="listbox"></div>
-        <p class="creator-hint">← → cambian de opción · ↑ ↓ cambian de categoría</p>
-        <div class="gd-stack">
-          <button class="culm-btn" data-act="creator-confirm">Empezar <small>ENTER</small></button>
-          <button class="culm-btn" data-act="creator-cancel">Volver <small>ESC</small></button>
-        </div>
+      <div class="creator-layout">
+        <header class="creator-id">
+          <p class="creator-kicker">Tu personaje</p>
+          <input class="creator-nombre" id="creator-nombre" maxlength="${PARTIDA.maxNombre}" autocomplete="off"
+            spellcheck="false" aria-label="Nombre del personaje" />
+          <div class="creator-modo" id="creator-modo" role="radiogroup" aria-label="Modo de juego"></div>
+          <div class="creator-roster" id="creator-roster" aria-label="Personajes guardados"></div>
+        </header>
+        <nav class="creator-cats" id="creator-cats" role="tablist" aria-label="Partes"></nav>
+        <section class="creator-side">
+          <p class="creator-cat-title" id="creator-cat-title"></p>
+          <div class="creator-opts" id="creator-opts" role="listbox"></div>
+          <div class="creator-origen" id="creator-origen"></div>
+        </section>
+        <footer class="creator-actions">
+          <p class="creator-hint">Clic: elegir · otra vez: quitar · ← → ↑ ↓</p>
+          <button class="creator-btn" data-act="creator-cancel">Volver <small>ESC</small></button>
+          <button class="creator-btn primary" data-act="creator-confirm">Guardar y jugar <small>ENTER</small></button>
+        </footer>
       </div>`;
-    const panel = this.ui.querySelector('.gd-panel');
-    guaduaFrame(panel);
-    for (const [cls, rot, size] of [['bean-1', -25, 26], ['bean-2', 35, 18]]) {
-      panel.appendChild(coffeeBean(size, rot)).classList.add('panel-deco', cls);
-    }
+    const nombre = this.ui.querySelector('#creator-nombre');
+    nombre.oninput = () => { this.nombre = nombre.value; };
+    this.ui.querySelector('#creator-cats').onclick = (e) => {
+      const i = e.target.closest('[data-cat]')?.dataset.cat;
+      if (i != null) this.pulsarCategoria(+i);
+    };
+    this.ui.querySelector('#creator-opts').onclick = (e) => {
+      const id = e.target.closest('[data-opt]')?.dataset.opt;
+      if (id) this.choose(id);
+    };
+    this.ui.querySelector('#creator-modo').onclick = (e) => {
+      const m = e.target.closest('[data-modo]')?.dataset.modo;
+      if (m) { this.modo = m; this.#renderTodo(); }
+    };
+    this.ui.querySelector('#creator-roster').onclick = (e) => {
+      const borrar = e.target.closest('[data-borrar]')?.dataset.borrar;
+      if (borrar) return this.borrar(borrar);
+      const id = e.target.closest('[data-pj]')?.dataset.pj;
+      if (id === 'nuevo') this.nuevo();
+      else if (id) this.cargar(id);
+    };
+    this.#renderTodo();
+  }
+
+  get personajes() { return this.settings.get('personajes') || []; }
+
+  #colores() {
+    const pick = (lista, id) => (lista.find((o) => o.id === id) || lista[0]).color;
+    return { piel: pick(APPEARANCE.piel, this.look.piel), pelo: pick(APPEARANCE.pelocolor, this.look.pelocolor) };
+  }
+
+  #renderTodo() {
+    this.#renderRoster();
+    this.ui.querySelector('#creator-nombre').value = this.nombre;
+    this.ui.querySelector('#creator-modo').innerHTML = MODOS.map((m) => `
+      <button class="${m.id === this.modo ? 'selected' : ''}" role="radio" aria-checked="${m.id === this.modo}"
+        data-modo="${m.id}">${m.nombre}</button>`).join('');
     this.#renderCats();
   }
 
+  #renderRoster() {
+    const lista = this.personajes;
+    this.ui.querySelector('#creator-roster').innerHTML = lista.map((p) => `
+      <span class="creator-pj${p.id === this.activo ? ' selected' : ''}">
+        <button data-pj="${p.id}" title="${esc(p.nombre)} · ${p.modo === 'supervivencia' ? 'Supervivencia' : 'Historia'}">
+          ${iconoOpcion('origen', p.look.origen, {})}<span>${esc(p.nombre)}</span>
+        </button>
+        <button class="creator-pj-x" data-borrar="${p.id}" aria-label="Borrar a ${esc(p.nombre)}">×</button>
+      </span>`).join('') + (lista.length < PARTIDA.maxPersonajes
+      ? `<span class="creator-pj nuevo${this.activo ? '' : ' selected'}"><button data-pj="nuevo"><span>+ Nuevo</span></button></span>` : '');
+  }
+
   #renderCats() {
-    const cats = this.ui.querySelector('#creator-cats');
-    cats.innerHTML = CATEGORIAS.map((c, i) =>
-      `<button class="culm-tab${i === this.cat ? ' selected' : ''}" role="tab" data-cat="${i}"
-        aria-selected="${i === this.cat}">${c.titulo}</button>`).join('');
-    cats.onclick = (e) => {
-      const i = e.target.closest('[data-cat]')?.dataset.cat;
-      if (i != null) { this.cat = +i; this.#renderCats(); }
-    };
+    const colores = this.#colores();
+    this.ui.querySelector('#creator-cats').innerHTML = CATEGORIAS.map((c, i) => {
+      const off = c.apagado && this.look[c.key] === c.apagado;
+      return `<button class="creator-cat${i === this.cat ? ' selected' : ''}${off ? ' off' : ''}" role="tab"
+        data-cat="${i}" aria-selected="${i === this.cat}" title="${c.titulo}${c.apagado ? (off ? ' · apagado (clic para poner)' : ' · clic otra vez para quitar') : ''}"
+        aria-label="${c.titulo}">${iconoCategoria(c.key, this.look, colores)}<span>${c.titulo}</span></button>`;
+    }).join('');
     this.#renderOpts();
   }
 
   #renderOpts() {
     const c = CATEGORIAS[this.cat];
-    const lista = c.lista();
     const actual = this.look[c.key];
-    this.ui.querySelector('#creator-opts').innerHTML = lista.map((o) => `
-      <button class="culm-btn creator-opt${o.id === actual ? ' selected' : ''}" role="option"
-        aria-selected="${o.id === actual}" data-opt="${o.id}">
-        ${c.color ? `<span class="creator-swatch" style="background:${o.color}"></span>` : ''}
+    const colores = this.#colores();
+    const elegida = c.lista().find((o) => o.id === actual);
+    this.ui.querySelector('#creator-cat-title').textContent =
+      `${c.titulo}${elegida ? ` · ${elegida.nombre}` : ''}`;
+    this.ui.querySelector('#creator-opts').innerHTML = c.lista().map((o) => `
+      <button class="creator-opt${o.id === actual ? ' selected' : ''}${o.id === c.apagado ? ' off' : ''}" role="option"
+        aria-selected="${o.id === actual}" data-opt="${o.id}" title="${esc(o.nombre)}${o.detalle ? ` — ${esc(o.detalle)}` : ''}">
+        ${iconoOpcion(c.key, o.id, colores, c.color ? o.color : null)}
         <span>${o.nombre}</span>
-        ${o.detalle ? `<small>${o.detalle}</small>` : ''}
       </button>`).join('');
-    this.ui.querySelector('#creator-opts').onclick = (e) => {
-      const id = e.target.closest('[data-opt]')?.dataset.opt;
-      if (id) this.choose(id);
-    };
-    const origen = ORIGENES.find((o) => o.id === this.look.origen);
-    this.ui.querySelector('#creator-origen').textContent = origen ? `${origen.nombre} · ${origen.detalle}` : '';
+    this.#renderOrigen();
+  }
+
+  // Ficha del oficio con la partida que le toca en el modo elegido.
+  #renderOrigen() {
+    const o = ORIGENES.find((x) => x.id === this.look.origen);
+    if (!o) { this.ui.querySelector('#creator-origen').innerHTML = ''; return; }
+    const arma = WEAPONS[o.arma]?.nombre || 'Manos';
+    const mochila = this.modo === 'supervivencia' && PARTIDA.entregar
+      ? Object.entries(o.mochila || {}).filter(([id]) => ITEMS[id]).map(([id, n]) => `${n} × ${ITEMS[id].nombre}`).join(' · ')
+      : '';
+    this.ui.querySelector('#creator-origen').innerHTML = `
+      <strong>${o.nombre}</strong> ${esc(o.detalle)}
+      <span class="creator-partida">Arranca con: ${arma}${mochila ? ` · ${mochila}` : ''}</span>`;
+  }
+
+  // Clic en un icono de categoría: la primera vez la abre; si ya está abierta y se puede apagar, la quita o la
+  // vuelve a poner. Las que se apagan también responden al primer clic si estaban apagadas: es lo que se espera
+  // de un icono tachado.
+  pulsarCategoria(i) {
+    const c = CATEGORIAS[i];
+    const yaAbierta = i === this.cat;
+    this.cat = i;
+    if (c.apagado && (yaAbierta || this.look[c.key] === c.apagado)) return this.alternar(c);
+    this.#renderCats();
+  }
+
+  alternar(c) {
+    const actual = this.look[c.key];
+    if (actual !== c.apagado) { this.ultimo[c.key] = actual; return this.choose(c.apagado); }
+    const lista = c.lista();
+    const vuelta = this.ultimo[c.key] || lista.find((o) => o.id !== c.apagado)?.id;
+    this.choose(vuelta);
   }
 
   // Elige una opción de la categoría actual y vuelve a montar el personaje.
@@ -159,7 +263,12 @@ export class CharacterCreator {
       const origen = ORIGENES.find((o) => o.id === id);
       if (origen) this.look = { ...this.look, ...origen.apariencia };
     }
-    this.#renderOpts();
+    const otro = CHOCAN[c.key];
+    if (otro && id !== c.apagado) {
+      const co = CATEGORIAS.find((x) => x.key === otro);
+      if (this.look[otro] !== co.apagado) { this.ultimo[otro] = this.look[otro]; this.look[otro] = co.apagado; }
+    }
+    this.#renderCats();
     this.refresh();
   }
 
@@ -172,6 +281,37 @@ export class CharacterCreator {
     this.choose(lista[(i + dx + lista.length) % lista.length].id);
   }
 
+  // ───────────── Personajes guardados ─────────────
+
+  cargar(id) {
+    const p = this.personajes.find((x) => x.id === id);
+    if (!p) return;
+    this.activo = p.id;
+    this.nombre = p.nombre;
+    this.modo = p.modo || 'historia';
+    this.look = { ...DEFAULT_LOOK, ...p.look };
+    this.ultimo = {};
+    this.#renderTodo();
+    this.refresh();
+  }
+
+  nuevo() {
+    this.activo = null;
+    this.nombre = PARTIDA.nombrePorDefecto;
+    this.look = { ...DEFAULT_LOOK };
+    this.ultimo = {};
+    this.#renderTodo();
+    this.refresh();
+  }
+
+  borrar(id) {
+    const p = this.personajes.find((x) => x.id === id);
+    if (!p || !confirm(`¿Borrar a ${p.nombre}?`)) return;
+    this.settings.set('personajes', this.personajes.filter((x) => x.id !== id));
+    if (this.settings.get('personajeActivo') === id) this.settings.set('personajeActivo', null);
+    if (this.activo === id) this.nuevo(); else this.#renderRoster();
+  }
+
   async refresh() {
     const token = ++this.pending;
     const ok = await this.character.setLook(this.assets, this.look);
@@ -182,15 +322,25 @@ export class CharacterCreator {
   #bindInput() {
     let drag = null;
     const dom = this.renderer.domElement;
-    dom.addEventListener('pointerdown', (e) => { if (this.open) { drag = { x: e.clientX, y: e.clientY }; this.orbit.auto = false; } });
-    addEventListener('pointerup', () => { drag = null; });
+    // La interfaz cubre el lienzo: el arrastre se escucha en la pantalla del creador, salvo sobre los controles.
+    // Al agarrar el modelo se apaga el giro automático y la cámara queda donde la deje la persona.
+    const inicio = (e) => {
+      if (!this.open || e.button !== 0 || e.target.closest('button, input, .creator-side, .creator-id, .creator-cats')) return;
+      drag = { x: e.clientX, y: e.clientY };
+      this.orbit.auto = false;
+      this.ui.classList.add('arrastrando');
+      e.preventDefault();
+    };
+    this.ui.addEventListener('pointerdown', inicio);
+    dom.addEventListener('pointerdown', inicio);
+    addEventListener('pointerup', () => { drag = null; this.ui.classList.remove('arrastrando'); });
     addEventListener('pointermove', (e) => {
       if (!drag || !this.open) return;
       this.orbit.yaw -= (e.clientX - drag.x) * 0.008;
       this.orbit.pitch = THREE.MathUtils.clamp(this.orbit.pitch + (e.clientY - drag.y) * 0.004, -0.15, 0.6);
       drag = { x: e.clientX, y: e.clientY };
     });
-    dom.addEventListener('wheel', (e) => {
+    this.ui.addEventListener('wheel', (e) => {
       if (this.open) this.orbit.dist = THREE.MathUtils.clamp(this.orbit.dist * (e.deltaY > 0 ? 1.08 : 0.92), 1.6, 7);
     }, { passive: true });
     addEventListener('keydown', (e) => {
@@ -202,19 +352,42 @@ export class CharacterCreator {
 
   show() {
     this.open = true;
-    this.look = { ...DEFAULT_LOOK, ...(this.settings.get('look') || {}) };
+    const activo = this.personajes.find((p) => p.id === this.settings.get('personajeActivo'));
+    if (activo) this.cargar(activo.id);
+    else {
+      this.activo = null;
+      this.nombre = PARTIDA.nombrePorDefecto;
+      this.modo = this.settings.get('modo') || 'historia';
+      this.look = { ...DEFAULT_LOOK, ...(this.settings.get('look') || {}) };
+      this.#renderTodo();
+      this.refresh();
+    }
     this.orbit.auto = true;
     this.orbit.yaw = Math.PI + 0.35;
-    this.#renderCats();
-    this.refresh();
   }
 
   hide() { this.open = false; }
 
-  // Guarda lo elegido. El personaje del mundo lo recoge al entrar a jugar.
+  // Guarda lo elegido como personaje con nombre y lo deja activo. El personaje del mundo lo recoge al entrar a
+  // jugar, y Game entrega la partida (ver Game.#aplicarPartida).
   confirm() {
+    const nombre = (this.nombre || '').trim().slice(0, PARTIDA.maxNombre) || PARTIDA.nombrePorDefecto;
+    const lista = [...this.personajes];
+    let p = lista.find((x) => x.id === this.activo);
+    if (p) {
+      // Cambiar de oficio o de modo es empezar otra partida: vuelve a tocar mochila.
+      if (p.look.origen !== this.look.origen || p.modo !== this.modo) p.mochilaEntregada = false;
+      Object.assign(p, { nombre, look: this.look, modo: this.modo });
+    } else {
+      p = { id: `pj${Date.now().toString(36)}`, nombre, look: this.look, modo: this.modo, mochilaEntregada: false };
+      if (lista.length >= PARTIDA.maxPersonajes) lista.shift();
+      lista.push(p);
+    }
+    this.activo = p.id;
+    this.settings.set('personajes', lista);
+    this.settings.set('personajeActivo', p.id);
     this.settings.set('look', this.look);
-    return this.look;
+    return p;
   }
 
   resize() {

@@ -206,9 +206,10 @@ export class Rig {
   }
 
   // Reproduce un clip mezclando desde el anterior. once: se reproduce una vez y se queda en el último fotograma.
-  play(name, { fade = CHARACTERS.fade.default, once = false, timeScale = 1 } = {}) {
+  // `restart`: vuelve a empezar aunque ya sea el clip en curso (dos golpes seguidos con el mismo clip).
+  play(name, { fade = CHARACTERS.fade.default, once = false, timeScale = 1, restart = false } = {}) {
     const next = this.#action(name);
-    if (!next || this.current === next) {
+    if (!next || (this.current === next && !restart)) {
       if (next) next.timeScale = timeScale;
       return next;
     }

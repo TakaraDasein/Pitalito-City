@@ -34,6 +34,12 @@ export class Combatant {
     this.lockTarget = null;
     this.rollDir = null;
     this.regenFactor = 1;     // la fiebre de la infección (supervivencia) lo baja
+    // Combo: qué golpe de la cadena va (WEAPONS[].combo) y cuánto hace que terminó el anterior. Un clic durante
+    // la recuperación queda guardado y encadena al acabar (como en Dark Souls).
+    this.comboPaso = -1;
+    this.desdeGolpe = Infinity;
+    this.pendiente = false;
+    this.multGolpe = 1;
   }
 
   get alive() { return this.state !== 'dead'; }
@@ -44,16 +50,28 @@ export class Combatant {
 
   // Intenta atacar. Devuelve false si no puede (sin resistencia, ocupado, muerto).
   attack() {
-    if (!this.alive || this.busy) return false;
+    if (!this.alive) return false;
+    // Durante el golpe (ya soltado o recuperándose) el clic se guarda y encadena el siguiente al terminar.
+    if (this.state === 'attack' && this.phase !== 'windup') { this.pendiente = true; return false; }
+    if (this.busy) return false;
     const w = this.weapon;
     if (this.stamina < w.stamina) return false;
     this.#spend(w.stamina);
+    // Siguiente golpe del combo si el anterior acaba de terminar; si no, vuelve a empezar.
+    const combo = w.combo || null;
+    this.comboPaso = combo && this.desdeGolpe < COMBAT.combo.ventana ? (this.comboPaso + 1) % combo.length : 0;
+    const remate = combo && this.comboPaso === combo.length - 1 && combo.length > 1;
+    const lento = remate ? COMBAT.combo.remateTiempo : 1;
+    this.multGolpe = remate ? COMBAT.combo.remateDano : 1;
+    this.tiempos = { windup: w.windup * lento, active: w.active, recover: w.recover * lento };
     this.state = 'attack';
     this.phase = 'windup';
-    this.timer = w.windup;
+    this.timer = this.tiempos.windup;
     this.hitOnce = false;
+    this.pendiente = false;
     // La animación dura exactamente lo que el golpe: preparación + activo + recuperación.
-    this.character.trigger('attack', { clip: w.clip, lock: w.windup + w.active + w.recover });
+    const clip = combo ? combo[this.comboPaso] : w.clip;
+    this.character.trigger('attack', { clip, lock: this.tiempos.windup + this.tiempos.active + this.tiempos.recover });
     this.events?.emit('combat:swing', { arma: w.id });
     return true;
   }
@@ -126,6 +144,7 @@ export class Combatant {
 
   update(dt) {
     this.invulnerable = Math.max(0, this.invulnerable - dt);
+    if (this.state !== 'attack') this.desdeGolpe += dt;
     this.#stamina(dt);
     if (this.state === 'dead') return;
 
@@ -141,10 +160,13 @@ export class Combatant {
     if (this.timer > 0) return;
 
     if (this.state === 'attack') {
-      const w = this.weapon;
+      const w = this.tiempos || this.weapon;
       if (this.phase === 'windup') { this.phase = 'active'; this.timer = w.active; }
       else if (this.phase === 'active') { this.phase = 'recover'; this.timer = w.recover; }
-      else { this.state = 'idle'; this.phase = 'none'; }
+      else {
+        this.state = 'idle'; this.phase = 'none'; this.desdeGolpe = 0;
+        if (this.pendiente) { this.pendiente = false; this.character.body.graph?.cancelar(); this.attack(); }
+      }
       return;
     }
     if (this.state === 'roll' || this.state === 'hit') { this.state = 'idle'; this.rollDir = null; }

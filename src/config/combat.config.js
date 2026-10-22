@@ -38,6 +38,9 @@ export const COMBAT = {
     drainPerSecond: 4,       // mantener la guardia cansa
   },
 
+  // Combo cuerpo a cuerpo: un golpe que empieza antes de `ventana` segundos tras el anterior es el siguiente de
+  // la cadena. El último (remate) tarda más en cargar y recuperar, y pega y aturde más.
+  combo: { ventana: 0.55, remateTiempo: 1.3, remateDano: 1.45 },
   lockOn: {
     range: 22,               // metros
     angle: Math.PI * 0.55,   // medio ángulo de búsqueda desde la mirada
@@ -72,32 +75,32 @@ export const WEAPONS = {
   },
   manos: {
     id: 'manos', nombre: 'Manos', detalle: 'Sin nada. Rápido y sin alcance.',
-    model: null, clip: 'punchJab', alt: 'punchCross',
+    model: null, clip: 'punchJab', alt: 'punchCross', combo: ['Punch_Jab', 'Punch_Cross', 'Melee_Hook'],
     damage: 7, stamina: 8, reach: 1.1, arc: 0.5, windup: 0.12, active: 0.1, recover: 0.2, poise: 8,
   },
   machete: {
     id: 'machete', nombre: 'Machete', detalle: 'La herramienta del cafetal. Corte largo y pesado.',
-    model: 'machete', clip: 'attack', idle: 'attackIdle',
+    model: 'machete', clip: 'attack', idle: 'attackIdle', combo: ['Sword_Regular_A', 'Sword_Regular_B', 'Sword_Attack'],
     damage: 26, stamina: 22, reach: 2.2, arc: 0.7, windup: 0.26, active: 0.16, recover: 0.34, poise: 30,
   },
   peinilla: {
     id: 'peinilla', nombre: 'Peinilla', detalle: 'Machete corto y recto. Más rápida, menos alcance.',
-    model: 'peinilla', clip: 'attack', idle: 'attackIdle',
+    model: 'peinilla', clip: 'attack', idle: 'attackIdle', combo: ['Sword_Regular_A', 'Sword_Regular_B', 'Sword_Regular_A', 'Sword_Attack'],
     damage: 18, stamina: 15, reach: 1.7, arc: 0.6, windup: 0.18, active: 0.13, recover: 0.24, poise: 20,
   },
   garrote: {
     id: 'garrote', nombre: 'Garrote de guadua', detalle: 'Un tramo de culmo. Golpea de plano y aturde.',
-    model: 'garrote', clip: 'attack', idle: 'attackIdle',
+    model: 'garrote', clip: 'attack', idle: 'attackIdle', combo: ['Sword_Regular_B', 'TreeChopping_Loop'],
     damage: 20, stamina: 18, reach: 2.4, arc: 0.55, windup: 0.3, active: 0.14, recover: 0.4, poise: 45,
   },
   azadon: {
     id: 'azadon', nombre: 'Azadón', detalle: 'Pesado y lento. Lo que alcanza, lo tumba.',
-    model: 'azadon', clip: 'attack', idle: 'attackIdle',
+    model: 'azadon', clip: 'attack', idle: 'attackIdle', combo: ['TreeChopping_Loop', 'TreeChopping_Loop'],
     damage: 34, stamina: 30, reach: 2.1, arc: 0.45, windup: 0.42, active: 0.18, recover: 0.55, poise: 60,
   },
   rejo: {
     id: 'rejo', nombre: 'Rejo', detalle: 'La correa del arriero. Alcanza lejos pero hace poco daño.',
-    model: 'rejo', clip: 'attack', idle: 'attackIdle',
+    model: 'rejo', clip: 'attack', idle: 'attackIdle', combo: ['Sword_Regular_A', 'Sword_Regular_B'],
     damage: 11, stamina: 12, reach: 3.1, arc: 0.35, windup: 0.22, active: 0.12, recover: 0.3, poise: 12,
   },
 };

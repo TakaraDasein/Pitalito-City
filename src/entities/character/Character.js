@@ -148,6 +148,7 @@ export class Character {
       driving: this.driving,
       armed: this.armed,
       apuntando: this.apuntando,
+      guardia: this.guardia,
       reposoArma: this.reposoArma,
       distance: this.cameraDistance,
     });

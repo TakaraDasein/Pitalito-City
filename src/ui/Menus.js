@@ -47,6 +47,7 @@ export class Menus {
           <div class="gd-field"><span>Calidad gráfica</span><div class="gd-seg" id="opt-quality"></div></div>
           <div class="gd-field"><span>Clima</span><div class="gd-seg" id="opt-weather"></div></div>
           <label class="gd-field"><span>Volumen</span><input type="range" class="gd-range" id="opt-volume" min="0" max="1" step="0.05" /></label>
+          <label class="gd-field"><span>Música</span><input type="range" class="gd-range" id="opt-musica" min="0" max="1" step="0.05" /></label>
           <label class="gd-field"><span>Sensibilidad de cámara</span><input type="range" class="gd-range" id="opt-sens" min="0.3" max="2" step="0.05" /></label>
           <label class="gd-check"><input type="checkbox" id="opt-invert" /> Invertir eje vertical de la cámara</label>
           <div class="gd-stack" style="margin-top:18px"><button class="culm-btn" data-act="back">Volver <small>ESC</small></button></div>
@@ -205,6 +206,7 @@ export class Menus {
       el.addEventListener('input', () => s.set(key, +el.value));
     };
     range('#opt-volume', 'volume');
+    range('#opt-musica', 'musica');
     range('#opt-sens', 'cameraSensitivity');
     const inv = this.root.querySelector('#opt-invert');
     inv.checked = s.get('invertY');

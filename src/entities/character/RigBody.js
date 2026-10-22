@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Rig, loadCharacter } from '../skinning/Rig.js';
 import { AnimationGraph } from './AnimationGraph.js';
-import { CHARACTERS, APPEARANCE, DEFAULT_LOOK } from '../../config/characters.config.js';
+import { CHARACTERS, APPEARANCE, DEFAULT_LOOK, PIEZAS_RENOMBRADAS } from '../../config/characters.config.js';
 import { sombreroAguadeno } from './accessories.js';
 import { weaponModel } from '../weapons/models.js';
 
@@ -18,7 +18,15 @@ const pick = (lista, id) => lista.find((x) => x.id === id) || lista[0];
 export function filesForLook(look = DEFAULT_LOOK) {
   const cuerpo = pick(APPEARANCE.cuerpo, look.cuerpo);
   const ropa = pick(APPEARANCE.ropa, look.ropa);
-  const parts = ropa.partes.map((p) => `models/characters/outfits/${p.replace('{S}', cuerpo.ropa)}.gltf`);
+  const pieza = (p) => {
+    const n = p.replace('{S}', cuerpo.ropa);
+    return `models/characters/outfits/${PIEZAS_RENOMBRADAS[n] || n}.gltf`;
+  };
+  const parts = ropa.partes.map(pieza);
+  for (const key of ['capucha', 'hombreras']) {
+    const item = APPEARANCE[key].find((x) => x.id === look[key]);
+    if (item?.parte) parts.push(pieza(item.parte));
+  }
   for (const key of ['pelo', 'barba']) {
     const item = pick(APPEARANCE[key], look[key]);
     if (item.file) parts.push(item.file);
@@ -55,10 +63,22 @@ export class RigBody {
   // Pone o quita el arma en la mano derecha. `null` deja las manos libres.
   setWeapon(id) {
     if (this.weapon) { this.weapon.removeFromParent(); this.weapon = null; }
+    if (this.dosManos) { this.rig.setAlcances(null); this.dosManos = false; }
     const m = weaponModel(id);
     if (!m) return false;
     this.weapon = m;
-    return this.rig.attach('handR', m, { upright: false });
+    const ok = this.rig.attach('handR', m, { upright: false });
+    // Armas largas: la mano izquierda va al guardamanos con cinemática inversa (no hay clips de fusil CC0 para
+    // este esqueleto; con las poses de pistola y esto, el arma se ve sostenida a dos manos). El codo se dobla
+    // hacia abajo y afuera.
+    const gm = m.userData.guardamanos;
+    if (ok && gm) {
+      if (!this.poloCodo) { this.poloCodo = new THREE.Object3D(); this.poloCodo.position.set(-0.7, 0.7, 0.1); this.object.add(this.poloCodo); }
+      this.rig.setAlcances([{ huesos: ['upperarm_l', 'lowerarm_l', 'hand_l'], objetivo: gm, polo: this.poloCodo }]);
+      this.rig.retoquePeso = 1;
+      this.dosManos = true;
+    }
+    return ok;
   }
 
   apply(s) { this.graph.update(s); }
@@ -67,6 +87,17 @@ export class RigBody {
   setRetoque(retoque, peso) { this.rig.setRetoque(retoque, peso); }
 
   setAlcances(alcances) { this.rig.setAlcances(alcances); }
+
+  /**
+   * «Listo bajo» con un arma larga: sobre la pose de apuntar, el brazo derecho baja (giro medido: 0,5 rad en Z
+   * de upperarm_r bajan la mano 24 cm) y la izquierda lo sigue por la cinemática inversa del guardamanos.
+   * No hay clip de fusil en reposo; `Pistol_Aim_Down` apunta al suelo y encorva al personaje.
+   */
+  listoBajo(on) {
+    if (on === this.bajo) return;
+    this.bajo = on;
+    this.rig.setRetoque(on ? { upperarm_r: [0, 0, 0.7] } : null, 1);
+  }
 
   set retoquePeso(p) { this.rig.retoquePeso = p; }
 

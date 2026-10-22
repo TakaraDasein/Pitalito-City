@@ -16,14 +16,34 @@ export function precargarArmas(assets) {
     loader.load(assets.url(`models/weapons/${f.archivo}`), (g) => {
       const m = g.scene;
       const caja = new THREE.Box3().setFromObject(m);
-      const s = f.largo / (caja.max.x - caja.min.x);
-      m.scale.setScalar(s);
-      m.rotation.y = Math.PI / 2;           // +X (cañón) → −Z
-      m.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.material.metalness = Math.min(o.material.metalness ?? 0, 0.6); } });
+      const largo = caja.max.x - caja.min.x, alto = caja.max.y - caja.min.y;
+      const s = f.largo / largo;
+      const dir = f.canon ?? 1;                       // hacia dónde apunta el cañón en el archivo: +X o −X
+      // La empuñadura va al origen: el hueso de la mano la sostiene ahí. Quaternius ya la trae en el origen;
+      // en los demás se da como fracción del largo (desde la culata) y del alto (desde abajo).
+      const emp = f.empunadura
+        ? new THREE.Vector3(dir > 0 ? caja.min.x + f.empunadura[0] * largo : caja.max.x - f.empunadura[0] * largo, caja.min.y + f.empunadura[1] * alto, 0)
+        : new THREE.Vector3();
+      m.position.copy(emp).multiplyScalar(-1);
+      const pivote = new THREE.Group();
+      pivote.add(m);
+      pivote.scale.setScalar(s);
+      pivote.rotation.y = dir > 0 ? Math.PI / 2 : -Math.PI / 2;   // cañón → −Z
+      m.traverse((o) => {
+        if (!o.isMesh) return;
+        o.castShadow = true;
+        materialArma(o.material);
+      });
       const n = new THREE.Group();
-      n.add(m);
-      // La boca del cañón, para el fogonazo y el origen del tiro en tercera persona.
-      n.userData.boca = new THREE.Vector3(0, (caja.max.y * 0.6) * s, -caja.max.x * s);
+      n.add(pivote);
+      // Puntos útiles, en el espacio del arma (cañón hacia −Z, empuñadura en el origen):
+      //   boca — para el fogonazo; guardamanos — donde va la mano izquierda en las armas largas.
+      const enEje = (frac, altura) => {
+        const x = dir > 0 ? caja.min.x + frac * largo : caja.max.x - frac * largo;
+        return new THREE.Vector3(x, caja.min.y + altura * alto, 0).sub(emp).multiplyScalar(s).applyEuler(pivote.rotation);
+      };
+      n.userData.boca = enEje(1, 0.7);
+      n.userData.guardamanos = f.guardamanos ? enEje(f.guardamanos[0], f.guardamanos[1]) : null;
       modelos.set(id, n);
       resolve();
     }, undefined, () => resolve());
@@ -31,17 +51,39 @@ export function precargarArmas(assets) {
   return carga;
 }
 
+// Materiales: las texturas pintadas (Styloo) se ven mejor mates, como recomienda su autor; los colores lisos de
+// Quaternius ganan con un poco de metal en las piezas metálicas y madera mate.
+function materialArma(mat) {
+  if (mat.map) { mat.metalness = 0; mat.roughness = 0.85; return; }
+  const n = (mat.name || '').toLowerCase();
+  if (/metal/.test(n)) { mat.metalness = 0.75; mat.roughness = /dark/.test(n) ? 0.45 : 0.3; }
+  else if (/wood/.test(n)) { mat.metalness = 0; mat.roughness = 0.7; }
+  else { mat.metalness = 0.1; mat.roughness = 0.55; }
+}
+
 /** Copia del arma lista para colgar: `uso` es 'mano' o 'primeraPersona'. Null si no ha cargado. */
 export function firearmModel(id, uso = 'mano') {
   const base = modelos.get(id);
   if (!base) return null;
+  // g → agarre (cómo se toma) → patada (retroceso, en el eje del arma) → el modelo.
   const g = new THREE.Group();
-  const arma = base.clone();
-  g.add(arma);
+  const agarre = new THREE.Group();
   const a = AGARRE[uso === 'primeraPersona' && FIREARMS[id].larga ? 'primeraPersonaLarga' : uso];
-  arma.rotation.set(...a.rotation);
-  arma.position.set(...a.position);
-  g.userData.boca = base.userData.boca.clone().applyEuler(arma.rotation).add(arma.position);
+  agarre.rotation.set(...a.rotation);
+  agarre.position.set(...a.position);
+  const patada = new THREE.Group();
+  g.add(agarre);
+  agarre.add(patada);
+  patada.add(base.clone());
+  g.userData.patada = patada;
+  g.userData.boca = base.userData.boca.clone().applyEuler(agarre.rotation).add(agarre.position);
+  // Punto del guardamanos, dentro de la patada: la mano izquierda (cinemática inversa) acompaña el retroceso.
+  if (base.userData.guardamanos) {
+    const gm = new THREE.Object3D();
+    gm.position.copy(base.userData.guardamanos);
+    patada.add(gm);
+    g.userData.guardamanos = gm;
+  }
   g.userData.arma = id;
   return g;
 }

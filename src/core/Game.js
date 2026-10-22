@@ -26,6 +26,7 @@ import { WeatherSystem } from '../systems/WeatherSystem.js';
 import { WORLD } from '../config/world.config.js';
 import { StreetLightBuilder } from '../world/builders/StreetLightBuilder.js';
 import { LANDMARKS } from '../world/landmarks/index.js';
+import { SolidWorld } from '../world/SolidWorld.js';
 import { Vehicle } from '../entities/vehicles/Vehicle.js';
 import { InputSystem } from '../systems/InputSystem.js';
 import { CameraSystem, MODE_LABELS } from '../systems/CameraSystem.js';
@@ -49,6 +50,7 @@ import { InventorySystem } from '../systems/InventorySystem.js';
 import { InventoryPanel } from '../ui/InventoryPanel.js';
 import { ZombieSystem } from '../systems/ZombieSystem.js';
 import { SURVIVAL } from '../config/survival.config.js';
+import { ORIGENES, PARTIDA } from '../config/characters.config.js';
 import { FactionSystem } from '../systems/FactionSystem.js';
 import { WildlifeSystem } from '../systems/WildlifeSystem.js';
 import { ParticleSystem } from '../render/Particles.js';
@@ -150,9 +152,10 @@ export class Game {
     progress(0.4, 'Construyendo el Parque Principal y la Torre San Antonio…');
     this.landmarks = LANDMARKS.filter((l) => l.available(this.manifest));
     this.landmarkRoots = [];
+    this.solids = new SolidWorld();
     for (const l of this.landmarks) {
       for (const p of l.exclusion(this.manifest)) this.streamer.addExclusion(p);
-      const root = l.build({ manifest: this.manifest, materials: this.materials, collision: this.collision, network: this.network, terrain: this.terrain });
+      const root = l.build({ manifest: this.manifest, materials: this.materials, collision: this.collision, solids: this.solids, network: this.network, terrain: this.terrain });
       this.landmarkRoots.push(root);
       this.scene.add(root);
     }
@@ -186,7 +189,7 @@ export class Game {
     this.creator = new CharacterCreator({ renderer, assets: this.assets, settings: this.settings, events: this.events, root: this.root });
     this.combatSys = new CombatSystem(this);
     // A pie y construcción
-    this.blocks = new BlockWorld({ scene: this.scene, materials: this.materials, collision: this.collision, terrain: this.terrain, events: this.events });
+    this.blocks = new BlockWorld({ scene: this.scene, materials: this.materials, collision: this.collision, terrain: this.terrain, events: this.events, solids: this.solids });
     this.playerSys = new PlayerSystem(this);
     this.combatSys.add(this.playerSys.combat, { isPlayer: true });
     this.factions = new FactionSystem(this);
@@ -327,9 +330,13 @@ export class Game {
     });
     e.on('menu:creator', () => this.openCreator());
     e.on('creator:confirm', () => {
-      const look = this.creator.confirm();
-      this.playerSys?.character.setLook(this.assets, look);
+      const pj = this.creator.confirm();
+      this.playerSys?.character.setLook(this.assets, pj.look);
+      // El modo es del personaje: elegirlo aquí es elegirlo para la partida.
+      if (this.settings.get('modo') !== pj.modo) { this.settings.set('modo', pj.modo); this.#aplicarModo(); }
+      const desdeMenu = (this.creatorReturn || 'menu') === 'menu';
       this.events.emit('creator:close');
+      if (desdeMenu) { this.menus.closeAll(); this.play(); } else this.#aplicarPartida();
     });
     e.on('creator:close', () => {
       const back = this.creatorReturn || 'menu';
@@ -375,6 +382,7 @@ export class Game {
 
   #applyPlayerSettings() {
     this.audio.setVolume(this.settings.get('volume'));
+    this.audio.setMusica(this.settings.get('musica'));
     this.cameraSys.sensitivity = this.settings.get('cameraSensitivity');
     this.cameraSys.invertY = this.settings.get('invertY');
     this.weather.setMode(this.settings.get('weather'));
@@ -511,6 +519,21 @@ export class Game {
     this.setState('playing');
   }
 
+  // Entrega la partida del personaje activo según su oficio y el modo: el arma del oficio queda primera al sacar
+  // el arma (X) y, en supervivencia, la mochila inicial entra una sola vez (ver ORIGENES en characters.config.js).
+  #aplicarPartida() {
+    const pj = (this.settings.get('personajes') || []).find((p) => p.id === this.settings.get('personajeActivo'));
+    const origen = ORIGENES.find((o) => o.id === (pj?.look || this.settings.get('look') || {}).origen);
+    if (!origen) return;
+    const i = this.playerSys.arsenal.indexOf(origen.arma);
+    if (i >= 0) this.playerSys.weaponIndex = i;
+    if (!pj || pj.mochilaEntregada || !PARTIDA.entregar || this.settings.get('modo') !== 'supervivencia') return;
+    for (const [id, n] of Object.entries(origen.mochila || {})) this.inventory.agregar(id, n);
+    pj.mochilaEntregada = true;
+    this.settings.set('personajes', this.settings.get('personajes'));
+    this.hud.toast(`${pj.nombre} llega con lo que llevaba encima`);
+  }
+
   play() {
     this.audio.start();
     this.cameraSys.initialized = false;
@@ -518,6 +541,7 @@ export class Game {
     // Al arrancar ya se está dentro del vehículo: se sienta al personaje, sin animación de subida.
     this.playerSys.sentarEnVehiculo();
     this.hud.toast('Bienvenido a Pitalito — M: mapa · V: garaje · Esc: pausa', 4000);
+    this.#aplicarPartida();
   }
 
   start() {
@@ -595,7 +619,8 @@ export class Game {
     // cámara del vehículo sin actualizarse (pasó: al volver a subirse al carro, la cámara no seguía).
     else this.cameraSys.update(dt, p);
     if (this.state === 'playing') this.hud.updateLock(this.camera);
-    this.audio.setEngine(p.spec, walking ? 0 : p.speedKmh, walking ? 0 : p.controls.throttle);
+    this.audio.setEngine(p.spec, walking ? 0 : p.speedKmh, walking ? 0 : p.controls.throttle, walking);
+    this.audio.updateAmbiente(dt, { dia: 1 - (this.env.night ?? 0), supervivencia: this.zombies?.activo, lluvia: this.weather?.wet ?? 0 });
 
     this.routeTimer -= dt;
     if (this.routeTimer <= 0) { this.routeTimer = 1; this.#updateRoute(); }

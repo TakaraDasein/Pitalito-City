@@ -6,13 +6,14 @@ import { buildBlockModels } from './BlockModels.js';
 // Es una capa propia: nunca altera los datos reales de Pitalito. Se guarda en localStorage (por navegador).
 // Render: un InstancedMesh por parte de modelo (≈ 18 draw calls en total).
 // Colisión: los vehículos chocan con los bloques cercanos al suelo (CollisionWorld, dueño 'blocks');
-// el personaje usa las consultas 3D de esta clase (pushOut, floorAt, ceilingAt).
+// el personaje usa las consultas 3D de esta clase (pushOut, floorAt, ceilingAt), que suman también los sólidos de
+// los hitos (SolidWorld: pisos interiores, escaleras, bancas) si se pasan en `solids`.
 const KEY = 'pitalito:bloques:v1';
 const k3 = (x, y, z) => `${x},${y},${z}`;
 
 export class BlockWorld {
-  constructor({ scene, materials, collision, terrain, events }) {
-    Object.assign(this, { scene, collision, terrain, events });
+  constructor({ scene, materials, collision, terrain, events, solids = null }) {
+    Object.assign(this, { scene, collision, terrain, events, solids });
     this.cells = new Map(); // "x,y,z" → índice de tipo
     this.models = buildBlockModels(materials);
     this.meshes = BLOCKS.map((b) => this.models[b.id].map(({ geo, mat }) => {
@@ -82,22 +83,23 @@ export class BlockWorld {
 
   // Techo más alto de bloque bajo el círculo (x, z, r) que no supere maxY
   floorAt(x, z, maxY, r) {
-    if (!this.cells.size) return -Infinity;
-    let best = -Infinity;
+    let best = this.solids ? this.solids.floorAt(x, z, maxY, r) : -Infinity;
+    if (!this.cells.size) return best;
     this.#around(x, z, r, (cx, cz) => this.#column(cx, cz, (y, b) => { const top = y + b.top; if (top <= maxY && top > best) best = top; }));
     return best;
   }
 
   // Base más baja de bloque por encima de y
   ceilingAt(x, z, y0, r) {
-    if (!this.cells.size) return Infinity;
-    let best = Infinity;
+    let best = this.solids ? this.solids.ceilingAt(x, z, y0, r) : Infinity;
+    if (!this.cells.size) return best;
     this.#around(x, z, r, (cx, cz) => this.#column(cx, cz, (y) => { if (y >= y0 && y < best) best = y; }));
     return best;
   }
 
   // Empuja un círculo fuera de los bloques que ocupan la franja vertical [y0, y1]
   pushOut(x, z, r, y0, y1) {
+    if (this.solids) [x, z] = this.solids.pushOut(x, z, r, y0, y1);
     if (!this.cells.size) return [x, z];
     for (let it = 0; it < 2; it++) {
       this.#around(x, z, r + 1, (cx, cz) => this.#column(cx, cz, (y, b) => {

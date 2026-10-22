@@ -54,7 +54,7 @@ export class AnimationGraph {
     // El clip se estira o encoge para caber en la duración del golpe, así la mano llega cuando toca.
     const clipDur = this.rig.clips.get(clip)?.duration || 1;
     const timeScale = lock !== Infinity && lock > 0 ? Math.min(2.5, Math.max(0.5, clipDur / lock)) : 1;
-    this.rig.play(clip, { fade: FADE.quick, once: lock !== Infinity, timeScale });
+    this.rig.play(clip, { fade: FADE.quick, once: lock !== Infinity, timeScale, restart: true });
     this.state = '';   // al terminar, el estado continuo vuelve a pedir su clip
     return true;
   }
@@ -90,6 +90,8 @@ export class AnimationGraph {
     // Con el arma en la mano, quieto se queda en guardia, no en reposo.
     // Arma de fuego: apuntando manda sobre todo (se camina despacio con los brazos extendidos).
     else if (s.apuntando) this.#set('aim', C.pistolAim);
+    // Cubriéndose: sube el arma y se queda así (el clip se para en su última pose).
+    else if (s.guardia) this.#set('block', C.bloqueo, FADE.quick, true);
     else if (s.armed && s.speed < 0.25) this.#set(`guard:${s.reposoArma || ''}`, s.reposoArma || C.attackIdle);
     else if (this.clipReposo && s.speed < 0.25) this.#set('reposo', this.clipReposo);
     else this.#locomotion(s.speed);
@@ -118,9 +120,9 @@ export class AnimationGraph {
     }
   }
 
-  #set(state, clip, fade = FADE.default) {
+  #set(state, clip, fade = FADE.default, once = false) {
     if (this.state === state) return;
     this.state = state;
-    this.rig.play(clip, { fade });
+    this.rig.play(clip, { fade, once });
   }
 }
