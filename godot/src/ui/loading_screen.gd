@@ -55,11 +55,11 @@ func _draw_canvas() -> void:
 	var w := minf(320.0, _canvas.size.x * 0.6)
 	var a := c + Vector2(-w * 0.5, 0)
 	var b := c + Vector2(w * 0.5, 0)
-	var font := _canvas.get_theme_default_font()
-	# nombre
+	var font: Font = GuaduaTheme.display_font if GuaduaTheme.display_font else _canvas.get_theme_default_font()
+	# nombre, con un leve respiro de opacidad
 	var title := "PITALITO"
-	var ts := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 26)
-	_canvas.draw_string(font, c + Vector2(-ts.x * 0.5, -34), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 26, Color(GuaduaTheme.CREMA, 0.9))
+	var ts := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 44)
+	_canvas.draw_string(font, c + Vector2(-ts.x * 0.5, -30), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 44, Color(GuaduaTheme.CREMA, 0.82 + 0.1 * sin(_t * 1.5)))
 	# tallo: base tenue y tramo lleno
 	_canvas.draw_line(a, b, Color(GuaduaTheme.CAFE_MID, 0.55), 3.0, true)
 	var fill := a.lerp(b, clampf(_shown, 0.0, 1.0))

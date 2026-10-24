@@ -205,15 +205,17 @@ func _process(delta: float) -> void:
 			var center := Vector3(c[0], WorldData.height(c[0], c[1]) + 2.0, c[1])
 			camera_rig.global_position = center + Vector3(sin(_orbit), 0, cos(_orbit)) * 4.0
 			camera_rig.yaw = _orbit
-			camera_rig.pitch = -0.18
-			camera_rig.follow(null, 70.0, 22.0)
+			camera_rig.pitch = -0.3
+			# la Torre San Antonio mide 33 m: el sobrevuelo va por encima, a 95 m del parque
+			camera_rig.follow(null, 95.0, 40.0)
+			camera_rig._arm.collision_mask = 0 # sobrevuelo: sin chocar con la torre ni los techos
 		State.PLAYING:
 			_measure_quality(delta)
 			_prompt_t -= delta
 			if _prompt_t <= 0.0:
 				_prompt_t = 0.1 # a 10 Hz, como la web
 				var it := _interaction()
-				hud.set_prompt("F" if not it.is_empty() else "", it[1] if not it.is_empty() else "")
+				hud.set_prompt(UiFx.glyph("interact") if not it.is_empty() else "", it[1] if not it.is_empty() else "")
 
 
 ## Calidad automática: tras 3 s de juego se miden 5 s de fps; si no llega a 40 baja un nivel, si pasa de 110 sube.
@@ -316,6 +318,7 @@ func teleport(x: float, z: float) -> void:
 
 ## Cámara según el modo (C) y si se va a pie o manejando.
 func _follow_camera() -> void:
+	camera_rig._arm.collision_mask = 1 | 16
 	var m: Dictionary = CAMERA_MODES[_cam_mode]
 	var arm: Array = m.car if _driving else m.foot
 	camera_rig.follow(vehicle if _driving else player, arm[0], arm[1])

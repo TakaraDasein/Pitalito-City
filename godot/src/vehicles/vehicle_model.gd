@@ -51,6 +51,67 @@ static func create(spec: Dictionary, driver := false) -> Dictionary:
 	return {"visual": visual, "wheels": wheels, "size": size, "base_y": (box.position.y) * scale.y}
 
 
+## Pintura y placa sobre el modelo ya armado. Pintura: el material del color de fábrica (colors[0]) se reemplaza
+## por una copia con el color nuevo (los demás vehículos comparten el original). Placa: el material con la textura
+## de placa (256×128 de la web) pasa a amarillo liso y encima va el texto con Label3D, una por placa.
+static func customize(visual: Node3D, spec: Dictionary, paint: String, plate: String) -> void:
+	var cols: Array = spec.get("colors", [])
+	var factory := Color(cols[0]) if not cols.is_empty() else Color(0, 0, 0, 0)
+	var painted: StandardMaterial3D
+	for n: Node in visual.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		for i in mi.mesh.get_surface_count():
+			var m := mi.mesh.surface_get_material(i) as StandardMaterial3D
+			if m == null:
+				continue
+			if paint != "" and not cols.is_empty() and m.albedo_texture == null and _same(m.albedo_color, factory):
+				if painted == null:
+					painted = m.duplicate()
+					painted.albedo_color = Color(paint)
+				mi.set_surface_override_material(i, painted)
+			elif plate != "" and m.albedo_texture and absf(float(m.albedo_texture.get_width()) / m.albedo_texture.get_height() - 2.0) < 0.05:
+				var yellow := StandardMaterial3D.new()
+				yellow.albedo_color = Color("#f7d117")
+				yellow.roughness = 0.4
+				mi.set_surface_override_material(i, yellow)
+				_plate_labels(mi, i, plate)
+
+
+static func _same(a: Color, b: Color) -> bool:
+	return absf(a.r - b.r) + absf(a.g - b.g) + absf(a.b - b.b) < 0.03
+
+
+## Las dos placas vienen fundidas en una superficie: se separan por el signo de la normal y se rotula cada una.
+static func _plate_labels(mi: MeshInstance3D, surface: int, text: String) -> void:
+	var arr := mi.mesh.surface_get_arrays(surface)
+	var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	var nr: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+	var groups := {}
+	for k in v.size():
+		var key := 1 if nr[k].z >= 0.0 else -1
+		if not groups.has(key):
+			groups[key] = [Vector3.ZERO, 0, nr[k]]
+		groups[key][0] += v[k]
+		groups[key][1] += 1
+	for g: Array in groups.values():
+		var c: Vector3 = g[0] / g[1]
+		var n: Vector3 = (g[2] as Vector3).normalized()
+		# placa de 0,44 × 0,22 m: número de ~0,36 m de ancho arriba y la ciudad abajo, como las colombianas
+		for line: Array in [[text, 0.015, 0.0013, 64], ["PITALITO", -0.07, 0.0019, 20]]:
+			var l := Label3D.new()
+			l.text = line[0]
+			l.font_size = line[3]
+			l.pixel_size = line[2]
+			l.modulate = Color("#111111")
+			l.outline_size = 0
+			l.double_sided = false
+			l.shaded = true
+			if GuaduaTheme.text_font:
+				l.font = GuaduaTheme.text_font
+			l.transform = Transform3D(Basis.looking_at(-n, Vector3.UP), c + n * 0.004 + Vector3.UP * line[1])
+			mi.add_child(l)
+
+
 ## El GLTFExporter de three.js guarda los colores de vértice (llantas, rines pintados) pero no marca el material
 ## para usarlos. Se marcan aquí; el material es el recurso importado, compartido: se hace una vez por material.
 static func use_vertex_colors(root: Node) -> void:

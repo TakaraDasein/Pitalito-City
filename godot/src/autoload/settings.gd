@@ -26,6 +26,12 @@ var invert_y := false
 var fullscreen := false
 ## Clima: 0 automático (aguaceros ocasionales), 1 despejado, 2 lluvia (SkySystem.Weather).
 var weather := 0
+## Garaje: vehículo elegido, pintura y placa por tipo.
+var vehicle := "willys"
+var paints: Dictionary = {}
+var plates: Dictionary = {}
+## Escala de la interfaz (0,8–1,4): para pantallas grandes o lectura cómoda.
+var ui_scale := 1.0
 ## Por qué se eligió la calidad (para mostrarlo en opciones): "equipo", "fps" o "manual".
 var quality_reason := "equipo"
 var gpu_name := ""
@@ -43,6 +49,10 @@ func _ready() -> void:
 		invert_y = cfg.get_value("controles", "invertir_y", false)
 		fullscreen = cfg.get_value("pantalla", "completa", false)
 		weather = cfg.get_value("mundo", "clima", 0)
+		vehicle = cfg.get_value("garaje", "vehiculo", "willys")
+		paints = cfg.get_value("garaje", "pinturas", {})
+		plates = cfg.get_value("garaje", "placas", {})
+		ui_scale = cfg.get_value("pantalla", "escala_ui", 1.0)
 		quality_reason = "manual" if not auto_quality else cfg.get_value("grafica", "motivo", "equipo")
 	if auto_quality and quality_reason == "equipo":
 		quality = detect()
@@ -101,7 +111,23 @@ func measure(avg_fps: float) -> String:
 	return quality
 
 
+## Placa del vehículo: la guardada o una al azar estable por tipo (tres letras, tres números, como en Colombia).
+func plate_of(type: String) -> String:
+	if plates.has(type):
+		return plates[type]
+	var h := absi(type.hash())
+	var letters := "ABCDEFGHJKLMNPRSTUVWXYZ"
+	return "%s%s%s %03d" % [letters[h % 23], letters[(h / 23) % 23], letters[(h / 529) % 23], (h / 12167) % 1000]
+
+
+func paint_of(type: String) -> String:
+	var cols: Array = VehiclesConfig.VEHICLES.get(type, {}).get("colors", [])
+	return paints.get(type, cols[0] if not cols.is_empty() else "")
+
+
 func apply_display() -> void:
+	if get_tree():
+		get_tree().root.content_scale_factor = ui_scale
 	var mode := DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED
 	if DisplayServer.get_name() != "headless" and DisplayServer.window_get_mode() != mode:
 		DisplayServer.window_set_mode(mode)
@@ -130,4 +156,8 @@ func save() -> void:
 	cfg.set_value("controles", "invertir_y", invert_y)
 	cfg.set_value("pantalla", "completa", fullscreen)
 	cfg.set_value("mundo", "clima", weather)
+	cfg.set_value("garaje", "vehiculo", vehicle)
+	cfg.set_value("garaje", "pinturas", paints)
+	cfg.set_value("garaje", "placas", plates)
+	cfg.set_value("pantalla", "escala_ui", ui_scale)
 	cfg.save(PATH)

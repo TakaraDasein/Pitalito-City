@@ -1,8 +1,9 @@
 class_name Menus
 extends CanvasLayer
-## Menús en café y guadua (equivale a web/src/ui/Menus.js): principal, pausa, opciones, garaje y créditos.
-## Navegables con teclado y mando (foco visible en crema; Esc o B vuelve). El mundo sigue de fondo: en el principal,
-## la cámara gira sobre el Parque Principal (Main._process).
+## Menús en café y guadua (equivale a web/src/ui/Menus.js, y más): portada, pausa, opciones por secciones,
+## garaje de pantalla completa (vista previa grande, fichas de desempeño, pintura y placa) y créditos.
+## Teclado, ratón y mando: foco visible, realce al enfocar, Esc o B vuelve, y abajo una línea con los controles
+## del dispositivo en uso. Las pantallas entran con fundido y desplazamiento (UiFx).
 
 signal play_requested
 signal resume_requested
@@ -14,115 +15,175 @@ signal weather_changed(mode: int)
 var current_vehicle := "willys"
 
 var _root: Control
-var _panels: Dictionary = {}       # nombre → PanelContainer
-var _stack: Array[String] = []     # navegación: Esc vuelve al anterior
-var _garage_list: ItemList
-var _garage_info: Label
+var _dim: ColorRect
+var _panels: Dictionary = {}       # nombre → Control
+var _stack: Array[String] = []
+var _hints: Label
+# garaje
+var _garage_list: VBoxContainer
+var _garage_types: Array[String] = []
+var _garage_sel := 0
 var _garage_view: SubViewport
 var _garage_model: Node3D
-var _garage_types: Array[String] = []
+var _garage_name: Label
+var _garage_desc: Label
+var _garage_stats: VBoxContainer
+var _garage_paints: HFlowContainer
+var _garage_plate: LineEdit
+var _garage_use: Button
+var _cam_pivot: Node3D
+var _drag := false
+# opciones
 var _quality: OptionButton
 var _quality_note: Label
-var _dim: ColorRect
-var _hero: Control
+
+const DESCRIPTIONS := {
+	"willys": "El campero de las veredas del Huila. Aguanta todo, no corre tanto.",
+	"taxi": "Hatchback amarillo de servicio público. Ágil en las calles del centro.",
+	"pickup": "Platón para el café y el mercado. Fuerte y estable.",
+	"chiva": "El bus escalera de colores. Lento, pesado y el alma del Valle de Laboyos.",
+	"motocarro": "Tres ruedas para el reparto del barrio. Corto y cabe en todas partes.",
+	"sedan": "Automóvil particular.", "suv": "Campero moderno.", "van": "Van del transporte intermunicipal.",
+	"truck": "Camioneta.", "delivery": "Furgón de carga.", "garbage-truck": "Recolector de basura del municipio.",
+	"ambulance": "Ambulancia.",
+}
 
 
 func _ready() -> void:
 	layer = 10
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	current_vehicle = Settings.vehicle
 	_root = Control.new()
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.theme = GuaduaTheme.get_theme()
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
-	# velo café detrás de los menús: el mundo sigue visible, atenuado (como .screen.dim en la web)
+	# velo: degradado café de izquierda a derecha (el texto se lee, el mundo se ve)
 	_dim = ColorRect.new()
-	_dim.color = Color(GuaduaTheme.CAFE_DARK, 0.45)
 	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sh := Shader.new()
+	sh.code = "shader_type canvas_item; uniform vec4 c : source_color; void fragment(){ COLOR = vec4(c.rgb, c.a * mix(0.92, 0.25, smoothstep(0.0, 0.75, UV.x))); }"
+	var mat := ShaderMaterial.new()
+	mat.shader = sh
+	mat.set_shader_parameter("c", GuaduaTheme.CAFE_DARK)
+	_dim.material = mat
 	_root.add_child(_dim)
 	_build_main()
 	_build_pause()
 	_build_options()
 	_build_garage()
 	_build_credits()
+	_hints = Label.new()
+	_hints.theme_type_variation = "Small"
+	_hints.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	_hints.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_hints.position += Vector2(64, -28)
+	_root.add_child(_hints)
+	UiFx.device_changed.connect(func(_g): _update_hints())
 	hide_all()
 
 
-# ── Construcción ──────────────────────────────────────────────────────────────────────────────────────
+# ── Piezas comunes ────────────────────────────────────────────────────────────────────────────────────
 
-func _panel(name: String, title: String, width := 380.0) -> VBoxContainer:
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(width, 0)
-	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
-	panel.position = Vector2(64, -180)
-	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_root.add_child(panel)
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 10)
-	panel.add_child(col)
+## Columna a la izquierda: rótulo pequeño en mayúsculas, título grande y el contenido.
+func _screen(name: String, kicker: String, title: String, width := 400.0) -> VBoxContainer:
+	var box := VBoxContainer.new()
+	box.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
+	box.grow_vertical = Control.GROW_DIRECTION_BOTH
+	box.position.x = 64
+	box.custom_minimum_size = Vector2(width, 0)
+	box.add_theme_constant_override("separation", 10)
+	_root.add_child(box)
+	var k := Label.new()
+	k.text = kicker.to_upper()
+	k.theme_type_variation = "Caps"
+	box.add_child(k)
 	var t := Label.new()
 	t.text = title
-	t.theme_type_variation = "Title"
-	col.add_child(t)
-	_panels[name] = panel
-	return col
+	t.theme_type_variation = "Display"
+	box.add_child(t)
+	var line := HSeparator.new()
+	line.custom_minimum_size = Vector2(width, 6)
+	box.add_child(line)
+	_panels[name] = box
+	return box
 
 
-func _button(parent: Container, text: String, action: Callable) -> Button:
+func _button(parent: Container, text: String, action: Callable, hint := "") -> Button:
 	var b := Button.new()
 	b.text = text
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	b.custom_minimum_size = Vector2(0, 40)
+	b.custom_minimum_size = Vector2(0, 44)
 	b.pressed.connect(action)
+	b.tooltip_text = hint
 	parent.add_child(b)
+	UiFx.wire_button(b)
 	return b
 
 
-## Portada: PITALITO en grande y centrado, el valle debajo, y los botones en un panel al centro.
+func _section(parent: Container, text: String) -> void:
+	var l := Label.new()
+	l.text = text.to_upper()
+	l.theme_type_variation = "Caps"
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 6)
+	parent.add_child(spacer)
+	parent.add_child(l)
+
+
+func _row(parent: Container, label: String, control: Control) -> void:
+	var r := HBoxContainer.new()
+	r.add_theme_constant_override("separation", 14)
+	var l := Label.new()
+	l.text = label
+	l.custom_minimum_size = Vector2(150, 0)
+	r.add_child(l)
+	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	r.add_child(control)
+	parent.add_child(r)
+
+
+# ── Portada ───────────────────────────────────────────────────────────────────────────────────────────
+
 func _build_main() -> void:
-	_hero = VBoxContainer.new()
-	_hero.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	_hero.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_hero.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_hero.add_theme_constant_override("separation", 6)
-	_root.add_child(_hero)
+	var box := VBoxContainer.new()
+	box.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
+	box.grow_vertical = Control.GROW_DIRECTION_BOTH
+	box.position.x = 64
+	box.add_theme_constant_override("separation", 4)
+	_root.add_child(box)
+	var kicker := Label.new()
+	kicker.text = "VALLE DE LABOYOS · HUILA · COLOMBIA"
+	kicker.theme_type_variation = "Caps"
+	box.add_child(kicker)
 	var title := Label.new()
 	title.text = "PITALITO"
 	title.theme_type_variation = "Hero"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_hero.add_child(title)
+	box.add_child(title)
 	var sub := Label.new()
-	sub.text = "Valle de Laboyos · Huila"
-	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.text = "El municipio reconstruido con datos reales, calle por calle."
 	sub.add_theme_color_override("font_color", Color(GuaduaTheme.TEXT, 0.85))
-	_hero.add_child(sub)
+	box.add_child(sub)
 	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, 22)
-	_hero.add_child(spacer)
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(340, 0)
-	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	_hero.add_child(panel)
+	spacer.custom_minimum_size = Vector2(0, 26)
+	box.add_child(spacer)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 10)
-	panel.add_child(col)
-	_panels["principal"] = _hero
+	col.custom_minimum_size = Vector2(320, 0)
+	col.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	col.add_theme_constant_override("separation", 8)
+	box.add_child(col)
 	_button(col, "Jugar", func(): play_requested.emit())
 	_button(col, "Garaje", func(): open("garaje"))
 	_button(col, "Opciones", func(): open("opciones"))
 	_button(col, "Créditos", func(): open("creditos"))
 	if OS.get_name() != "Web":
 		_button(col, "Salir", func(): get_tree().quit())
-	var note := Label.new()
-	note.text = "Datos reales de OpenStreetMap, Copernicus, Meta/WRI y Esri · Esc vuelve"
-	note.theme_type_variation = "Small"
-	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_hero.add_child(note)
+	_panels["principal"] = box
 
 
 func _build_pause() -> void:
-	var col := _panel("pausa", "PAUSA")
+	var col := _screen("pausa", "Juego en pausa", "Pausa")
 	_button(col, "Continuar", func(): resume_requested.emit())
 	_button(col, "Mapa", func(): map_requested.emit())
 	_button(col, "Garaje", func(): open("garaje"))
@@ -130,16 +191,11 @@ func _build_pause() -> void:
 	_button(col, "Menú principal", func(): main_menu_requested.emit())
 
 
+# ── Opciones ──────────────────────────────────────────────────────────────────────────────────────────
+
 func _build_options() -> void:
-	var col := _panel("opciones", "OPCIONES", 460)
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 16)
-	grid.add_theme_constant_override("v_separation", 10)
-	col.add_child(grid)
-	var l1 := Label.new()
-	l1.text = "Calidad"
-	grid.add_child(l1)
+	var col := _screen("opciones", "Ajustes", "Opciones", 520)
+	_section(col, "Gráficos")
 	_quality = OptionButton.new()
 	for item in ["Automática", "Baja", "Media", "Alta"]:
 		_quality.add_item(item)
@@ -149,103 +205,212 @@ func _build_options() -> void:
 		else:
 			Settings.set_quality(Settings.LEVELS[i - 1])
 		_refresh_options())
-	grid.add_child(_quality)
-	var lw := Label.new()
-	lw.text = "Clima"
-	grid.add_child(lw)
-	var weather := OptionButton.new()
-	for item in ["Automático (aguaceros)", "Despejado", "Lluvia"]:
-		weather.add_item(item)
-	weather.select(Settings.weather)
-	weather.item_selected.connect(func(i): Settings.weather = i; Settings.save(); weather_changed.emit(i))
-	grid.add_child(weather)
-	var l2 := Label.new()
-	l2.text = "Sensibilidad"
-	grid.add_child(l2)
+	_row(col, "Calidad", _quality)
+	_quality_note = Label.new()
+	_quality_note.theme_type_variation = "Small"
+	_quality_note.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_quality_note.custom_minimum_size = Vector2(500, 0)
+	col.add_child(_quality_note)
+	_section(col, "Pantalla")
+	var fs := CheckButton.new()
+	fs.text = "Pantalla completa"
+	fs.button_pressed = Settings.fullscreen
+	fs.toggled.connect(func(on): Settings.fullscreen = on; Settings.save(); Settings.apply_display())
+	col.add_child(fs)
+	var scale := HSlider.new()
+	scale.min_value = 0.8
+	scale.max_value = 1.4
+	scale.step = 0.05
+	scale.value = Settings.ui_scale
+	scale.drag_ended.connect(func(_c): Settings.ui_scale = scale.value; Settings.save(); Settings.apply_display())
+	_row(col, "Tamaño de la interfaz", scale)
+	_section(col, "Controles")
 	var sens := HSlider.new()
 	sens.min_value = 0.3
 	sens.max_value = 2.5
 	sens.step = 0.05
 	sens.value = Settings.sensitivity
-	sens.custom_minimum_size = Vector2(200, 0)
 	sens.value_changed.connect(func(v): Settings.sensitivity = v; Settings.save())
-	grid.add_child(sens)
-	var inv := CheckBox.new()
-	inv.text = "Invertir eje vertical"
+	_row(col, "Sensibilidad", sens)
+	var inv := CheckButton.new()
+	inv.text = "Invertir el eje vertical de la cámara"
 	inv.button_pressed = Settings.invert_y
 	inv.toggled.connect(func(on): Settings.invert_y = on; Settings.save())
 	col.add_child(inv)
-	var fs := CheckBox.new()
-	fs.text = "Pantalla completa"
-	fs.button_pressed = Settings.fullscreen
-	fs.toggled.connect(func(on): Settings.fullscreen = on; Settings.save(); Settings.apply_display())
-	col.add_child(fs)
-	_quality_note = Label.new()
-	_quality_note.theme_type_variation = "Small"
-	_quality_note.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_quality_note.custom_minimum_size = Vector2(420, 0)
-	col.add_child(_quality_note)
-	var keys := Label.new()
-	keys.theme_type_variation = "Small"
-	keys.text = "A pie: WASD · Shift correr · Espacio saltar o nadar a la orilla · F subir, abrir · M mapa · Esc pausa\nManejando: W/S acelerar y frenar · A/D girar · Espacio freno · F bajarse"
-	col.add_child(keys)
+	_section(col, "Mundo")
+	var weather := OptionButton.new()
+	for item in ["Automático (aguaceros)", "Despejado", "Lluvia"]:
+		weather.add_item(item)
+	weather.select(Settings.weather)
+	weather.item_selected.connect(func(i): Settings.weather = i; Settings.save(); weather_changed.emit(i))
+	_row(col, "Clima", weather)
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 8)
+	col.add_child(spacer)
 	_button(col, "Volver", back)
 
 
 func _refresh_options() -> void:
 	_quality.select(0 if Settings.auto_quality else Settings.LEVELS.find(Settings.quality) + 1)
-	var why := {"equipo": "elegida por tu equipo", "fps": "ajustada por los fps medidos", "manual": "elegida a mano"}
-	_quality_note.text = "En uso: %s (%s). Tarjeta gráfica: %s" % [Settings.quality.capitalize(), why.get(Settings.quality_reason, ""), Settings.gpu_name]
+	var why := {"equipo": "elegida según tu equipo", "fps": "ajustada con los fps medidos", "manual": "elegida a mano"}
+	_quality_note.text = "En uso: %s, %s · %s" % [Settings.quality.capitalize(), why.get(Settings.quality_reason, ""), Settings.gpu_name]
 
+
+# ── Garaje ────────────────────────────────────────────────────────────────────────────────────────────
 
 func _build_garage() -> void:
-	var col := _panel("garaje", "GARAJE", 640)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 14)
-	col.add_child(row)
-	_garage_list = ItemList.new()
-	_garage_list.custom_minimum_size = Vector2(220, 320)
+	var root := Control.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(root)
+	_panels["garaje"] = root
+	# escenario: el vehículo grande a la derecha, con piso y luz de estudio; arrastrar lo gira
+	var frame := SubViewportContainer.new()
+	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.anchor_left = 0.36
+	frame.stretch = true
+	frame.gui_input.connect(_garage_drag)
+	root.add_child(frame)
+	_garage_view = SubViewport.new()
+	_garage_view.own_world_3d = true
+	_garage_view.transparent_bg = false
+	_garage_view.msaa_3d = Viewport.MSAA_4X
+	frame.add_child(_garage_view)
+	_cam_pivot = Node3D.new()
+	_garage_view.add_child(_cam_pivot)
+	var cam := Camera3D.new()
+	cam.position = Vector3(0, 1.9, 8.2)
+	cam.rotation.x = -0.17
+	cam.fov = 34
+	_cam_pivot.add_child(cam)
+	var key := DirectionalLight3D.new()
+	key.rotation = Vector3(-0.8, 0.7, 0)
+	key.light_energy = 1.3
+	key.shadow_enabled = true
+	_garage_view.add_child(key)
+	var rim := DirectionalLight3D.new()
+	rim.rotation = Vector3(-0.3, -2.4, 0)
+	rim.light_energy = 0.6
+	rim.light_color = GuaduaTheme.CREMA
+	_garage_view.add_child(rim)
+	var floor_mi := MeshInstance3D.new()
+	var disc := CylinderMesh.new()
+	disc.top_radius = 3.4
+	disc.bottom_radius = 3.4
+	disc.height = 0.05
+	floor_mi.mesh = disc
+	var fm := StandardMaterial3D.new()
+	fm.albedo_color = Color("#2a1a0f")
+	fm.roughness = 0.35
+	fm.metallic = 0.2
+	floor_mi.material_override = fm
+	floor_mi.position.y = -0.03
+	_garage_view.add_child(floor_mi)
+	var env := WorldEnvironment.new()
+	env.environment = Environment.new()
+	# estudio: fondo café oscuro con un velo de niebla que funde el piso con el fondo
+	env.environment.background_mode = Environment.BG_COLOR
+	env.environment.background_color = Color("#140b06")
+	env.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.environment.ambient_light_color = Color(1, 0.93, 0.85)
+	env.environment.ambient_light_energy = 0.55
+	env.environment.tonemap_mode = Environment.TONE_MAPPER_AGX
+	env.environment.fog_enabled = true
+	env.environment.fog_light_color = Color("#140b06")
+	env.environment.fog_density = 0.06
+	env.environment.glow_enabled = true
+	_garage_view.add_child(env)
+	# columna izquierda: lista y ficha
+	var col := VBoxContainer.new()
+	col.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
+	col.position.x = 64
+	col.offset_top = 56
+	col.offset_bottom = -64
+	col.custom_minimum_size = Vector2(440, 0)
+	col.add_theme_constant_override("separation", 10)
+	root.add_child(col)
+	var k := Label.new()
+	k.text = "GARAJE"
+	k.theme_type_variation = "Caps"
+	col.add_child(k)
+	_garage_name = Label.new()
+	_garage_name.theme_type_variation = "Display"
+	col.add_child(_garage_name)
+	_garage_desc = Label.new()
+	_garage_desc.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_garage_desc.custom_minimum_size = Vector2(430, 0)
+	_garage_desc.add_theme_color_override("font_color", Color(GuaduaTheme.TEXT, 0.85))
+	col.add_child(_garage_desc)
+	_garage_stats = VBoxContainer.new()
+	_garage_stats.add_theme_constant_override("separation", 4)
+	col.add_child(_garage_stats)
+	_section(col, "Pintura")
+	_garage_paints = HFlowContainer.new()
+	_garage_paints.add_theme_constant_override("h_separation", 8)
+	col.add_child(_garage_paints)
+	_section(col, "Placa")
+	_garage_plate = LineEdit.new()
+	_garage_plate.max_length = 7
+	_garage_plate.placeholder_text = "ABC 123"
+	_garage_plate.custom_minimum_size = Vector2(160, 0)
+	_garage_plate.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_garage_plate.text_changed.connect(_plate_changed)
+	col.add_child(_garage_plate)
+	_section(col, "Vehículos")
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	col.add_child(scroll)
+	_garage_list = VBoxContainer.new()
+	_garage_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_garage_list.add_theme_constant_override("separation", 4)
+	scroll.add_child(_garage_list)
 	for t: String in VehiclesConfig.VEHICLES:
 		if t == "moto":
 			continue # dos ruedas: necesita equilibrio propio (pendiente); el tráfico sí la usa
+		var i := _garage_types.size()
 		_garage_types.push_back(t)
-		_garage_list.add_item(VehiclesConfig.VEHICLES[t].name)
-	_garage_list.item_selected.connect(_garage_show)
-	_garage_list.item_activated.connect(func(i): _garage_choose(i))
-	row.add_child(_garage_list)
-	var right := VBoxContainer.new()
-	row.add_child(right)
-	var frame := SubViewportContainer.new()
-	frame.custom_minimum_size = Vector2(360, 220)
-	frame.stretch = true
-	right.add_child(frame)
-	_garage_view = SubViewport.new()
-	_garage_view.own_world_3d = true
-	_garage_view.transparent_bg = true
-	frame.add_child(_garage_view)
-	var cam := Camera3D.new()
-	cam.position = Vector3(0, 1.6, 5.2)
-	cam.rotation.x = -0.2
-	cam.fov = 40
-	_garage_view.add_child(cam)
-	var sun := DirectionalLight3D.new()
-	sun.rotation = Vector3(-0.9, 0.6, 0)
-	_garage_view.add_child(sun)
-	var env := WorldEnvironment.new()
-	env.environment = Environment.new()
-	env.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.environment.ambient_light_color = Color(1, 0.95, 0.88)
-	env.environment.ambient_light_energy = 0.7
-	_garage_view.add_child(env)
-	_garage_info = Label.new()
-	_garage_info.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_garage_info.custom_minimum_size = Vector2(360, 0)
-	right.add_child(_garage_info)
-	_button(right, "Usar este vehículo", func(): _garage_choose(_garage_list.get_selected_items()[0] if _garage_list.is_anything_selected() else 0))
-	_button(col, "Volver", back)
+		var b := _button(_garage_list, VehiclesConfig.VEHICLES[t].name, func(): _garage_choose(i))
+		b.custom_minimum_size.y = 36
+		b.focus_entered.connect(func(): _garage_show(i))
+	var bottom := HBoxContainer.new()
+	bottom.add_theme_constant_override("separation", 10)
+	col.add_child(bottom)
+	_garage_use = _button(bottom, "Usar este vehículo", func(): _garage_choose(_garage_sel))
+	_button(bottom, "Volver", back)
+
+
+func _stat(label: String, value: float, text: String) -> void:
+	var r := HBoxContainer.new()
+	r.add_theme_constant_override("separation", 10)
+	var l := Label.new()
+	l.text = label
+	l.theme_type_variation = "Small"
+	l.custom_minimum_size = Vector2(110, 0)
+	r.add_child(l)
+	var bar := ProgressBar.new()
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(200, 8)
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bar.value = clampf(value, 0.05, 1.0) * 100.0
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(GuaduaTheme.CAFE_MID, 0.5)
+	bg.set_corner_radius_all(3)
+	var fg := StyleBoxFlat.new()
+	fg.bg_color = GuaduaTheme.GUADUA
+	fg.set_corner_radius_all(3)
+	bar.add_theme_stylebox_override("background", bg)
+	bar.add_theme_stylebox_override("fill", fg)
+	r.add_child(bar)
+	var v := Label.new()
+	v.text = text
+	v.theme_type_variation = "Small"
+	r.add_child(v)
+	_garage_stats.add_child(r)
 
 
 func _garage_show(i: int) -> void:
+	_garage_sel = i
 	var t := _garage_types[i]
 	var spec := VehiclesConfig.spec(t)
 	if _garage_model:
@@ -253,38 +418,123 @@ func _garage_show(i: int) -> void:
 	var m := VehicleModel.create(spec, false)
 	if not m.is_empty():
 		_garage_model = m.visual
-		# centrado: el modelo mira a +Z; la vista lo muestra de tres cuartos
-		# todos del mismo tamaño en pantalla (la chiva de 8,5 m y el motocarro de 2,6 m)
-		_garage_model.scale = Vector3.ONE * (4.6 / maxf(float(spec.length), 2.0))
+		VehicleModel.customize(_garage_model, spec, Settings.paint_of(t), Settings.plate_of(t))
+		_garage_model.scale = Vector3.ONE * (3.8 / maxf(float(spec.length), 2.0))
+		_garage_model.rotation.y = -0.6
 		_garage_view.add_child(_garage_model)
-	_garage_info.text = "%s\nLargo %.1f m · ancho %.1f m · %d kg · hasta %d km/h%s" % [spec.name, spec.length, spec.width, int(spec.mass), int(spec.max_speed),
-		"\n(en uso)" if t == current_vehicle else ""]
+		UiFx.pulse(_garage_name)
+	_garage_name.text = spec.name
+	_garage_desc.text = DESCRIPTIONS.get(t, "")
+	for c in _garage_stats.get_children():
+		c.queue_free()
+	# desempeño relativo al catálogo (las cifras son las de la configuración; las barras, para comparar)
+	_stat("Velocidad", float(spec.max_speed) / 150.0, "%d km/h" % int(spec.max_speed))
+	_stat("Aceleración", float(spec.engine) / float(spec.mass) / 2.1 * (1.0 - float(spec.mass) / 12000.0), "")
+	_stat("Manejo", (float(spec.max_steer) - 0.4) / 0.3, "")
+	_stat("Tamaño", float(spec.length) / 8.5, "%.1f × %.1f m · %d kg" % [spec.length, spec.width, int(spec.mass)])
+	for c in _garage_paints.get_children():
+		c.queue_free()
+	var cols: Array = spec.get("colors", [])
+	var current := Settings.paint_of(t)
+	if cols.is_empty():
+		var l := Label.new()
+		l.text = "Color fijo" if spec.source == "baked" else "Color de fábrica"
+		l.theme_type_variation = "Small"
+		_garage_paints.add_child(l)
+	for hex: String in cols:
+		var sw := Button.new()
+		sw.custom_minimum_size = Vector2(34, 34)
+		sw.tooltip_text = hex
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(hex)
+		sb.set_corner_radius_all(17)
+		sb.set_border_width_all(3 if hex == current else 1)
+		sb.border_color = GuaduaTheme.CREMA if hex == current else Color(0, 0, 0, 0.6)
+		for st in ["normal", "hover", "pressed", "focus"]:
+			var s2 := sb.duplicate() as StyleBoxFlat
+			if st != "normal":
+				s2.border_color = GuaduaTheme.CREMA
+				s2.set_border_width_all(3)
+			sw.add_theme_stylebox_override(st, s2)
+		sw.pressed.connect(func(): _paint(t, hex))
+		_garage_paints.add_child(sw)
+	_garage_plate.text = Settings.plate_of(t)
+	_garage_plate.editable = spec.source == "baked"
+	_garage_use.text = "En uso" if t == current_vehicle else "Usar este vehículo"
+	_garage_use.disabled = t == current_vehicle
+
+
+func _paint(t: String, hex: String) -> void:
+	Settings.paints[t] = hex
+	Settings.save()
+	_garage_show(_garage_sel)
+	if t == current_vehicle:
+		vehicle_chosen.emit(t) # repinta el del juego
+
+
+## Placa colombiana: tres letras y tres números. Se normaliza mientras se escribe y se guarda al quedar completa.
+func _plate_changed(text: String) -> void:
+	var clean := text.to_upper().replace(" ", "")
+	var out := ""
+	for ch in clean:
+		if out.length() < 3 and ch >= "A" and ch <= "Z":
+			out += ch
+		elif out.length() >= 3 and out.length() < 6 and ch >= "0" and ch <= "9":
+			out += ch
+	var shown := out if out.length() <= 3 else out.substr(0, 3) + " " + out.substr(3)
+	if shown != text:
+		_garage_plate.text = shown
+		_garage_plate.caret_column = shown.length()
+	if out.length() == 6:
+		var t := _garage_types[_garage_sel]
+		Settings.plates[t] = shown
+		Settings.save()
+		_garage_show(_garage_sel)
+		_garage_plate.grab_focus()
+		_garage_plate.caret_column = shown.length()
+		if t == current_vehicle:
+			vehicle_chosen.emit(t)
 
 
 func _garage_choose(i: int) -> void:
 	current_vehicle = _garage_types[i]
+	Settings.vehicle = current_vehicle
+	Settings.save()
 	vehicle_chosen.emit(current_vehicle)
 	_garage_show(i)
 
 
+func _garage_drag(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		_drag = event.pressed
+	elif event is InputEventMouseMotion and _drag and _garage_model:
+		_garage_model.rotate_y(event.relative.x * 0.01)
+
+
+# ── Créditos ──────────────────────────────────────────────────────────────────────────────────────────
+
 func _build_credits() -> void:
-	var col := _panel("creditos", "CRÉDITOS", 560)
-	var text := Label.new()
-	text.autowrap_mode = TextServer.AUTOWRAP_WORD
-	text.custom_minimum_size = Vector2(520, 0)
-	var lines := ["Datos del mundo"]
+	var col := _screen("creditos", "Fuentes y licencias", "Créditos", 600)
+	var text := RichTextLabel.new()
+	text.bbcode_enabled = true
+	text.fit_content = true
+	text.custom_minimum_size = Vector2(580, 0)
+	var crema := GuaduaTheme.CREMA.to_html(false)
+	var b := "[color=#%s]%s[/color]"
+	var lines := [b % [crema, "DATOS DEL MUNDO"]]
 	for a: String in WorldData.manifest.get("attribution", []):
-		lines.push_back("  · " + a)
-	lines += ["  · Edificios: Overture Maps (ODbL) y Google Open Buildings (CC BY 4.0)", "",
-		"Modelos 3D (CC0, dominio público)",
-		"  · Personajes y animaciones: Quaternius",
-		"  · Vehículos del tráfico, piezas de edificios y muebles: Kenney (Car Kit, Building Kit, Furniture Kit)",
-		"  · Vehículos típicos, hitos y texturas propias: hechos para el proyecto", "",
-		"Texturas: ambientCG y Poly Haven (CC0)",
-		"Motor: Godot Engine 4.7 (MIT) · física: Jolt (MIT)", "",
-		"Los grupos armados del juego son ficción: no representan a ningún grupo real."]
+		lines.push_back("· " + a)
+	lines += ["· Edificios: Overture Maps (ODbL) y Google Open Buildings (CC BY 4.0)", "",
+		b % [crema, "MODELOS 3D (CC0, DOMINIO PÚBLICO)"],
+		"· Personajes y animaciones: Quaternius",
+		"· Vehículos del tráfico, piezas de edificios y muebles: Kenney",
+		"· Vehículos típicos, hitos y texturas propias: hechos para el proyecto", "",
+		b % [crema, "TEXTURAS Y TIPOGRAFÍA"],
+		"· ambientCG y Poly Haven (CC0) · Anton e Inter (SIL OFL 1.1)", "",
+		b % [crema, "MOTOR"], "· Godot Engine 4.7 (MIT) · física Jolt (MIT)", "",
+		"[i]Los grupos armados del juego son ficción: no representan a ningún grupo real.[/i]"]
 	text.text = "\n".join(lines)
-	text.theme_type_variation = "Small"
+	text.add_theme_color_override("default_color", Color(GuaduaTheme.TEXT, 0.85))
 	col.add_child(text)
 	_button(col, "Volver", back)
 
@@ -294,19 +544,24 @@ func _build_credits() -> void:
 func open(name: String, reset := false) -> void:
 	if reset:
 		_stack.clear()
-	for p: Control in _panels.values():
-		p.visible = false
-	_panels[name].visible = true
-	_dim.visible = true
+	for n: String in _panels:
+		if n != name:
+			_panels[n].visible = false
+	if not _dim.visible:
+		UiFx.enter(_dim, Vector2.ZERO, 0.25)
+	UiFx.enter(_panels[name], Vector2(-18, 0))
 	if _stack.is_empty() or _stack[-1] != name:
 		_stack.push_back(name)
 	if name == "opciones":
 		_refresh_options()
 	if name == "garaje":
-		var i := _garage_types.find(current_vehicle)
-		_garage_list.select(maxi(i, 0))
-		_garage_show(maxi(i, 0))
-	_focus_first(_panels[name])
+		var i := maxi(_garage_types.find(current_vehicle), 0)
+		_garage_show(i)
+		(_garage_list.get_child(i) as Control).grab_focus()
+	else:
+		_focus_first(_panels[name])
+	_update_hints()
+	_hints.visible = true
 
 
 func back() -> void:
@@ -323,6 +578,8 @@ func hide_all() -> void:
 	for p: Control in _panels.values():
 		p.visible = false
 	_stack.clear()
+	if _hints:
+		_hints.visible = false
 
 
 func is_open() -> bool:
@@ -331,17 +588,24 @@ func is_open() -> bool:
 
 func _focus_first(node: Node) -> void:
 	for c: Node in node.find_children("*", "Control", true, false):
-		if (c is Button or c is ItemList) and (c as Control).is_visible_in_tree():
+		if c is BaseButton and (c as Control).is_visible_in_tree() and not (c as BaseButton).disabled:
 			(c as Control).grab_focus()
 			return
 
 
+func _update_hints() -> void:
+	if UiFx.gamepad:
+		_hints.text = "Cruceta: elegir   ·   A: aceptar   ·   B: volver"
+	else:
+		_hints.text = "↑ ↓ elegir   ·   Enter aceptar   ·   Esc volver" + ("   ·   arrastrar: girar el vehículo" if _panels.garaje.visible else "")
+
+
 func _unhandled_input(event: InputEvent) -> void:
-	if is_open() and event.is_action_pressed("ui_cancel"):
+	if is_open() and event.is_action_pressed("ui_cancel") and not _garage_plate.has_focus():
 		back()
 		get_viewport().set_input_as_handled()
 
 
 func _process(delta: float) -> void:
-	if _garage_model and _panels.garaje.visible:
-		_garage_model.rotate_y(delta * 0.5)
+	if _garage_model and _panels.garaje.visible and not _drag:
+		_garage_model.rotate_y(delta * 0.35)

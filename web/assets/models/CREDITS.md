@@ -29,3 +29,12 @@ y se registran aquí al integrarlos.
 | Paquete | Uso previsto | Autor | Licencia | Dónde |
 |---|---|---|---|---|
 | LowPoly Animated Animals / Monsters | Fauna de las zonas boscosas y enemigos (Fases 4 y 5) | Quaternius | CC0 1.0 | [https://quaternius.itch.io/](https://quaternius.itch.io/) |
+
+## Tipografías
+
+| Archivo | Uso | Autor | Licencia | Fuente |
+|---|---|---|---|---|
+| ../../public/fonts/Anton-Regular.ttf | Títulos de la interfaz (versión Godot) | Vernon Adams | SIL OFL 1.1 | [Google Fonts](https://fonts.google.com/specimen/Anton) |
+| ../../public/fonts/Inter.ttf | Texto de la interfaz (versión Godot) | Rasmus Andersson | SIL OFL 1.1 | [Google Fonts](https://fonts.google.com/specimen/Inter) |
+
+Regenerar con `pnpm fonts:fetch`.

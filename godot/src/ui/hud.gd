@@ -103,6 +103,11 @@ func _build_plate() -> void:
 	plate.add_child(green)
 	_street_lbl = Label.new()
 	_street_lbl.add_theme_font_size_override("font_size", 26)
+	if GuaduaTheme.text_font:
+		var bold := FontVariation.new()
+		bold.base_font = (GuaduaTheme.text_font as FontVariation).base_font if GuaduaTheme.text_font is FontVariation else GuaduaTheme.text_font
+		bold.variation_opentype = {"wght": 700}
+		_street_lbl.add_theme_font_override("font", bold)
 	_street_lbl.add_theme_color_override("font_color", Color.WHITE)
 	_street_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	green.add_child(_street_lbl)
@@ -146,7 +151,7 @@ func _build_bar() -> void:
 	row.add_child(_gps_lbl)
 	_weather_lbl = _chip(row)
 	row.add_child(VSeparator.new())
-	for k: Array in [["N", "+3 h"], ["C", "cámara"], ["M", "mapa"], ["V", "garaje"], ["H", "ayuda"], ["Esc", "pausa"]]:
+	for k: Array in [["time_skip", "+3 h"], ["camera", "cámara"], ["map", "mapa"], ["garage", "garaje"], ["help", "ayuda"], ["toggle_mouse", "pausa"]]:
 		_keycap(row, k[0], k[1])
 
 
@@ -164,12 +169,13 @@ func _chip(parent: Container) -> Label:
 
 
 ## Tecla dibujada como tecla (crema sobre café) con su acción al lado.
-func _keycap(parent: Container, key: String, what: String) -> void:
+func _keycap(parent: Container, action: String, what: String) -> void:
 	var box := HBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
 	parent.add_child(box)
 	var k := Label.new()
-	k.text = key
+	k.text = UiFx.glyph(action)
+	UiFx.device_changed.connect(func(_g): k.text = UiFx.glyph(action); box.visible = k.text != "—")
 	var sb := _flat(GuaduaTheme.CREMA, 3, 3)
 	sb.content_margin_left = 6
 	sb.content_margin_right = 6
@@ -315,29 +321,36 @@ func set_vehicle(name: String, max_kmh: float) -> void:
 
 ## Aviso de interacción ("F" · "Subir al Jeep Willys"); key vacío lo esconde.
 func set_prompt(key: String, text: String) -> void:
-	_prompt.visible = key != ""
-	if key != "":
-		_prompt_key.text = key
-		_prompt_text.text = text
+	if key == "":
+		UiFx.leave(_prompt)
+		return
+	var changed := _prompt_text.text != text or not _prompt.visible
+	_prompt_key.text = key
+	_prompt_text.text = text
+	if changed:
+		UiFx.enter(_prompt, Vector2(0, 8))
 
 
 ## Aviso breve (destino marcado, llegada, calidad ajustada…).
 func toast(text: String, seconds := 3.5) -> void:
 	_toast_lbl.text = text
-	_toast.visible = true
 	_toast_t = seconds
+	UiFx.enter(_toast, Vector2(0, -8))
 
 
 ## Ficha de información (E): título y líneas.
 func info(title: String, lines: Array, seconds := 8.0) -> void:
 	_info_title.text = title
 	_info_body.text = "\n".join(lines)
-	_info.visible = true
 	_info_t = seconds
+	UiFx.enter(_info, Vector2(16, 0))
 
 
 func toggle_help() -> void:
-	_help.visible = not _help.visible
+	if _help.visible:
+		UiFx.leave(_help)
+	else:
+		UiFx.enter(_help, Vector2(0, 14))
 
 
 func toggle_debug() -> void:
@@ -346,9 +359,11 @@ func toggle_debug() -> void:
 
 func _process(delta: float) -> void:
 	_toast_t -= delta
-	_toast.visible = _toast.visible and _toast_t > 0.0
+	if _toast.visible and _toast_t <= 0.0 and _toast.modulate.a >= 1.0:
+		UiFx.leave(_toast)
 	_info_t -= delta
-	_info.visible = _info.visible and _info_t > 0.0
+	if _info.visible and _info_t <= 0.0 and _info.modulate.a >= 1.0:
+		UiFx.leave(_info)
 	_banner_t -= delta
 	_banner.modulate.a = clampf(minf(_banner_t, ZONE_BANNER_TIME - _banner_t) * 2.0, 0.0, 1.0)
 	if focus == null:

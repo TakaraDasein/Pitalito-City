@@ -26,6 +26,7 @@ func _ready() -> void:
 	if m.is_empty():
 		return
 	add_child(m.visual)
+	VehicleModel.customize(m.visual, spec, Settings.paint_of(spec.type), Settings.plate_of(spec.type))
 	var size: Vector3 = m.size
 
 	var shape := CollisionShape3D.new()

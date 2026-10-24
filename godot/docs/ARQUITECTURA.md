@@ -182,7 +182,17 @@ la Alcaldía, puerta cerrada (bloquea), abrir y entrar, local real, y la escaler
 - **Menús** (`ui/menus.gd`): principal (con la cámara girando sobre el Parque), pausa (Esc), opciones (calidad,
   sensibilidad, eje invertido, pantalla completa, controles), garaje con vista previa de los 12 vehículos (la
   moto queda fuera hasta tener equilibrio propio) y créditos con las licencias. Teclado y mando.
-- Herramienta: `tools/menu_shots.tscn` captura la carga y cada menú.
+- **Diseño:** Anton (títulos) e Inter (texto), SIL OFL, traídas por `web/scripts/fetch-fonts.mjs`. Botones
+  "caña" con borde de guadua que se ensancha al enfocar y realce animado (`autoload/ui_fx.gd`); pantallas que
+  entran con fundido y desplazamiento; velo café en degradado. Escala de interfaz en opciones.
+- **Teclado o mando:** `UiFx` detecta el último dispositivo y los avisos, la barra y las ayudas muestran la tecla
+  o el botón (Xbox) que corresponde; el mapa de controles tiene botones de mando para todo lo que se muestra.
+- **Garaje:** estudio propio (fondo, piso, luces), vista girable con el ratón, fichas de desempeño, pintura de la
+  web por vehículo (se reemplaza el material del color de fábrica) y placa colombiana editable (tres letras, tres
+  números) rotulada sobre el modelo. Se guardan en `user://ajustes.cfg` y se aplican en juego al instante.
+- **HUD:** placa oficial de calle, aviso de barrio, velocímetro de culmo, barra con atajos, avisos con fundido,
+  ficha (E), ayuda (H), datos técnicos (F3), cámaras (C).
+- Herramienta: `tools/menu_shots.tscn` captura la carga, cada menú y el HUD.
 
 ## Hilos: la regla
 

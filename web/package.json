@@ -15,6 +15,7 @@
     "data:build": "node scripts/build-world.mjs",
     "refs:fetch": "node scripts/fetch-references.mjs",
     "models:fetch": "node scripts/fetch-characters.mjs",
+    "fonts:fetch": "node scripts/fetch-fonts.mjs",
     "shot": "node tools/screenshot.mjs",
     "shot:vehicle": "node tools/screenshot.mjs --vehicle",
     "bench": "node tools/bench.mjs"

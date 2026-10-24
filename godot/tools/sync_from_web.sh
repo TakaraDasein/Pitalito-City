@@ -15,6 +15,7 @@ mkdir -p "$here/data/world" "$here/assets/models" "$here/assets/textures"
 rsync -a --delete --exclude terrain.bin "$web/world/" "$here/data/world/"
 rsync -a --delete "$web/models/" "$here/assets/models/"
 rsync -a --delete "$web/textures/" "$here/assets/textures/"
+mkdir -p "$here/assets/fonts" && rsync -a --delete "$web/fonts/" "$here/assets/fonts/"
 
 node -e '
 const fs = require("fs");

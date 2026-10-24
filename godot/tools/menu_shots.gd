@@ -21,6 +21,13 @@ func _ready() -> void:
 	_main._menus.open("garaje")
 	await get_tree().create_timer(1.0).timeout
 	await _shot("garaje")
+	_main._menus._garage_show(_main._menus._garage_types.find("chiva"))
+	_main._menus._paint("chiva", "#d62828")
+	await get_tree().create_timer(1.0).timeout
+	await _shot("garaje_chiva")
+	_main._menus.open("creditos")
+	await get_tree().create_timer(0.5).timeout
+	await _shot("creditos")
 	_main._menus.open("opciones")
 	await get_tree().create_timer(0.5).timeout
 	await _shot("opciones")
