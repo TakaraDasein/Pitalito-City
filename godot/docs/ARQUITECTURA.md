@@ -226,13 +226,33 @@ el personaje se gira 180° dentro de su nodo (en Godot "adelante" es −Z) y el 
 
 ## Personajes: un esqueleto, muchos cuerpos
 
-Cuerpos base y clips de Quaternius comparten el mismo esqueleto de 65 huesos, pero con dos diferencias que
-`character_model.gd` corrige una sola vez al armar la `AnimationLibrary` compartida:
+Cuerpos, ropa, pelo y clips de Quaternius pasan por el **retarget humanoide del importador**: el BoneMap de
+`assets/import/quaternius_bone_map.tres` (nombres de Unreal → `SkeletonProfileHumanoid`), renombre de huesos,
+esqueleto único `GeneralSkeleton` y arreglo de reposo. `tools/import/apply_retarget.py` escribe esa configuración
+en los `.import` (los borra `sync_from_web.sh` al copiar; el script corre al final de la sincronización). Los
+clips quedan con rutas `%GeneralSkeleton:Hips…`: sirven para cualquier modelo con el perfil, sin código de
+corrección (antes se reescribían rutas y se completaba el reposo del `root` a mano).
 
-- Ruta del esqueleto: `Rig/Skeleton3D` en los clips, `Armature/Skeleton3D` en los cuerpos.
-- Reposo del hueso `root`: girado −90° en los cuerpos (eje Z arriba de Unreal) e identidad en los clips, que no
-  lo animan. Sin corregir, el personaje queda acostado. Se completa cada clip con el reposo de su esqueleto.
 - El importador de Godot quita el sufijo `_Loop` y deja el clip cíclico: `Idle_Loop` → `Idle`.
+- Generar de nuevo el BoneMap: `godot --headless --script res://tools/import/make_bone_map.gd`.
+
+### Ajustes después de la animación (`character_rig.gd`)
+
+Cadena de `SkeletonModifier3D` nativos sobre el esqueleto del jugador: `CharacterRig` lanza un rayo bajo cada pie,
+baja la cadera lo que pida el pie más hondo y mueve los objetivos; `TwoBoneIK3D` lleva muslo → pantorrilla → pie a
+su objetivo con la rodilla hacia adelante; `LookAtModifier3D` en el pecho y la cabeza mira hacia donde apunta la
+cámara, con límites y apagándose si el punto queda detrás. Medido con `tools/feet_test.tscn` (escalón de 0,2 m y
+rampa de 20°): los dos tobillos quedan a 8,3–8,5 cm del suelo (su altura sobre la suela); sin ajuste, 28 cm.
+
+### Bancas y vehículo
+
+- Asientos: el horneador de la web llama a las interacciones `asiento` de cada hito con un jugador de mentira y
+  guarda `{x, y, z, heading}` en `landmarks.json` (14 bancas del parque). `Player.sit/stand` con los clips
+  `Sitting_Enter → Sitting_Idle → Sitting_Exit` en la máquina de estados; sin colisión mientras está sentado.
+- Subir: `Player.mount` camina a la puerta del conductor (`Vehicle.door_world`), la abre con `Interact` (no en la
+  moto) y se sienta deslizándose al asiento (`seat_world`) girando hacia el frente; luego entra el conductor
+  sentado del vehículo. Bajar es lo mismo al revés; en marcha (> 8 km/h) sale de una vez. Limitación: los
+  modelos no tienen puertas que se abran, el cuerpo atraviesa el costado durante ~1 s.
 
 ### Apariencia y creador de personaje
 
@@ -245,10 +265,6 @@ normales, como la web) y solo lo que tapa la ropa se mete 3 cm por la normal (ho
 procedural sobre el hueso `Head`; con sombrero o capucha el pelo pasa a corto para no atravesar la tela.
 La apariencia se guarda en `Settings.look`; el menú **Personaje** (portada y pausa) la edita con vista previa en
 el estudio del garaje, y al cambiarla se rearman el jugador y el conductor sentado.
-
-**Siguiente paso recomendado:** configurar en el importador un `BoneMap` con `SkeletonProfileHumanoid` y el
-"Rest Fixer" para ambos archivos. Es la vía estándar de Godot para compartir clips entre modelos de distintas
-fuentes (Mixamo, Quaternius, propios) sin código de corrección.
 
 ## Cómo extender
 
@@ -297,7 +313,7 @@ edificios armados con piezas y recorribles por dentro.
 1. Estructuras con referencias del usuario: cubierta curva de celosía (foto 4, ubicación por confirmar),
    confirmar el lado de la pasarela. Hecho: ríos, puentes viales y pasarela. Hecho: Coliseo recorrible; baño y cocina con tabique propio, vidrio interior, una luz por cuarto.
 2. Garaje: pintar y emplacar (la elección ya está). Audio en opciones cuando haya audio.
-3. Personaje: retarget con `BoneMap`, sentarse en bancas. (Hecho: creador de personaje, conductor en el vehículo.)
+3. Personaje: hecho (creador, retarget, pies y mirada, bancas, subir y bajar). Pendiente: puertas que se abran.
 4. Moto jugable: VehicleBody3D de dos ruedas se cae; necesita equilibrio propio.
 5. Audio (motor, ambiente, lluvia, música) y partículas de ambiente (bruma de la mañana, motas a contraluz).
 6. Combate y armas, fauna, supervivencia/zombis, facciones y bases, botín e inventario, historia y misiones,

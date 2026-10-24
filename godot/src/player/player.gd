@@ -19,6 +19,8 @@ var swimming := false
 ## Sentado en una banca: sin física ni control hasta que termina de levantarse.
 var sitting := false
 var _standing_t := 0.0  # > 0 mientras dura el clip de levantarse
+## Subir o bajar de un vehículo en curso: { phase, t, dur, from, to, rot0, rot1, done }
+var _mount := {}
 
 ## Cámara de la que se toma el rumbo (la asigna main.gd).
 var camera_rig: CameraRig
@@ -96,7 +98,11 @@ func _setup_tree(player: AnimationPlayer) -> void:
 		var node := AnimationNodeAnimation.new()
 		node.animation = CharacterModel.clip(p[1])
 		sm.add_node(p[0], node)
-	for pair: Array in [["move", "sit_enter", false], ["sit_enter", "sit", true], ["sit", "sit_exit", false], ["sit_exit", "move", true]]:
+	var interact := AnimationNodeAnimation.new()
+	interact.animation = CharacterModel.clip("Interact")
+	sm.add_node("interact", interact)
+	for pair: Array in [["move", "sit_enter", false], ["sit_enter", "sit", true], ["sit", "sit_exit", false], ["sit_exit", "move", true],
+			["move", "interact", false], ["interact", "move", true], ["interact", "sit_enter", false]]:
 		var t := AnimationNodeStateMachineTransition.new()
 		t.xfade_time = 0.25
 		if pair[2]:
@@ -116,6 +122,9 @@ func _setup_tree(player: AnimationPlayer) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if not _mount.is_empty():
+		_mounting(delta)
+		return
 	if sitting or _standing_t > 0.0:
 		_seated(delta)
 		return
@@ -164,6 +173,97 @@ func _physics_process(delta: float) -> void:
 		var sm: AnimationNodeStateMachinePlayback = _tree.get("parameters/playback")
 		sm.travel("move" if is_on_floor() else "air")
 		_tree.set("parameters/move/blend_position", Vector2(velocity.x, velocity.z).length())
+
+
+## Subir al vehículo, sin cortes: camina hasta la puerta del conductor, la abre (no en la moto), y se sienta
+## deslizándose al asiento mientras gira hacia el frente del vehículo. `done` se llama al quedar sentado: ahí
+## main.gd pasa al conductor sentado del vehículo, que sigue con el clip de manejar.
+func mount(v: Vehicle, done: Callable) -> void:
+	velocity = Vector3.ZERO
+	collision_layer = 0
+	collision_mask = 0
+	var door := v.door_world()
+	var to_door := door - global_position
+	to_door.y = 0.0
+	var fwd := v.global_basis.z
+	var out := (door - v.global_position)
+	out.y = 0.0
+	var steps: Array = []
+	if to_door.length() > 0.2:
+		steps.push_back({"phase": "walk", "dur": clampf(to_door.length() / WALK, 0.2, 2.5), "from": global_position, "to": door,
+			"rot0": rotation.y, "rot1": atan2(-to_door.x, -to_door.z)})
+	if not v.two_wheels:
+		steps.push_back({"phase": "open", "dur": 0.9, "from": door, "to": door, "rot0": atan2(-to_door.x, -to_door.z) if to_door.length() > 0.2 else rotation.y,
+			"rot1": atan2(out.x, out.z)}) # de frente a la puerta (hacia el vehículo)
+	# de espaldas al asiento, baja y entra; termina mirando al frente del vehículo
+	steps.push_back({"phase": "enter", "dur": 1.0, "from": door, "to": v.seat_world(), "rot0": atan2(-out.x, -out.z), "rot1": atan2(-fwd.x, -fwd.z)})
+	_mount = {"steps": steps, "i": -1, "t": 0.0, "done": done}
+	_next_step()
+
+
+## Bajar: aparece sentado en el asiento y sale con el clip de levantarse hasta quedar de pie junto a la puerta.
+func dismount(v: Vehicle, done: Callable) -> void:
+	velocity = Vector3.ZERO
+	collision_layer = 0
+	collision_mask = 0
+	var fwd := v.global_basis.z
+	var door := v.door_world()
+	var out := door - v.global_position
+	out.y = 0.0
+	global_position = v.seat_world()
+	rotation.y = atan2(-fwd.x, -fwd.z)
+	if _tree:
+		_playback().start("sit")
+	_mount = {"steps": [{"phase": "exit", "dur": 1.1, "from": v.seat_world(), "to": door, "rot0": rotation.y, "rot1": atan2(-out.x, -out.z)}],
+		"i": -1, "t": 0.0, "done": done}
+	_next_step()
+
+
+func is_mounting() -> bool:
+	return not _mount.is_empty()
+
+
+func _next_step() -> void:
+	_mount.i += 1
+	_mount.t = 0.0
+	if _mount.i >= _mount.steps.size():
+		var done: Callable = _mount.done
+		var last: Dictionary = _mount.steps[-1]
+		_mount = {}
+		if last.phase == "exit":
+			collision_layer = 2
+			collision_mask = 1 | 4 | 16
+		done.call()
+		return
+	if _tree == null:
+		return
+	match _mount.steps[_mount.i].phase:
+		"open":
+			_playback().travel("interact")
+		"enter":
+			_playback().travel("sit")
+		"exit":
+			_playback().travel("move")
+
+
+func _mounting(delta: float) -> void:
+	var st: Dictionary = _mount.steps[_mount.i]
+	_mount.t += delta / float(st.dur)
+	var k := smoothstep(0.0, 1.0, minf(_mount.t, 1.0))
+	var p: Vector3 = st.from.lerp(st.to, k if st.phase != "walk" else minf(_mount.t, 1.0))
+	if st.phase == "walk" or st.phase == "exit":
+		p.y = maxf(p.y, WorldData.height(p.x, p.z)) if st.phase == "walk" else p.y
+	global_position = p
+	# giro: al caminar enseguida hacia la puerta, en lo demás repartido en todo el paso
+	var kr := minf(_mount.t * 4.0, 1.0) if st.phase == "walk" else k
+	rotation.y = lerp_angle(st.rot0, st.rot1, kr)
+	if _tree and st.phase == "walk":
+		_playback().travel("move")
+		_tree.set("parameters/move/blend_position", WALK)
+	if _rig:
+		_rig.feet_enabled = st.phase == "walk"
+	if _mount.t >= 1.0:
+		_next_step()
 
 
 ## Sentarse en un asiento de LandmarkSystem.seats: se coloca en él (los pies a su altura, mirando a su frente) y

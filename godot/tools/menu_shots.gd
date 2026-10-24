@@ -1,7 +1,7 @@
 extends Node
 ## Herramienta: capturas de la carga y los menús (screenshots/menu_*.png). Uso: godot res://tools/menu_shots.tscn
 ## Para no recorrer todo, se nombran las secciones que interesan: `godot res://tools/menu_shots.tscn -- personaje`
-## (garaje, personaje, menus, juego, pies, banca; varias separadas por espacio). Carga y portada se capturan siempre.
+## (garaje, personaje, menus, juego, pies, banca, subir; varias separadas por espacio). Carga y portada se capturan siempre.
 
 var _main: Node
 var _only := OS.get_cmdline_user_args()
@@ -15,6 +15,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	Settings.persist = false
 	_main = load("res://scenes/main.tscn").instantiate()
+	_main.skip_mount = true
 	_main.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(_main)
 	var t0 := Time.get_ticks_msec()
@@ -117,6 +118,8 @@ func _ready() -> void:
 		await _feet_shots()
 	if _want("banca"):
 		await _bench_shots()
+	if _want("subir"):
+		await _mount_shots()
 	get_tree().quit()
 
 
@@ -177,6 +180,41 @@ func _bench_shots() -> void:
 	await get_tree().create_timer(2.0).timeout
 	print("banca: de pie en el suelo = %s, a %.2f m del asiento" % [player.is_on_floor(), Vector2(player.global_position.x - st.x, player.global_position.z - st.z).length()])
 	await _shot("banca_de_pie")
+
+
+## Subir y bajar del vehículo con la coreografía (caminar a la puerta, abrir, sentarse; y al revés).
+func _mount_shots() -> void:
+	if _main.state != _main.State.PLAYING:
+		_main._start_playing()
+	_main.skip_mount = false
+	var car: Vehicle = _main.vehicle
+	var player: Player = _main.player
+	var d := car.door_world()
+	player.place(d.x + car.global_basis.x.x * 2.0 + car.global_basis.z.x * 2.0, d.z + car.global_basis.x.z * 2.0 + car.global_basis.z.z * 2.0)
+	_main.camera_rig.yaw = car.rotation.y + PI * 0.5
+	_main.camera_rig.pitch = -0.2
+	await get_tree().create_timer(1.0).timeout
+	_main._enter_vehicle()
+	var t0 := Time.get_ticks_msec()
+	var shots := {0.9: "subir_camina", 2.0: "subir_puerta", 3.0: "subir_sienta"}
+	for at: float in shots:
+		while (Time.get_ticks_msec() - t0) / 1000.0 < at:
+			await get_tree().process_frame
+		await _shot(shots[at])
+	while player.is_mounting():
+		await get_tree().process_frame
+	print("subir: %.1f s, manejando = %s" % [(Time.get_ticks_msec() - t0) / 1000.0, _main._driving])
+	await get_tree().create_timer(0.5).timeout
+	await _shot("subir_listo")
+	_main._exit_vehicle()
+	await get_tree().create_timer(0.5).timeout
+	await _shot("bajar")
+	while player.is_mounting():
+		await get_tree().process_frame
+	await get_tree().create_timer(0.5).timeout
+	print("bajar: en el suelo = %s, a %.2f m de la puerta" % [player.is_on_floor(), player.global_position.distance_to(car.door_world())])
+	await _shot("bajar_listo")
+	_main.skip_mount = true
 
 
 func _shot(name: String) -> void:

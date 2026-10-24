@@ -5,8 +5,8 @@ class_name CharacterConfig
 const BASE := "res://assets/models/characters/"
 
 ## Cuánto se mete la piel bajo la ropa (m): los cuerpos del paquete son más corpulentos que su ropa. La web usa
-## 0,017 en todo el cuerpo; aquí solo bajo la ropa (ver COVERS), y con menos asomaban pecho y muslos (capturas).
-const SKIN_SHRINK := 0.03
+## 0,017 en todo el cuerpo; aquí solo bajo la ropa (ver COVERS), y con menos asomaban pecho, espalda y muslos.
+const SKIN_SHRINK := 0.04
 ## Qué huesos tapa cada tipo de pieza (parte del nombre humanoide, sirve a los dos lados): solo esos vértices se
 ## meten bajo la ropa.
 const COVERS := {

@@ -160,6 +160,21 @@ func place(x: float, z: float, heading := 0.0) -> void:
 
 
 ## Punto de bajada: al lado izquierdo del conductor, sobre el relieve.
+## Asiento del conductor en el mundo (donde quedan los pies del personaje sentado, igual que seat_driver).
+func seat_world() -> Vector3:
+	var s: Array = spec.get("seat", [0.0, 0.5, 0.0])
+	return global_transform * (_model_xf * Vector3(s[0], s[1], s[2]) + Vector3(0, -0.05, 0))
+
+
+## Junto a la puerta del conductor, a la altura del asiento a lo largo del vehículo, en el suelo.
+func door_world() -> Vector3:
+	var s: Array = spec.get("seat", [0.0, 0.5, 0.0])
+	var local := _model_xf * Vector3(s[0], 0, s[2])
+	local.x = signf(local.x if local.x != 0.0 else 1.0) * (float(spec.width) * 0.5 + 0.6)
+	var p := global_transform * local
+	return Vector3(p.x, WorldData.height(p.x, p.z), p.z)
+
+
 func exit_point() -> Vector3:
 	var p: Vector3 = global_position + global_basis.x * (spec.width * 0.5 + 0.8)
 	return Vector3(p.x, WorldData.height(p.x, p.z), p.z)

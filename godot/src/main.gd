@@ -22,6 +22,8 @@ enum State { LOADING, MENU, PLAYING, PAUSED }
 
 ## true en las pruebas: al terminar de cargar entra directo a jugar, sin menú.
 var skip_menu := false
+## Sin coreografía al subir y bajar (pruebas que necesitan el cambio inmediato).
+var skip_mount := false
 var state := State.LOADING
 var vehicle: Vehicle
 var _driving := false
@@ -278,7 +280,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		it[2].call()
 
 
+## Subir: la coreografía del jugador (Player.mount) y al terminar el conductor sentado del vehículo.
 func _enter_vehicle() -> void:
+	if player.is_mounting():
+		return
+	if player.visible and player.process_mode != Node.PROCESS_MODE_DISABLED and not skip_mount:
+		vehicle.linear_velocity = Vector3.ZERO
+		player.mount(vehicle, _seat_in_vehicle)
+		return
+	_seat_in_vehicle()
+
+
+func _seat_in_vehicle() -> void:
 	_driving = true
 	vehicle.driven = true
 	player.visible = false
@@ -292,15 +305,19 @@ func _enter_vehicle() -> void:
 	EventBus.vehicle_entered.emit(vehicle)
 
 
+## Bajar: detenido, el jugador sale del asiento con el clip de levantarse; en marcha (> 8 km/h) sale de una vez.
 func _exit_vehicle() -> void:
 	_driving = false
 	_audio.vehicle = null
 	vehicle.unseat_driver()
 	vehicle.driven = false
-	var p := vehicle.exit_point()
 	player.process_mode = Node.PROCESS_MODE_INHERIT
 	player.visible = true
-	player.place(p.x, p.z, vehicle.rotation.y)
+	if vehicle.speed_kmh() < 8.0 and not skip_mount:
+		player.dismount(vehicle, func(): pass)
+	else:
+		var p := vehicle.exit_point()
+		player.place(p.x, p.z, vehicle.rotation.y)
 	_set_focus(player, 2.4, 1.6)
 	_follow_camera()
 	hud.set_on_foot(true)
@@ -344,6 +361,8 @@ func _follow_camera() -> void:
 func _interaction() -> Array:
 	if _driving:
 		return [0.0, "Bajarse", func(): _exit_vehicle()]
+	if player.is_mounting():
+		return []
 	if player.sitting:
 		return [0.0, "Levantarse", func(): player.stand()]
 	var here := player.global_position

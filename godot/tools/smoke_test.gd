@@ -15,6 +15,7 @@ func _ready() -> void:
 	# La prueba sigue corriendo cuando el mapa pausa el juego; el juego sí se pausa
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_main = load("res://scenes/main.tscn").instantiate()
+	_main.skip_mount = true
 	_main.process_mode = Node.PROCESS_MODE_PAUSABLE
 	_main.skip_menu = true # la prueba entra directo a jugar al terminar la carga
 	add_child(_main)
