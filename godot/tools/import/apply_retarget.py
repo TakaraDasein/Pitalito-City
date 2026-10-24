@@ -27,7 +27,10 @@ def gltf_json(p: Path) -> dict:
 def skeleton_path(g: dict) -> str | None:
     """Ruta del Skeleton3D que crea el importador: <nodo padre de los huesos>/Skeleton3D."""
     if not g.get("skins"):
-        return None
+        # solo huesos, sin malla (ual2.glb: clips extra): con import_as_skeleton_bones el importador arma un
+        # Skeleton3D en la raíz con esos nodos, y el retarget se le aplica igual
+        names = {n.get("name") for n in g["nodes"]}
+        return "Skeleton3D" if "pelvis" in names and g.get("animations") else None
     joints = set(g["skins"][0]["joints"])
     parent = {c: i for i, n in enumerate(g["nodes"]) for c in n.get("children", [])}
     root = next(j for j in joints if parent.get(j) not in joints)
@@ -49,7 +52,7 @@ def subresources(skel: str) -> str:
 
 
 def main() -> int:
-    files = [p for p in CHAR.rglob("*") if p.suffix in (".gltf", ".glb") and "animals" not in p.parts and "enemies" not in p.parts]
+    files = [p for p in CHAR.rglob("*") if p.suffix in (".gltf", ".glb") and "animals" not in p.parts]
     done = 0
     for f in sorted(files):
         skel = skeleton_path(gltf_json(f))
@@ -59,6 +62,8 @@ def main() -> int:
         sub = subresources(skel)
         if imp.exists():
             text = imp.read_text()
+            if skel == "Skeleton3D":
+                text = text.replace("nodes/import_as_skeleton_bones=false", "nodes/import_as_skeleton_bones=true")
             text = re.sub(r"_subresources=\{.*?\n\}(?=\n[a-z])|_subresources=\{\}", lambda _m: sub, text, count=1, flags=re.S)
         else:
             text = '[remap]\n\nimporter="scene"\nimporter_version=1\n\n[params]\n\n' + sub + "\n"

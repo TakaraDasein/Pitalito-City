@@ -76,6 +76,28 @@ try {
   for (const [name, b64] of Object.entries(vehicles)) await save(vehOut, name, b64);
   console.log(`vehículos horneados: ${Object.keys(vehicles).length} → ${vehOut}`);
 
+  // Armas cuerpo a cuerpo (machete, peinilla, garrote…): mango en el origen y hoja hacia +Y, sin el ajuste de la
+  // mano de la web (GRIP): Godot pone el suyo en combat_config.gd
+  const weapons = await page.evaluate(async () => {
+    const E = await import('/tools/bake-godot.entry.js');
+    const exporter = new E.GLTFExporter();
+    const toB64 = (buf) => { let s = ''; const b = new Uint8Array(buf); for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode(...b.subarray(i, i + 0x8000)); return btoa(s); };
+    const out = {};
+    for (const id of E.ARSENAL) {
+      const m = E.weaponModel(id);
+      if (!m) continue;
+      m.rotation.set(0, 0, 0);
+      m.position.set(0, 0, 0);
+      m.name = id;
+      out[`${id}.glb`] = toB64(await exporter.parseAsync(m, { binary: true }));
+    }
+    return out;
+  });
+  const wpOut = join(vehOut, '..', '..', 'weapons', 'baked');
+  await mkdir(wpOut, { recursive: true });
+  for (const [name, b64] of Object.entries(weapons)) await save(wpOut, name, b64);
+  console.log(`armas horneadas: ${Object.keys(weapons).length} → ${wpOut}`);
+
   // Hitos: se construyen con el relieve y el grafo vial reales, como en Game.init
   const landmarks = await page.evaluate(async () => {
     const E = await import('/tools/bake-godot.entry.js');

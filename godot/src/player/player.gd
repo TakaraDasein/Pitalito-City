@@ -22,6 +22,15 @@ var _standing_t := 0.0  # > 0 mientras dura el clip de levantarse
 ## Subir o bajar de un vehículo en curso: { phase, t, dur, from, to, rot0, rot1, done }
 var _mount := {}
 
+## Combate (CombatSystem): el mismo Combatant que los enemigos. A pie hay dos modos que no se pisan: arma guardada
+## (construir, interactuar) y arma en mano (pelear); X cambia entre los dos, como en la web.
+var combat: Combatant
+var armed := false
+var _weapon_index := 1   # machete
+var _weapon_slot: BoneAttachment3D
+var _dead_t := 0.0
+var _push := Vector3.ZERO
+
 ## Cámara de la que se toma el rumbo (la asigna main.gd).
 var camera_rig: CameraRig
 var _model: Node3D
@@ -32,7 +41,7 @@ var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
 func _ready() -> void:
 	collision_layer = 2
-	collision_mask = 1 | 4 | 16
+	collision_mask = 1 | 4 | 8 | 16 # 8: personas (enemigos)
 	var shape := CollisionShape3D.new()
 	var capsule := CapsuleShape3D.new()
 	capsule.radius = 0.3
@@ -44,6 +53,8 @@ func _ready() -> void:
 	floor_max_angle = deg_to_rad(50)
 
 	apply_look()
+	combat = Combatant.new(self, CombatConfig.PLAYER, "manos", "player", "Tú")
+	combat.on_trigger = _on_combat
 
 
 ## (Re)arma el modelo con la apariencia de Settings.look: al entrar y al salir del creador de personaje.
@@ -67,6 +78,9 @@ func apply_look() -> void:
 	add_child(_model)
 	_setup_tree(_model.get_node("AnimationPlayer"))
 	_rig = CharacterRig.attach(_model.find_child(CharacterModel.SKELETON, true, false))
+	_weapon_slot = null
+	if armed:
+		_show_weapon(CombatConfig.ARSENAL[_weapon_index])
 	if _rig:
 		_rig.exclude = [get_rid()]
 
@@ -118,6 +132,30 @@ func _setup_tree(player: AnimationPlayer) -> void:
 		tr.xfade_time = 0.2
 		sm.add_transition(pair[0], pair[1], tr)
 
+	# combate: un nodo por clip ("c_<clip>"); el de ataque se estira a lo que dura el golpe (_on_combat)
+	var clips := ["Roll", "Hit_Chest", "Death01", "Sword_Block"]
+	for w: Dictionary in CombatConfig.WEAPONS.values():
+		for c: String in w.combo:
+			if not c in clips:
+				clips.push_back(c)
+	for c: String in clips:
+		if not player.has_animation(CharacterModel.clip(c)):
+			continue
+		var node := AnimationNodeAnimation.new()
+		node.animation = CharacterModel.clip(c)
+		node.use_custom_timeline = true
+		node.timeline_length = player.get_animation(CharacterModel.clip(c)).length
+		node.stretch_time_scale = true
+		node.loop_mode = Animation.LOOP_LINEAR if c == "Sword_Block" else Animation.LOOP_NONE
+		sm.add_node("c_" + c, node)
+	var combat_nodes: Array = clips.filter(func(c): return sm.has_node("c_" + c)).map(func(c): return "c_" + c)
+	for a: String in combat_nodes + ["move"]:
+		for b: String in combat_nodes + ["move"]:
+			if a != b and not (a == "move" and b == "move"):
+				var tr := AnimationNodeStateMachineTransition.new()
+				tr.xfade_time = 0.1
+				sm.add_transition(a, b, tr)
+
 	_tree = AnimationTree.new()
 	_tree.tree_root = sm
 	_model.add_child(_tree)
@@ -138,6 +176,13 @@ func _physics_process(delta: float) -> void:
 	var speed := SPRINT if Input.is_action_pressed("sprint") else JOG
 	if input.length() < 0.5 and input.length() > 0.0:
 		speed = WALK
+	# combate: rodando manda el impulso; atacando, aturdido o muerto no se camina; cubriéndose, despacio
+	var rolling := combat.state == Combatant.State.ROLL
+	if combat.state in [Combatant.State.ATTACK, Combatant.State.HIT, Combatant.State.DEAD]:
+		dir = Vector3.ZERO
+	elif combat.guarding:
+		speed = minf(speed, JOG) * 0.45
+	_combat_tick(delta)
 
 
 	var water: Dictionary = WaterSystem.instance.sample(global_position.x, global_position.z) if WaterSystem.instance else {}
@@ -160,10 +205,21 @@ func _physics_process(delta: float) -> void:
 	var target := dir * speed
 	velocity.x = move_toward(velocity.x, target.x, 30.0 * delta)
 	velocity.z = move_toward(velocity.z, target.z, 30.0 * delta)
+	if rolling:
+		var r := combat.roll_step(delta) / maxf(delta, 0.0001)
+		velocity.x = r.x
+		velocity.z = r.z
+	velocity += _push
+	_push = _push.lerp(Vector3.ZERO, minf(1.0, delta * 8.0))
 	_step_up(delta)
 	move_and_slide()
 
-	if dir.length() > 0.05:
+	var lock := combat.lock_target
+	if lock and lock.is_alive() and not rolling:
+		# con blanco fijado el personaje encara al enemigo aunque camine de lado
+		var to := lock.body.global_position - global_position
+		rotation.y = lerp_angle(rotation.y, atan2(-to.x, -to.z), minf(1.0, TURN * delta))
+	elif dir.length() > 0.05:
 		var want := atan2(-dir.x, -dir.z)
 		rotation.y = lerp_angle(rotation.y, want, minf(1.0, TURN * delta))
 
@@ -173,7 +229,7 @@ func _physics_process(delta: float) -> void:
 		global_position.y = ground + 0.5
 		velocity.y = 0.0
 
-	if _tree:
+	if _tree and combat.state == Combatant.State.IDLE and not combat.guarding:
 		var sm: AnimationNodeStateMachinePlayback = _tree.get("parameters/playback")
 		sm.travel("move" if is_on_floor() else "air")
 		_tree.set("parameters/move/blend_position", Vector2(velocity.x, velocity.z).length())
@@ -354,7 +410,7 @@ func _next_step() -> void:
 			v.set_door(false) # cierra al quedar sentado, o al salir y quedar de pie
 		if last.phase in ["exit", "bajar"] or (last.phase == "pierna" and last.reverse):
 			collision_layer = 2
-			collision_mask = 1 | 4 | 16
+			collision_mask = 1 | 4 | 8 | 16 # 8: personas (enemigos)
 		done.call()
 		return
 	if _tree == null:
@@ -446,7 +502,7 @@ func _seated(delta: float) -> void:
 	if _standing_t <= 0.0:
 		global_position += -global_basis.z * 0.45 + Vector3.UP * 0.1
 		collision_layer = 2
-		collision_mask = 1 | 4 | 16
+		collision_mask = 1 | 4 | 8 | 16 # 8: personas (enemigos)
 
 
 func _playback() -> AnimationNodeStateMachinePlayback:
@@ -518,3 +574,132 @@ func place(x: float, z: float, heading := 0.0) -> void:
 	global_position = Vector3(x, WorldData.height(x, z) + 0.2, z)
 	rotation.y = heading
 	velocity = Vector3.ZERO
+
+
+# ───────────── Combate ─────────────
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not CombatConfig.ENABLED or not visible or sitting or is_mounting() or swimming:
+		return
+	if event.is_action_pressed("combat_toggle"):
+		set_armed(not armed)
+	elif not armed:
+		return
+	elif event.is_action_pressed("combat_attack"):
+		combat.attack()
+	elif event.is_action_pressed("combat_guard"):
+		combat.set_guard(true)
+	elif event.is_action_released("combat_guard"):
+		combat.set_guard(false)
+	elif event.is_action_pressed("combat_roll"):
+		_roll()
+	elif event.is_action_pressed("combat_lock") and CombatSystem.instance:
+		CombatSystem.instance.toggle_lock(combat, camera_rig.yaw if camera_rig else rotation.y)
+	elif event.is_action_pressed("combat_cycle"):
+		cycle_weapon(1)
+	elif event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+		cycle_weapon(1 if event.button_index == MOUSE_BUTTON_WHEEL_DOWN else -1)
+
+
+## Sacar o guardar el arma. Guardada: sin blanco ni guardia.
+func set_armed(on: bool) -> void:
+	armed = on
+	combat.set_guard(false)
+	if not on:
+		if CombatSystem.instance and combat.lock_target:
+			CombatSystem.instance.toggle_lock(combat, 0.0)
+		combat.set_weapon("manos")
+		_show_weapon("")
+	else:
+		var id: String = CombatConfig.ARSENAL[_weapon_index]
+		combat.set_weapon(id)
+		_show_weapon(id)
+	if HUD.instance:
+		HUD.instance.toast(("En la mano: " + combat.weapon.name) if on else "Arma guardada", 1.4)
+
+
+func cycle_weapon(step: int) -> void:
+	if combat.is_busy():
+		return
+	_weapon_index = (_weapon_index + step + CombatConfig.ARSENAL.size()) % CombatConfig.ARSENAL.size()
+	set_armed(true)
+
+
+## Cuelga el modelo del arma de la mano derecha (vacío = manos libres).
+func _show_weapon(id: String) -> void:
+	if _weapon_slot:
+		_weapon_slot.queue_free()
+		_weapon_slot = null
+	var model: String = CombatConfig.WEAPONS.get(id, {}).get("model", "")
+	var skel: Skeleton3D = _model.find_child(CharacterModel.SKELETON, true, false) if _model else null
+	var path: String = CombatConfig.WEAPON_DIR + model + ".glb"
+	if model == "" or skel == null or skel.find_bone("RightHand") < 0 or not ResourceLoader.exists(path):
+		return
+	_weapon_slot = BoneAttachment3D.new()
+	_weapon_slot.bone_name = "RightHand"
+	skel.add_child(_weapon_slot)
+	var w: Node3D = load(path).instantiate()
+	w.rotation = CombatConfig.GRIP_ROTATION
+	w.position = CombatConfig.GRIP_POSITION
+	_weapon_slot.add_child(w)
+
+
+## Rueda hacia donde se mueve; quieto, hacia donde mira la cámara.
+func _roll() -> void:
+	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+	var yaw := camera_rig.yaw if camera_rig else rotation.y
+	var dir := Vector3(input.x, 0.0, input.y).rotated(Vector3.UP, yaw) if input.length() > 0.1 else Vector3(-sin(yaw), 0, -cos(yaw))
+	dir = dir.normalized()
+	if combat.roll(dir):
+		rotation.y = atan2(-dir.x, -dir.z)
+
+
+## Empujón de un golpe (CombatSystem): se suma a la velocidad y se apaga solo.
+func push(v: Vector3) -> void:
+	_push += Vector3(v.x, 0.0, v.z)
+
+
+## El cuerpo responde a lo que pasa en el combate: clip del golpe estirado a lo que dura, rodar, aturdirse, morir.
+func _on_combat(evt: String, data: Dictionary) -> void:
+	if _tree == null:
+		return
+	var sm: AnimationNodeStateMachine = _tree.tree_root
+	var node := ""
+	match evt:
+		"attack":
+			node = "c_" + str(data.clip)
+		"roll":
+			node = "c_Roll"
+		"hit":
+			node = "c_Hit_Chest"
+		"death":
+			node = "c_Death01"
+			_dead_t = 4.0
+			if HUD.instance:
+				HUD.instance.toast("Caíste. Te levantas en un momento…", 3.5)
+	if node == "" or not sm.has_node(node):
+		return
+	if data.has("lock"):
+		(sm.get_node(node) as AnimationNodeAnimation).timeline_length = float(data.lock)
+	_playback().start(node)
+
+
+## Por cuadro: guardia (clip en bucle), volver al movimiento al terminar, y levantarse después de caer.
+func _combat_tick(delta: float) -> void:
+	if _tree == null:
+		return
+	var pb := _playback()
+	if combat.state == Combatant.State.DEAD:
+		_dead_t -= delta
+		if _dead_t <= 0.0:
+			combat.revive()
+			pb.travel("move")
+		return
+	if combat.state == Combatant.State.IDLE:
+		if combat.guarding:
+			if pb.get_current_node() != "c_Sword_Block":
+				pb.travel("c_Sword_Block")
+		elif str(pb.get_current_node()).begins_with("c_"):
+			pb.travel("move")
+	if camera_rig:
+		camera_rig.lock_target = combat.lock_target.body if combat.lock_target and combat.lock_target.is_alive() else null

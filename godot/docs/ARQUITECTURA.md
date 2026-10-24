@@ -330,8 +330,14 @@ edificios armados con piezas y recorribles por dentro.
    luciérnagas de noche y hojas de día bajo los árboles (`WorldStreamer.trees_near`), bruma de la mañana y motas
    al sol. Niebla más espesa bajo el monte (`SkySystem.fog_extra`). Falta de la web: tensión de postproceso con enemigos
    cerca, sangre y golpes (van con el bloque 5).
-5. Combate y armas, fauna, supervivencia/zombis, facciones y bases, botín e inventario, historia y misiones,
-   construcción por bloques: un nodo por sistema, comunicados por `EventBus`.
+5. Capa de juego. Hecho (primer tramo del combate): `Combatant` (vida, resistencia, temple, combo, rodar con
+   invulnerabilidad, guardia), `CombatSystem` (golpe por sector, fijar blanco y cambiar al morir), arsenal de la
+   web horneado a GLB (machete, peinilla, garrote, azadón, rejo) en la mano derecha, clips de espada de `ual2.glb`
+   (importado como huesos con el retarget humanoide), enemigos de los Restos (FICCIÓN DECLARADA) con la decisión
+   de la web, que aparecen en sus zonas lejos de la cabecera, y barras de vida, resistencia y blanco en el HUD.
+   Teclas como la web: X sacar/guardar, clic golpear, clic der. cubrirse, Ctrl rodar, Q fijar, Z o rueda cambiar.
+   Falta: armas de fuego, partículas y sonido del golpe (`EventBus.combat_impact` ya se emite), tensión de
+   postproceso, uniforme de los Restos, fauna, supervivencia, botín e inventario, historia y misiones, bloques.
 6. Oclusores por tile, LOD de toda la ciudad (`CityLOD`), y exportación (filtro de `data/world/*.json` y `*.bin`).
 7. Tamaño de los hitos: cada GLB lleva sus texturas incrustadas (60 MB entre los 8); compartirlas con un
    `.res` de materiales o exportarlas aparte.

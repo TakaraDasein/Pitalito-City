@@ -13,6 +13,8 @@ import { CollisionWorld } from '../src/world/CollisionWorld.js';
 import { SolidWorld } from '../src/world/SolidWorld.js';
 import { RoadNetwork } from '../src/world/RoadNetwork.js';
 import { MapRenderer } from '../src/ui/MapRenderer.js';
+import { weaponModel } from '../src/entities/weapons/models.js';
+import { ARSENAL } from '../src/config/combat.config.js';
 
 // Godot no importa EXT_mesh_gpu_instancing: cada InstancedMesh se funde en una sola malla (mismas draw calls).
 // Si las instancias tienen color propio, pasa a color de vértice.
@@ -45,4 +47,4 @@ export function flattenInstances(root) {
   }
 }
 
-export { GLTFExporter, AssetManager, MaterialLibrary, VEHICLE_MODELS, VEHICLES, LANDMARKS, Terrain, CollisionWorld, SolidWorld, RoadNetwork, MapRenderer };
+export { GLTFExporter, AssetManager, MaterialLibrary, VEHICLE_MODELS, VEHICLES, LANDMARKS, Terrain, CollisionWorld, SolidWorld, RoadNetwork, MapRenderer, weaponModel, ARSENAL };

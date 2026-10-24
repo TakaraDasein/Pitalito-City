@@ -10,6 +10,8 @@ var target: Node3D
 var input_enabled := true
 var yaw := 0.0
 var pitch := -0.25
+## Blanco fijado del combate: la cámara gira sola hasta encuadrarlo (como en Dark Souls).
+var lock_target: Node3D
 var _arm: SpringArm3D
 var camera: Camera3D
 
@@ -48,6 +50,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
+	if lock_target and target:
+		var to := lock_target.global_position - target.global_position
+		yaw = lerp_angle(yaw, atan2(-to.x, -to.z), minf(1.0, 6.0 * delta))
 	rotation = Vector3(pitch, yaw, 0.0)
 	if target == null:
 		return

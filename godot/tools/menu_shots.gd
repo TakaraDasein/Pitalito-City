@@ -1,7 +1,7 @@
 extends Node
 ## Herramienta: capturas de la carga y los menús (screenshots/menu_*.png). Uso: godot res://tools/menu_shots.tscn
 ## Para no recorrer todo, se nombran las secciones que interesan: `godot res://tools/menu_shots.tscn -- personaje`
-## (garaje, personaje, menus, juego, pies, banca, subir, faros, tomar, ambiente; varias separadas por espacio). Carga y portada se capturan siempre.
+## (garaje, personaje, menus, juego, pies, banca, subir, faros, tomar, ambiente, combate; varias separadas por espacio). Carga y portada se capturan siempre.
 
 var _main: Node
 var _only := OS.get_cmdline_user_args()
@@ -126,7 +126,71 @@ func _ready() -> void:
 		await _take_shots()
 	if _want("ambiente"):
 		await _ambience_shots()
+	if _want("combate"):
+		await _combat_shots()
 	get_tree().quit()
+
+
+## Combate: machete en mano, un centinela delante. Captura la guardia, el golpe, el blanco fijado y el rodar, e
+## imprime la vida de los dos para comprobar que el golpe entra (y que el enemigo también pega).
+func _combat_shots() -> void:
+	if _main.state != _main.State.PLAYING:
+		_main._start_playing()
+	var player: Player = _main.player
+	var sp: Dictionary = WorldData.spawn()
+	player.place(sp.x, sp.z, sp.heading)
+	await get_tree().create_timer(1.0).timeout
+	player.set_armed(true)
+	var fwd := -player.global_basis.z
+	var at := player.global_position + fwd * 6.0
+	var enemy: Enemy = _main.factions.spawn("centinela", at)
+	_main.camera_rig.yaw = player.rotation.y + 0.5
+	_main.camera_rig.pitch = -0.2
+	await get_tree().create_timer(1.5).timeout
+	await _shot("combate_guardia")
+	_main.combat.toggle_lock(player.combat, player.rotation.y)
+	print("combate: blanco fijado = %s" % (player.combat.lock_target != null))
+	# esperar a que se acerque a distancia de golpe
+	var t0 := Engine.get_physics_frames()
+	while enemy.dist > 2.2 and Engine.get_physics_frames() - t0 < 600:
+		await get_tree().physics_frame
+	print("combate: el centinela llegó a %.1f m" % enemy.dist)
+	var h0 := enemy.self_c.health
+	player.combat.attack()
+	var f0 := Engine.get_physics_frames()
+	while Engine.get_physics_frames() - f0 < 14:
+		await get_tree().physics_frame
+	await _shot("combate_golpe")
+	while player.combat.is_busy():
+		await get_tree().physics_frame
+	print("combate: vida del centinela %.0f → %.0f" % [h0, enemy.self_c.health])
+	await _shot("combate_blanco")
+	var ph := player.combat.health
+	f0 = Engine.get_physics_frames()
+	while Engine.get_physics_frames() - f0 < 240 and player.combat.health >= ph:
+		await get_tree().physics_frame
+	print("combate: vida del jugador %.0f → %.0f" % [ph, player.combat.health])
+	player._roll()
+	f0 = Engine.get_physics_frames()
+	while Engine.get_physics_frames() - f0 < 12:
+		await get_tree().physics_frame
+	await _shot("combate_rodar")
+	# rematar: golpes hasta que caiga
+	for i in 12:
+		while player.combat.is_busy():
+			await get_tree().physics_frame
+		if not enemy.self_c.is_alive():
+			break
+		var to := enemy.global_position - player.global_position
+		to.y = 0.0
+		if to.length() > 1.6: # se apartó (rodando o empujado): acercarse a distancia de golpe
+			player.global_position = enemy.global_position - to.normalized() * 1.4
+		player.rotation.y = atan2(-to.x, -to.z)
+		player.combat.attack()
+		await get_tree().physics_frame
+	await get_tree().create_timer(1.5).timeout
+	print("combate: centinela vivo = %s, vida %.0f" % [enemy.self_c.is_alive(), enemy.self_c.health])
+	await _shot("combate_caido")
 
 
 ## Ambiente: busca un sitio con árboles cerca del parque y lo retrata de noche (luciérnagas), de día (hojas,

@@ -6,6 +6,8 @@ class_name CharacterModel
 ## Ojo: el importador de Godot quita el sufijo "_Loop" del nombre y deja el clip cíclico ("Idle_Loop" → "Idle").
 
 const ANIMATIONS := "res://assets/models/characters/animations.glb"
+## Clips extra (Universal Animation Library 2, CC0): espada, bloqueo, zarpazo, levantarse. Mismo perfil humanoide.
+const EXTRA := ["res://assets/models/characters/ual2.glb"]
 const LIB := "ual"
 const SKELETON := "GeneralSkeleton"
 
@@ -16,11 +18,15 @@ static func library() -> AnimationLibrary:
 	if _library:
 		return _library
 	_library = AnimationLibrary.new()
-	var src: Node = load(ANIMATIONS).instantiate()
-	var player: AnimationPlayer = src.find_child("AnimationPlayer", true, false)
-	for anim_name in player.get_animation_list():
-		_library.add_animation(anim_name, player.get_animation(anim_name))
-	src.free()
+	for path: String in [ANIMATIONS] + EXTRA:
+		if not ResourceLoader.exists(path):
+			continue
+		var src: Node = load(path).instantiate()
+		var player: AnimationPlayer = src.find_child("AnimationPlayer", true, false)
+		for anim_name in player.get_animation_list():
+			if not _library.has_animation(anim_name):
+				_library.add_animation(anim_name, player.get_animation(anim_name))
+		src.free()
 	return _library
 
 

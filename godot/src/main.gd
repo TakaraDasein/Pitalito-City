@@ -42,12 +42,22 @@ const CAMERA_MODES := [
 var _cam_mode := 0
 var _audio: AudioSystem
 var _ambience: AmbienceSystem
+var combat: CombatSystem
+var factions: FactionSystem
 var _prompt_t := 0.0
 
 
 func _ready() -> void:
 	_audio = AudioSystem.new()
 	add_child(_audio)
+	combat = CombatSystem.new()
+	add_child(combat)
+	combat.add(player.combat, true)
+	factions = FactionSystem.new()
+	factions.name = "Restos"
+	factions.focus = player
+	add_child(factions)
+	hud.combat = player.combat
 	_loading = LoadingScreen.new()
 	add_child(_loading)
 	_menus = Menus.new()
@@ -82,6 +92,7 @@ func _boot() -> void:
 	camera_rig.global_position = player.global_position
 	traffic.lights = traffic_lights
 	sky.camera = camera_rig.camera
+	hud.camera = camera_rig.camera
 	sky.set_weather(Settings.weather)
 	_audio.sky = sky
 	_ambience = AmbienceSystem.new()

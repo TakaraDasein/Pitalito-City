@@ -6,7 +6,19 @@ extends CanvasLayer
 ##  · minimapa con aro de guadua, velocímetro de culmo (manejando)
 ##  · barra de controles: reloj, vehículo, GPS, clima y atajos (N hora, C cámara, M mapa, Esc pausa, H ayuda)
 ##  · aviso de interacción ("F · Subir al Jeep Willys"), ficha de información (E), avisos breves y ayuda
+##  · combate: vida y resistencia del jugador, y la marca y la vida del blanco fijado
 ##  · atribución de los datos, siempre visible (web/docs/REGLAS.md)
+
+static var instance: HUD
+## Combatiente del jugador y cámara (para proyectar la marca del blanco): los pone main.gd.
+var combat: Combatant
+var camera: Camera3D
+var _health: ProgressBar
+var _stamina: ProgressBar
+var _bars: VBoxContainer
+var _lock_mark: VBoxContainer
+var _lock_name: Label
+var _lock_bar: ProgressBar
 
 const BLUE := Color("#005b8c")    # placas de nomenclatura de Pitalito
 const ZONE_BANNER_TIME := 3.0
@@ -44,6 +56,7 @@ var _debug: Label
 
 
 func _ready() -> void:
+	instance = self
 	_root = Control.new()
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -53,6 +66,7 @@ func _ready() -> void:
 	_build_bar()
 	_build_widgets()
 	_build_help()
+	_build_combat()
 
 
 # ── Construcción ──────────────────────────────────────────────────────────────────────────────────────
@@ -309,6 +323,65 @@ func _attribution() -> Array:
 
 # ── API ───────────────────────────────────────────────────────────────────────────────────────────────
 
+## Barras de vida y resistencia (abajo a la izquierda, sobre la barra de controles) y marca del blanco fijado.
+func _build_combat() -> void:
+	_bars = VBoxContainer.new()
+	_bars.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	_bars.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_bars.position += Vector2(20, -76)
+	_bars.add_theme_constant_override("separation", 4)
+	_root.add_child(_bars)
+	_health = _bar(_bars, GuaduaTheme.SALUD, Vector2(260, 12))
+	_stamina = _bar(_bars, GuaduaTheme.GUADUA, Vector2(200, 8))
+	_bars.visible = false
+	_lock_mark = VBoxContainer.new()
+	_lock_mark.alignment = BoxContainer.ALIGNMENT_CENTER
+	_lock_mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_lock_mark)
+	_lock_name = Label.new()
+	_lock_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_lock_name.add_theme_color_override("font_color", GuaduaTheme.CREMA)
+	_lock_name.add_theme_constant_override("outline_size", 4)
+	_lock_name.add_theme_color_override("font_outline_color", GuaduaTheme.CAFE_DARK)
+	_lock_mark.add_child(_lock_name)
+	_lock_bar = _bar(_lock_mark, GuaduaTheme.SALUD, Vector2(120, 6))
+	var dot := Label.new()
+	dot.text = "◆"
+	dot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dot.add_theme_color_override("font_color", GuaduaTheme.CREMA)
+	_lock_mark.add_child(dot)
+	_lock_mark.visible = false
+
+
+func _bar(parent: Container, fill: Color, size: Vector2) -> ProgressBar:
+	var b := ProgressBar.new()
+	b.custom_minimum_size = size
+	b.show_percentage = false
+	b.max_value = 1.0
+	b.add_theme_stylebox_override("background", _flat(GuaduaTheme.CAFE_DARK, 3, 0))
+	b.add_theme_stylebox_override("fill", _flat(fill, 3, 0))
+	parent.add_child(b)
+	return b
+
+
+func _update_combat() -> void:
+	if combat == null:
+		return
+	# las barras se ven con el arma en mano o si falta algo (herido o cansado)
+	var hurt := combat.health < float(combat.stats.health) or combat.stamina < float(combat.stats.stamina) - 0.5
+	var player: Node = combat.body
+	_bars.visible = player.visible and (player.get("armed") or hurt)
+	_health.value = combat.health / float(combat.stats.health)
+	_stamina.value = combat.stamina / float(combat.stats.stamina)
+	var t := combat.lock_target
+	_lock_mark.visible = t != null and t.is_alive() and camera != null and not camera.is_position_behind(t.body.global_position + Vector3.UP * 1.0)
+	if _lock_mark.visible:
+		_lock_name.text = t.name
+		_lock_bar.value = t.health / float(t.stats.health)
+		var at := camera.unproject_position(t.body.global_position + Vector3.UP * 1.1)
+		_lock_mark.position = at - _lock_mark.size * 0.5
+
+
 func set_on_foot(on_foot: bool) -> void:
 	_speed.visible = not on_foot
 
@@ -366,6 +439,7 @@ func _process(delta: float) -> void:
 		UiFx.leave(_info)
 	_banner_t -= delta
 	_banner.modulate.a = clampf(minf(_banner_t, ZONE_BANNER_TIME - _banner_t) * 2.0, 0.0, 1.0)
+	_update_combat()
 	if focus == null:
 		return
 	minimap.focus = focus

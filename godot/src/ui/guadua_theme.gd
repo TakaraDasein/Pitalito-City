@@ -12,6 +12,7 @@ const CREMA := Color("#d9b98a")
 const TEXT := Color("#f6eed9")
 const GREEN := Color("#008351") # placas de nomenclatura de Pitalito
 const GUADUA := Color("#8fa64a") # verde de la guadua viva (acentos activos)
+const SALUD := Color("#a8322a")  # vida en las barras de combate (rojo achiote)
 
 const FONTS := "res://assets/fonts"
 
