@@ -6,3 +6,5 @@ data/raw/
 screenshots/
 .DS_Store
 *.log
+# Modelos externos CC BY / CC BY-NC: no se versionan (pnpm models:import)
+public/models/externos/

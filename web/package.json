@@ -18,7 +18,8 @@
     "fonts:fetch": "node scripts/fetch-fonts.mjs",
     "shot": "node tools/screenshot.mjs",
     "shot:vehicle": "node tools/screenshot.mjs --vehicle",
-    "bench": "node tools/bench.mjs"
+    "bench": "node tools/bench.mjs",
+    "models:import": "node scripts/import-modelos.mjs"
   },
   "dependencies": {
     "three": "^0.170.0"

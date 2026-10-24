@@ -1,7 +1,7 @@
 extends Node
 ## Herramienta: capturas de la carga y los menús (screenshots/menu_*.png). Uso: godot res://tools/menu_shots.tscn
 ## Para no recorrer todo, se nombran las secciones que interesan: `godot res://tools/menu_shots.tscn -- personaje`
-## (garaje, personaje, menus, juego, pies, banca, subir, faros, tomar, ambiente, combate, botin, disparos; varias separadas por espacio). Carga y portada se capturan siempre.
+## (garaje, personaje, menus, juego, pies, banca, subir, faros, tomar, ambiente, combate, botin, disparos, criaturas; varias separadas por espacio). Carga y portada se capturan siempre.
 
 var _main: Node
 var _only := OS.get_cmdline_user_args()
@@ -132,6 +132,8 @@ func _ready() -> void:
 		await _loot_shots()
 	if _want("disparos"):
 		await _gun_shots()
+	if _want("criaturas"):
+		await _creature_shots()
 	get_tree().quit()
 
 
@@ -294,6 +296,72 @@ func _combat_shots() -> void:
 	while Engine.get_physics_frames() - fw < 30:
 		await get_tree().physics_frame
 	print("combate: recibe — vida %.0f → %.0f, retrocede %.2f m, estado %d" % [hp, player.combat.health, Vector2(player.global_position.x - p0.x, player.global_position.z - p0.z).length(), player.combat.state])
+
+
+## Criaturas externas (CreaturesConfig) en fila, caminando: para ver escala, orientación y que el retarget de los
+## humanoides mueve bien el esqueleto. Imprime el alto medido de cada una.
+func _creature_shots() -> void:
+	if _main.state != _main.State.PLAYING:
+		_main._start_playing()
+	var player: Player = _main.player
+	var sp: Dictionary = WorldData.spawn()
+	player.place(sp.x, sp.z, sp.heading)
+	await get_tree().create_timer(1.0).timeout
+	var fwd := -player.global_basis.z
+	var right := player.global_basis.x
+	var ids: Array = CreaturesConfig.CREATURES.keys()
+	var made := []
+	for i in ids.size():
+		var m: Dictionary = CreatureModel.create(ids[i])
+		if m.is_empty():
+			print("criaturas: falta %s" % ids[i])
+			continue
+		var at: Vector3 = player.global_position + fwd * 9.0 + right * (i - (ids.size() - 1) / 2.0) * 3.6
+		m.root.position = Vector3(at.x, WorldData.height(at.x, at.z), at.z)
+		m.root.rotation.y = player.rotation.y + PI * 0.5   # de perfil a la cámara
+		add_child(m.root)
+		if m.clips.has("walk"):
+			m.anim.play(m.clips.walk)
+		made.push_back(m)
+		var aabb := AABB()
+		var first := true
+		for mi: MeshInstance3D in m.root.find_children("*", "MeshInstance3D", true, false):
+			var b := mi.global_transform * mi.get_aabb()
+			aabb = b if first else aabb.merge(b)
+			first = false
+		print("criaturas: %s — clips %s · caja %s, de y=%.2f a %.2f sobre el suelo · escala %s" % [ids[i], m.clips.keys(), aabb.size.snapped(Vector3.ONE * 0.01),
+			aabb.position.y - m.root.position.y, aabb.end.y - m.root.position.y, (m.root.get_child(0) as Node3D).scale.x])
+	# una por una, de cerca: misma escena, cámara a 2,2 × su alto
+	for m in made:
+		m.root.visible = false
+	var solo := Camera3D.new()
+	solo.fov = 45
+	add_child(solo)
+	solo.make_current()
+	for m in made:
+		m.root.visible = true
+		var h: float = m.spec.height
+		var at2: Vector3 = player.global_position + fwd * 6.0
+		m.root.global_position = Vector3(at2.x, WorldData.height(at2.x, at2.z), at2.z)
+		solo.global_position = m.root.global_position - fwd * (2.6 * h + 1.0) + right * (1.2 * h) + Vector3.UP * (0.8 * h)
+		solo.look_at(m.root.global_position + Vector3.UP * (0.5 * h))
+		await get_tree().create_timer(0.6).timeout
+		await _shot("criatura_" + String(m.root.name))
+		m.root.visible = false
+	solo.queue_free()
+	for m in made:
+		m.root.visible = true
+	var cam := Camera3D.new()
+	cam.fov = 60
+	add_child(cam)
+	cam.global_position = player.global_position - fwd * 14.0 + Vector3.UP * 4.0
+	cam.look_at(player.global_position + fwd * 9.0 + Vector3.UP * 1.0)
+	cam.make_current()
+	await get_tree().create_timer(1.5).timeout
+	await _shot("criaturas_fila")
+	cam.queue_free()
+	for m in made:
+		m.root.queue_free()
 
 
 ## Disparos: pistola, escopeta y fusil con su munición contra un centinela a 10 m; hacia dónde apunta el cañón,

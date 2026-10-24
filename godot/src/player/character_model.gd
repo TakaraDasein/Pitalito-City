@@ -30,6 +30,25 @@ static func library() -> AnimationLibrary:
 	return _library
 
 
+static var _library_fixed_hips: AnimationLibrary
+
+
+## La misma biblioteca sin la pista de posición de la cadera (solo giros): para esqueletos con el origen a la altura
+## de la cadera (los modelos de Sketchfab). Con la pista, la cadera sumaba su alto dos veces y el cuerpo flotaba 1 m.
+static func library_fixed_hips() -> AnimationLibrary:
+	if _library_fixed_hips:
+		return _library_fixed_hips
+	_library_fixed_hips = AnimationLibrary.new()
+	var src := library()
+	for n: StringName in src.get_animation_list():
+		var a: Animation = src.get_animation(n).duplicate(true)
+		for t in range(a.get_track_count() - 1, -1, -1):
+			if a.track_get_type(t) == Animation.TYPE_POSITION_3D and String(a.track_get_path(t)).ends_with(":Hips"):
+				a.remove_track(t)
+		_library_fixed_hips.add_animation(n, a)
+	return _library_fixed_hips
+
+
 ## Devuelve el modelo listo, con un AnimationPlayer hijo que ya trae la biblioteca. null si faltan los assets.
 ## `look` (claves de CharacterConfig.DEFAULT_LOOK) arma cuerpo, ropa, pelo y sombrero; vacío = el de Settings.
 static func create(look := {}) -> Node3D:

@@ -11,3 +11,5 @@ screenshots/
 assets/ui/
 assets/fonts/
 __pycache__/
+assets/models/externos/
+assets/import/externos/

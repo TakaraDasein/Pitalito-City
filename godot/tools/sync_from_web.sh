@@ -36,5 +36,7 @@ console.log(`relieve: ${t.size}×${t.size} celdas de ${t.cell} m → ${dst}`);
 
 # rsync --delete borró los .import: se vuelve a poner el retarget humanoide de los personajes
 python3 "$here/tools/import/apply_retarget.py"
+# y el de los humanoides externos de Sketchfab (si se importaron con pnpm models:import; no se versionan)
+python3 "$here/tools/import/externos_retarget.py"
 
 echo "Listo. Abre godot/ en el editor (o 'godot --headless --import') para importar los modelos."
