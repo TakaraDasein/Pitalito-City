@@ -1,7 +1,7 @@
 extends Node
 ## Herramienta: capturas de la carga y los menús (screenshots/menu_*.png). Uso: godot res://tools/menu_shots.tscn
 ## Para no recorrer todo, se nombran las secciones que interesan: `godot res://tools/menu_shots.tscn -- personaje`
-## (garaje, personaje, menus, juego; varias separadas por espacio). Carga y portada se capturan siempre.
+## (garaje, personaje, menus, juego, pies; varias separadas por espacio). Carga y portada se capturan siempre.
 
 var _main: Node
 var _only := OS.get_cmdline_user_args()
@@ -113,7 +113,42 @@ func _ready() -> void:
 		_main._pause()
 		await get_tree().create_timer(0.5).timeout
 		await _shot("pausa")
+	if _want("pies"):
+		await _feet_shots()
 	get_tree().quit()
+
+
+## Pies sobre escalones: de pie en mitad de la gradería del coliseo, de lado, con y sin el ajuste de piernas.
+## Imprime la altura de cada pie sobre el suelo que tiene debajo (con el ajuste debe quedar cerca de 0,1 m, el
+## tobillo).
+func _feet_shots() -> void:
+	if _main.state != _main.State.PLAYING:
+		_main._start_playing()
+	var lm: LandmarkSystem = _main.landmarks
+	var pie: Node3D = lm.find_child("gradas_coliseo_pie", true, false)
+	var top: Node3D = lm.find_child("gradas_coliseo_arriba", true, false)
+	if pie == null or top == null:
+		print("pies: no está la gradería del coliseo")
+		return
+	var p := pie.global_position.lerp(top.global_position, 0.35)
+	var player: Player = _main.player
+	player.place(p.x, p.z)
+	player.global_position.y = p.y + 0.6
+	var d := top.global_position - pie.global_position
+	player.rotation.y = atan2(-d.x, -d.z) + 0.25
+	_main.camera_rig.yaw = player.rotation.y + PI * 0.5
+	_main.camera_rig.pitch = -0.1
+	for on in [false, true]:
+		player._rig.active = on
+		player._rig._ik.active = on
+		await get_tree().create_timer(1.5).timeout
+		var skel: Skeleton3D = player._model.find_child(CharacterModel.SKELETON, true, false)
+		var space := player.get_world_3d().direct_space_state
+		for side in ["LeftFoot", "RightFoot"]:
+			var f: Vector3 = skel.global_transform * skel.get_bone_global_pose(skel.find_bone(side)).origin
+			var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(f + Vector3.UP * 0.6, f + Vector3.DOWN * 1.5, 1 | 16, [player.get_rid()]))
+			print("pies %s: %s sobre el suelo %.2f m" % ["con ajuste" if on else "sin ajuste", side, f.y - hit.position.y if hit else -1.0])
+		await _shot("pies_" + ("ajuste" if on else "sin"))
 
 
 func _shot(name: String) -> void:

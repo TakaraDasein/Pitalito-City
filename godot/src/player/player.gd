@@ -21,6 +21,7 @@ var swimming := false
 var camera_rig: CameraRig
 var _model: Node3D
 var _tree: AnimationTree
+var _rig: CharacterRig
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
 
@@ -47,6 +48,7 @@ func apply_look() -> void:
 		was_visible = _model.visible
 		_model.queue_free()
 		_tree = null
+		_rig = null
 	_model = CharacterModel.create()
 	if _model == null:
 		var mi := MeshInstance3D.new()
@@ -59,6 +61,9 @@ func apply_look() -> void:
 	_model.visible = was_visible
 	add_child(_model)
 	_setup_tree(_model.get_node("AnimationPlayer"))
+	_rig = CharacterRig.attach(_model.find_child(CharacterModel.SKELETON, true, false))
+	if _rig:
+		_rig.exclude = [get_rid()]
 
 
 func _setup_tree(player: AnimationPlayer) -> void:
@@ -109,6 +114,7 @@ func _physics_process(delta: float) -> void:
 	# del agua, así que al nadar se deja de pisar el relieve y el fondo es el del río (surface − depth)
 	swimming = not water.is_empty() and float(water.depth) > SWIM_DEPTH and global_position.y < float(water.surface) + 0.5
 	set_collision_mask_value(5, not swimming)
+	_update_rig()
 	if swimming:
 		_swim(dir, water, delta)
 		return
@@ -140,6 +146,17 @@ func _physics_process(delta: float) -> void:
 		var sm: AnimationNodeStateMachinePlayback = _tree.get("parameters/playback")
 		sm.travel("move" if is_on_floor() else "air")
 		_tree.set("parameters/move/blend_position", Vector2(velocity.x, velocity.z).length())
+
+
+## Pies al suelo y mirada hacia donde apunta la cámara (un punto lejano en su eje, no la cámara misma).
+func _update_rig() -> void:
+	if _rig == null:
+		return
+	_rig.feet_enabled = is_on_floor() and not swimming
+	_rig.look_enabled = not swimming
+	var cam := get_viewport().get_camera_3d()
+	if cam:
+		_rig.look_point = cam.global_position - cam.global_basis.z * 30.0
 
 
 ## Nadar: flota con la cabeza afuera (resorte hacia surface − FLOAT_AT), avanza despacio y la corriente arrastra.
