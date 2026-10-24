@@ -192,12 +192,21 @@ func _mount_shots() -> void:
 	if _main.state != _main.State.PLAYING:
 		_main._start_playing()
 	_main.skip_mount = false
+	# sin tráfico: un carro que pase por el punto donde se coloca el vehículo lo dispara (cuerpo cinemático)
+	_main.traffic.density = 0.0
+	for c: Dictionary in _main.traffic._cars.duplicate():
+		_main.traffic.take_car(c)
 	var sp: Dictionary = WorldData.spawn()
-	for type in ["taxi", "pickup", "willys"]:
+	for type in (["moto"] if "moto" in _only else ["taxi", "pickup", "willys"]):
+		# el jugador lejos antes de colocar el vehículo, y un cuadro de física para que el servidor lo sepa: encimados,
+		# la física dispara al vehículo (una moto salió a 65 m/s)
+		_main.player.place(sp.x + 15.0, sp.z + 15.0)
+		await get_tree().physics_frame
+		await get_tree().physics_frame
 		_main.set_vehicle(type)
 		var car: Vehicle = _main.vehicle
 		car.place(sp.x, sp.z, sp.heading)
-		await get_tree().create_timer(0.8).timeout
+		await get_tree().create_timer(1.0).timeout
 		var player: Player = _main.player
 		var d := car.door_world()
 		var out := Vector3(d.x - car.global_position.x, 0, d.z - car.global_position.z).normalized()
@@ -208,11 +217,21 @@ func _mount_shots() -> void:
 		add_child(cam)
 		cam.global_position = d + out * 3.6 - car.global_basis.z * 1.8 + Vector3.UP * 1.5
 		cam.look_at(d - out * 0.6 + Vector3.UP * 0.9)
+		if type == "moto": # de frente en diagonal: el costado puede quedar contra una fachada
+			var seat := car.seat_world()
+			var cp := seat + car.global_basis.z * 3.2 + out * 1.6
+			cam.global_position = Vector3(cp.x, WorldData.height(cp.x, cp.z) + 1.3, cp.z)
+			cam.look_at(seat + Vector3.UP * 0.5)
 		cam.make_current()
+		if type == "moto": # tumbada de lado, como queda si la empujan: el personaje la levanta antes de montarse
+			car.teleport(car.global_transform.rotated_local(Vector3.FORWARD, 1.35).translated(Vector3.DOWN * 0.3))
 		await get_tree().create_timer(0.8).timeout
+		if type == "moto":
+			print("  moto caída = %s" % car.is_fallen())
+			await _shot("subir_moto_caida")
 		_main._enter_vehicle()
 		var t0 := Time.get_ticks_msec()
-		var shots := {1.4: "puerta", 2.3: "sienta"}
+		var shots := {1.4: "puerta", 2.3: "sienta"} if type != "moto" else {1.0: "levanta", 3.4: "pierna1", 3.9: "pierna2"}
 		for at: float in shots:
 			while (Time.get_ticks_msec() - t0) / 1000.0 < at:
 				await get_tree().process_frame

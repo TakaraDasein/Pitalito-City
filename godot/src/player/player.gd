@@ -101,8 +101,12 @@ func _setup_tree(player: AnimationPlayer) -> void:
 	var interact := AnimationNodeAnimation.new()
 	interact.animation = CharacterModel.clip("Interact")
 	sm.add_node("interact", interact)
+	var pick := AnimationNodeAnimation.new()
+	pick.animation = CharacterModel.clip("PickUp_Table")
+	sm.add_node("pickup", pick)
 	for pair: Array in [["move", "sit_enter", false], ["sit_enter", "sit", true], ["sit", "sit_exit", false], ["sit_exit", "move", true],
-			["move", "interact", false], ["interact", "move", true], ["interact", "sit_enter", false]]:
+			["move", "interact", false], ["interact", "move", true], ["interact", "sit_enter", false],
+			["move", "pickup", false], ["pickup", "move", true]]:
 		var t := AnimationNodeStateMachineTransition.new()
 		t.xfade_time = 0.25
 		if pair[2]:
@@ -192,6 +196,28 @@ func mount(v: Vehicle, done: Callable) -> void:
 	if to_door.length() > 0.2:
 		steps.push_back({"phase": "walk", "dur": clampf(to_door.length() / WALK, 0.2, 2.5), "from": global_position, "to": door,
 			"rot0": rotation.y, "rot1": atan2(-to_door.x, -to_door.z)})
+	if v.two_wheels and v.is_fallen():
+		# caída: primero la levanta (al costado, de frente a ella) y después se monta como siempre
+		var c := v.global_position
+		var near := c + (global_position - c).normalized() * 0.9
+		near.y = WorldData.height(near.x, near.z)
+		var to_near := near - global_position
+		to_near.y = 0.0
+		steps = []
+		if to_near.length() > 0.2:
+			steps.push_back({"phase": "walk", "dur": clampf(to_near.length() / WALK, 0.2, 2.5), "from": global_position, "to": near,
+				"rot0": rotation.y, "rot1": atan2(-to_near.x, -to_near.z)})
+		var at_moto := c - near
+		steps.push_back({"phase": "levantar", "dur": 1.3, "from": near, "to": near, "rot0": atan2(-to_near.x, -to_near.z) if to_near.length() > 0.2 else rotation.y,
+			"rot1": atan2(-at_moto.x, -at_moto.z)})
+		_mount = {"steps": steps, "i": -1, "t": 0.0, "done": done, "vehicle": v}
+		_next_step()
+		return
+	if v.two_wheels:
+		_moto_steps(v, steps, door, false)
+		_mount = {"steps": steps, "i": -1, "t": 0.0, "done": done, "vehicle": v}
+		_next_step()
+		return
 	if v.has_door_leaf():
 		steps.push_back({"phase": "open", "dur": 0.9, "from": door, "to": door, "rot0": atan2(-to_door.x, -to_door.z) if to_door.length() > 0.2 else rotation.y,
 			"rot1": atan2(out.x, out.z)}) # de frente a la puerta (hacia el vehículo)
@@ -210,6 +236,14 @@ func dismount(v: Vehicle, done: Callable) -> void:
 	var door := v.door_world()
 	var out := door - v.global_position
 	out.y = 0.0
+	if v.two_wheels:
+		var steps: Array = []
+		_moto_steps(v, steps, door, true)
+		global_position = steps[0].from
+		rotation.y = atan2(-fwd.x, -fwd.z)
+		_mount = {"steps": steps, "i": -1, "t": 0.0, "done": done, "vehicle": v}
+		_next_step()
+		return
 	global_position = v.seat_world()
 	rotation.y = atan2(-fwd.x, -fwd.z)
 	if _tree:
@@ -220,11 +254,64 @@ func dismount(v: Vehicle, done: Callable) -> void:
 	_next_step()
 
 
+## Moto (como #horcajadas de la web): de pie a la izquierda, el cuerpo pasa al centro mientras la pierna
+## derecha sube por encima de la parte trasera del sillín y la izquierda sigue en el suelo; luego baja al
+## asiento. Bajarse es lo mismo al revés.
+func _moto_steps(v: Vehicle, steps: Array, door: Vector3, reverse: bool) -> void:
+	var fwd := v.global_basis.z
+	var face := atan2(-fwd.x, -fwd.z)
+	var seat := v.seat_world()
+	var under := Vector3(seat.x, WorldData.height(seat.x, seat.z), seat.z)
+	var side := Vector3(door.x, under.y, door.z)
+	var straddle := {"phase": "pierna", "dur": 1.2, "from": side, "to": under, "rot0": face, "rot1": face,
+		"seat": seat, "fwd": fwd, "out": (side - under).normalized(), "reverse": reverse}
+	# al final empieza a sentarse (el clip baja la cadera) y entra el conductor sentado de la moto
+	var settle := {"phase": "sentar", "dur": 0.35, "from": under, "to": under, "rot0": face, "rot1": face}
+	if reverse:
+		straddle.from = under
+		straddle.to = side
+		steps.push_back(straddle)
+	else:
+		steps.push_back(straddle)
+		steps.push_back(settle)
+
+
+## Pies durante la pierna sobre la moto. k: 0 de pie al lado, 1 a horcajadas.
+func _moto_feet(st: Dictionary, k: float) -> void:
+	if _rig == null:
+		return
+	var out: Vector3 = st.out
+	var fwd: Vector3 = st.fwd
+	var under: Vector3 = st.to if not st.reverse else st.from
+	var ankle := Vector3.UP * 0.085
+	# izquierdo: da un paso hacia la moto y se queda plantado al costado
+	var l_end := under + out * 0.32 + ankle
+	var l_start: Vector3 = (st.from if not st.reverse else st.to) + ankle
+	_rig.foot_override[0] = l_start.lerp(l_end, smoothstep(0.0, 0.3, k))
+	# derecho: curva por encima de la parte trasera del sillín hasta el suelo del otro lado
+	var r := smoothstep(0.15, 0.85, k)
+	var a := l_start + out * -0.1 - fwd * 0.05
+	var b: Vector3 = st.seat + Vector3.UP * 0.55 - fwd * 0.55
+	var c := under - out * 0.32 + ankle
+	var q := 1.0 - r
+	_rig.foot_override[1] = a * q * q + b * 2.0 * q * r + c * r * r
+
+
 func is_mounting() -> bool:
 	return not _mount.is_empty()
 
 
 func _next_step() -> void:
+	# recién levantada la moto: ahora sí, ir a su costado izquierdo y montarse
+	if _mount.i >= 0 and _mount.steps[_mount.i].phase == "levantar":
+		var v: Vehicle = _mount.vehicle
+		var door := v.door_world()
+		var to_door := door - global_position
+		to_door.y = 0.0
+		if to_door.length() > 0.2:
+			_mount.steps.push_back({"phase": "walk", "dur": clampf(to_door.length() / WALK, 0.2, 2.0), "from": global_position, "to": door,
+				"rot0": rotation.y, "rot1": atan2(-to_door.x, -to_door.z)})
+		_moto_steps(v, _mount.steps, door, false)
 	_mount.i += 1
 	_mount.t = 0.0
 	if _mount.i >= _mount.steps.size():
@@ -234,7 +321,7 @@ func _next_step() -> void:
 		_mount = {}
 		if is_instance_valid(v):
 			v.set_door(false) # cierra al quedar sentado, o al salir y quedar de pie
-		if last.phase == "exit":
+		if last.phase == "exit" or (last.phase == "pierna" and last.reverse):
 			collision_layer = 2
 			collision_mask = 1 | 4 | 16
 		done.call()
@@ -245,8 +332,11 @@ func _next_step() -> void:
 		"open":
 			_playback().travel("interact")
 			(_mount.vehicle as Vehicle).set_door(true)
-		"enter":
+		"enter", "sentar":
 			_playback().travel("sit")
+		"levantar":
+			_playback().travel("pickup")
+			(_mount.vehicle as Vehicle).lift_up(1.0)
 		"exit":
 			_playback().travel("move")
 
@@ -265,9 +355,22 @@ func _mounting(delta: float) -> void:
 	if _tree and st.phase == "walk":
 		_playback().travel("move")
 		_tree.set("parameters/move/blend_position", WALK)
+	if st.phase == "pierna":
+		var kk := minf(_mount.t, 1.0)
+		var kp: float = (1.0 - kk) if st.reverse else kk
+		# el cuerpo llega al centro antes de que la pierna termine de pasar
+		global_position = st.from.lerp(st.to, smoothstep(0.0, 0.7, kk) if not st.reverse else smoothstep(0.3, 1.0, kk))
+		_moto_feet(st, kp)
+		if _tree:
+			_playback().travel("move")
+			_tree.set("parameters/move/blend_position", 0.0)
 	if _rig:
-		_rig.feet_enabled = st.phase == "walk"
+		_rig.feet_enabled = st.phase in ["walk", "pierna"]
+		if st.phase != "pierna":
+			_rig.foot_override = [null, null]
 	if _mount.t >= 1.0:
+		if _rig and st.phase == "pierna":
+			_rig.foot_override = [null, null]
 		_next_step()
 
 

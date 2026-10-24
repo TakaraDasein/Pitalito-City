@@ -18,6 +18,9 @@ var look_enabled := true
 var look_point := Vector3.ZERO
 ## Cuerpo que los rayos ignoran (el propio jugador).
 var exclude: Array[RID] = []
+## Objetivo fijado a mano para cada pie (posición del mundo), o null: lo usa la coreografía de subir a la moto.
+## Con objetivo fijo no se lanzan rayos ni se baja la cadera.
+var foot_override: Array = [null, null]
 
 var _ik: TwoBoneIK3D
 var _looks: Array[LookAtModifier3D] = []
@@ -115,6 +118,8 @@ func _process_modification() -> void:
 		_offset[i] = lerpf(_offset[i], d, minf(1.0, dt * 14.0))
 		low = minf(low, _offset[i])
 	# la cadera baja lo que pida el pie más hondo; el otro pie se dobla para quedar arriba
+	if foot_override[0] != null or foot_override[1] != null:
+		low = 0.0
 	_hips_drop = lerpf(_hips_drop, low, minf(1.0, dt * 10.0))
 	if _hips >= 0 and _feet_w > 0.0:
 		var parent := skel.get_bone_parent(_hips)
@@ -126,6 +131,8 @@ func _process_modification() -> void:
 		skel.set_bone_pose_position(_hips, skel.get_bone_pose_position(_hips) + down)
 	for i in 2:
 		_targets[i].global_position = feet_pos[i] + Vector3(0, _offset[i] * _feet_w, 0)
+		if foot_override[i] != null:
+			_targets[i].global_position = foot_override[i]
 	_ik.influence = _feet_w
 	# mirada: se apaga si el punto queda detrás del cuerpo
 	var fwd := model.global_basis.z

@@ -170,7 +170,11 @@ func _balance(delta: float) -> void:
 	var roll := atan2(-up.dot(right), up.dot(Vector3.UP))
 	var inertia := mass * 0.35
 	apply_torque(fwd * (-roll * 220.0 - angular_velocity.dot(fwd) * 30.0) * inertia)
-	apply_torque(right * -angular_velocity.dot(right) * 4.0 * inertia)
+	# cabeceo: corregido también (si no, estacionada se iba de trompa); firme quieta, como si tuviera la pata
+	# puesta, y suave en marcha para no pelear con la suspensión
+	var pitch := atan2(up.dot(fwd), up.dot(Vector3.UP))
+	var hold := 120.0 if absf(speed) < 1.0 and not driven else 25.0
+	apply_torque(right * (-pitch * hold - angular_velocity.dot(right) * 4.0) * inertia)
 	# modelo visible y piloto: inclinados alrededor del punto de apoyo de las ruedas
 	for n: Node3D in [get_node_or_null("modelo"), _driver]:
 		if n:
@@ -205,7 +209,52 @@ func unseat_driver() -> void:
 
 ## Coloca el vehículo sobre el relieve en (x, z) mirando a `heading`.
 func place(x: float, z: float, heading := 0.0) -> void:
-	global_transform = Transform3D(Basis(Vector3.UP, heading), Vector3(x, WorldData.height(x, z) + 0.6, z))
+	teleport(Transform3D(Basis(Vector3.UP, heading), Vector3(x, _surface_y(x, z) + 0.6, z)))
+
+
+## Altura de la superficie real (calzada, andén, puente), no solo del relieve.
+func _surface_y(x: float, z: float) -> float:
+	var y := WorldData.height(x, z)
+	if is_inside_tree():
+		var q := PhysicsRayQueryParameters3D.create(Vector3(x, y + 6.0, z), Vector3(x, y - 2.0, z), 1 | 16, [get_rid()])
+		var hit := get_world_3d().direct_space_state.intersect_ray(q)
+		if not hit.is_empty():
+			y = maxf(y, hit.position.y)
+	return y
+
+
+## Caída: de lado o de trompa (la moto cuando la tumban).
+func is_fallen() -> bool:
+	return global_basis.y.dot(Vector3.UP) < 0.8
+
+
+## Levantarla: congelada mientras gira hasta quedar derecha con el mismo rumbo (lo que hace el personaje con las
+## manos, ver Player.mount), y suelta de nuevo en la física al terminar.
+func lift_up(dur: float) -> void:
+	var f := Vector3(global_basis.z.x, 0, global_basis.z.z)
+	if f.length() < 0.1:
+		f = Vector3(global_basis.y.x, 0, global_basis.y.z) # de trompa: el frente apunta abajo
+	f = f.normalized()
+	var p := global_position
+	var target := Transform3D(Basis(Vector3.UP, atan2(f.x, f.z)), Vector3(p.x, _surface_y(p.x, p.z) + 0.55, p.z))
+	var start := global_transform
+	freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
+	freeze = true
+	var tw := create_tween()
+	tw.tween_method(func(k: float): global_transform = start.interpolate_with(target, k), 0.0, 1.0, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_callback(func():
+		freeze = false
+		teleport(target))
+
+
+## Salto sin arrastre: además del nodo, el estado del servidor de física (si no, el cuerpo arrastraba la posición
+## vieja y al primer paso salía disparado: una moto llegó a 65 m/s).
+func teleport(xf: Transform3D) -> void:
+	global_transform = xf
+	if is_inside_tree():
+		PhysicsServer3D.body_set_state(get_rid(), PhysicsServer3D.BODY_STATE_TRANSFORM, xf)
+		PhysicsServer3D.body_set_state(get_rid(), PhysicsServer3D.BODY_STATE_LINEAR_VELOCITY, Vector3.ZERO)
+		PhysicsServer3D.body_set_state(get_rid(), PhysicsServer3D.BODY_STATE_ANGULAR_VELOCITY, Vector3.ZERO)
 	linear_velocity = Vector3.ZERO
 	angular_velocity = Vector3.ZERO
 
