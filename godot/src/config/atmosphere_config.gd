@@ -18,6 +18,13 @@ const FOG_MATCH_DISTANCE := 3000.0
 ## (medido: −30 m bajo el Parque es lo más bajo a ±3 km; el 10 % más bajo está bajo −10 m). ESTIMADO.
 const HEIGHT_FOG_START := -12.0
 
+## Partículas de la hora (ATMOSPHERE.particulas de la web): ventana horaria y radio alrededor del jugador.
+##   bruma: jirones de neblina a ras de suelo, siguen a la niebla de la mañana; motas: polvo y polen al sol.
+const PARTICLES := {
+	"bruma": {"from": 5.5, "to": 10.0, "radius": [6.0, 45.0]},
+	"motas": {"from": 6.0, "to": 18.4, "radius": [3.0, 16.0]},
+}
+
 const KEYS := [
 	{"h": 0.0, "density": 2.2, "fog": Color("#0b1020"), "turbidity": 2.0, "rayleigh": 1.0, "mie": 0.004, "g": 0.8, "sun": Color("#9fb4ff"), "warmth": 0.0, "exposure": 0.7},
 	{"h": 4.8, "density": 3.5, "fog": Color("#141a2a"), "turbidity": 3.0, "rayleigh": 1.0, "mie": 0.006, "g": 0.8, "sun": Color("#9fb4ff"), "warmth": 0.0, "exposure": 0.7},

@@ -262,6 +262,12 @@ func _build_options() -> void:
 	amb.value = Settings.ambience
 	amb.value_changed.connect(func(v): Settings.ambience = v; Settings.save())
 	_row(col, "Ambiente", amb)
+	var mus := HSlider.new()
+	mus.max_value = 1.0
+	mus.step = 0.05
+	mus.value = Settings.music
+	mus.value_changed.connect(func(v): Settings.music = v; Settings.save())
+	_row(col, "Música", mus)
 	_section(col, "Mundo")
 	var weather := OptionButton.new()
 	for item in ["Automático (aguaceros)", "Despejado", "Lluvia"]:

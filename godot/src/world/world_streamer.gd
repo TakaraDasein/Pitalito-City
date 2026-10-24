@@ -12,6 +12,7 @@ var _pending: Dictionary = {}  # Vector2i → id de tarea
 var _done: Array = []          # [key, Dictionary de resultados]
 var _mutex := Mutex.new()
 var _tree_meshes: Dictionary
+var _tree_points: Dictionary = {} # Vector2i → PackedVector2Array: dónde hay árboles (para el ambiente)
 var _pole_mesh: Mesh
 var _lens_mesh: Mesh
 
@@ -42,6 +43,7 @@ func _process(_delta: float) -> void:
 		if absi(key.x - center.x) > r + 1 or absi(key.y - center.y) > r + 1:
 			_tiles[key].queue_free()
 			_tiles.erase(key)
+			_tree_points.erase(key)
 			EventBus.tile_unloaded.emit(key)
 
 	_mutex.lock()
@@ -52,6 +54,20 @@ func _process(_delta: float) -> void:
 		WorkerThreadPool.wait_for_task_completion(_pending[item[0]])
 		_pending.erase(item[0])
 		_instantiate(item[0], item[1])
+
+
+## Árboles cargados a menos de `radius` m de (x, z): el TileProfile.contar('arboles') de la web.
+func trees_near(x: float, z: float, radius: float) -> int:
+	var c := Vector2(x, z)
+	var r2 := radius * radius
+	var n := 0
+	var k := WorldData.tile_key(x, z)
+	for dz in range(-1, 2):
+		for dx in range(-1, 2):
+			for p: Vector2 in _tree_points.get(k + Vector2i(dx, dz), PackedVector2Array()):
+				if p.distance_squared_to(c) < r2:
+					n += 1
+	return n
 
 
 ## Carga síncrona de los tiles inmediatos (arranque o teletransporte), antes de soltar al jugador.
@@ -138,6 +154,11 @@ func _instantiate(key: Vector2i, r: Dictionary) -> void:
 		EventBus.signals_loaded.emit(key, r.spots)
 
 	var trees: Dictionary = r.trees
+	var pts := PackedVector2Array()
+	for kind: String in trees:
+		for xf: Transform3D in trees[kind]:
+			pts.push_back(Vector2(xf.origin.x, xf.origin.z))
+	_tree_points[key] = pts
 	for kind: String in trees:
 		var xforms: Array = trees[kind]
 		if xforms.is_empty():

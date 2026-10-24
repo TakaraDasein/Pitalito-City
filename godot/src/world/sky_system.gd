@@ -15,6 +15,8 @@ var hour := AtmosphereConfig.START_HOUR
 var time_scale := 24.0 / (AtmosphereConfig.DAY_MINUTES * 60.0) # horas de juego por segundo real
 var night := 0.0
 var wet := 0.0
+## Multiplicador de la niebla bajo el monte cerrado (lo pone AmbienceSystem, como env.fogExtra de la web).
+var fog_extra := 1.0
 var mode := Weather.AUTO
 var camera: Camera3D
 
@@ -122,7 +124,7 @@ func update_now() -> void:
 	# De noche el cielo no se apaga del todo: la web mantiene su luz hemisférica en ≥ 1,1 (las calles se leen)
 	_sky.energy_multiplier = lerpf(1.0, 0.3, night) * (1.0 - wet * 0.4)
 	var d := AtmosphereConfig.FOG_DENSITY_WEB
-	env.fog_density = d * d * AtmosphereConfig.FOG_MATCH_DISTANCE * a.density * (1.0 + wet * 2.2)
+	env.fog_density = d * d * AtmosphereConfig.FOG_MATCH_DISTANCE * a.density * (1.0 + wet * 2.2) * fog_extra
 	env.fog_light_color = a.fog.lerp(Color("#141820") if night > 0.5 else Color("#9aa4ad"), wet * 0.7)
 	# Niebla de altura: con la densidad del fotograma (hasta 45 al alba) tapa el fondo del valle sin borrar al jugador
 	env.fog_height_density = 0.0003 * a.density

@@ -201,6 +201,13 @@ la Alcaldía, puerta cerrada (bloquea), abrir y entrar, local real, y la escaler
   máximo por vehículo, los de la web), viento, pájaros de día, insectos de noche, lluvia según el clima, y clics de
   interfaz. Generadores a 22 kHz, bus "Mundo" con reverberación de valle, paso bajo y compresor en el maestro.
   Volumen y ambiente en opciones. Medido: pico ≈ −15 dB manejando.
+  Pasos: un golpe de ruido filtrado por pisada (más grave en tierra). Música: campanitas de Musica.js (día en
+  mayor, noche en menor); cada nota se sintetiza una sola vez a `AudioStreamWAV` en un hilo al arrancar y suena
+  en una de 8 voces del bus "Musica" (eco de 3 corcheas + reverberación). Sumarlas muestra a muestra en
+  GDScript costaba demasiado.
+- **Ambiente** (`systems/ambience_system.gd`, `config/particles_config.gd`, `AtmosphereConfig.PARTICLES`): port
+  de AmbienceSystem.js. Cada familia es un GPUParticles3D que sigue al jugador y emite solo; la CPU solo fija
+  `amount_ratio` según hora, clima y árboles a 40 m. Materiales `particle*` en MaterialLibrary.
 - **Repintado del Car Kit:** como la web, se corren las UV de la carrocería a otra muestra de la paleta compartida.
 - **Conductor visible:** el personaje se sienta en el asiento medido de cada vehículo de la web, con el clip
   Driving; los vidrios de los modelos de la web pasan a translúcidos. El Willys tiene la capota como caja maciza:
@@ -312,13 +319,17 @@ edificios armados con piezas y recorribles por dentro.
 
 1. Estructuras con referencias del usuario: cubierta curva de celosía (foto 4, ubicación por confirmar),
    confirmar el lado de la pasarela. Hecho: ríos, puentes viales y pasarela. Hecho: Coliseo recorrible; baño y cocina con tabique propio, vidrio interior, una luz por cuarto.
-2. Vehículos (lo que falta del bloque 3): entrada de la chiva por la escalera y los del Car Kit (una sola pieza:
-   sin puerta que abrir). Hecho: garaje con pintura y placa, moto con equilibrio propio (levantarla si está caída,
-   montarse pasando la pierna), conductor sentado, puertas del taxi y la camioneta, vano del Willys, faros de
-   noche, tomar un vehículo del tráfico.
+2. Vehículos: hecho (bloque 3 cerrado). Garaje con pintura y placa, moto con equilibrio propio, chiva por el
+   estribo (modelado en la web, ESTIMADO), Car Kit sin atravesar la carrocería (una sola pieza: gesto de abrir
+   junto a la puerta del conductor y desaparece tras los vidrios oscuros), puertas del taxi y la camioneta, vano
+   del Willys, faros de noche, tomar un vehículo del tráfico.
 3. Personaje: hecho (creador, retarget, pies y mirada, bancas, subir y bajar).
-4. Audio: hecho motor, ambiente, lluvia e interfaz; falta música y pasos. Partículas de ambiente (luciérnagas de
-   noche bajo los árboles, hojas con el viento, bruma de la mañana): la web tiene AmbienceSystem.
+4. Ambiente: hecho. Audio: motor, ambiente, lluvia, interfaz, pasos (tierra / pavimento) y música de campanitas
+   (notas sintetizadas una vez a WAV en un hilo; bus «Musica» con eco y reverberación; volumen en Opciones).
+   Partículas en `AmbienceSystem` (un GPUParticles3D por familia que sigue al jugador): polvo al pisar tierra,
+   luciérnagas de noche y hojas de día bajo los árboles (`WorldStreamer.trees_near`), bruma de la mañana y motas
+   al sol. Niebla más espesa bajo el monte (`SkySystem.fog_extra`). Falta de la web: tensión de postproceso con enemigos
+   cerca, sangre y golpes (van con el bloque 5).
 5. Combate y armas, fauna, supervivencia/zombis, facciones y bases, botín e inventario, historia y misiones,
    construcción por bloques: un nodo por sistema, comunicados por `EventBus`.
 6. Oclusores por tile, LOD de toda la ciudad (`CityLOD`), y exportación (filtro de `data/world/*.json` y `*.bin`).

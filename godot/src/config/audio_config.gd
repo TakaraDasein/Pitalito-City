@@ -13,5 +13,9 @@ const WARMTH := 7200.0
 const AMBIENCE := {"wind": 0.012, "birds": 0.04, "insects": 0.02, "rain": 0.05}
 ## Motor: seno + triángulo filtrado; nivel en ralentí y extra con el acelerador.
 const ENGINE := {"level": 0.035, "throttle": 0.04, "filter": [260.0, 700.0]}
+## Música (web/src/audio/Musica.js): campanitas en bucle con silencios; volumen relativo al general, pulsos por minuto.
+const MUSIC := {"volume": 0.55, "tempo": 76.0}
+## Pasos: golpe sordo de ruido filtrado por pisada (ESTIMADO, de oído). Tierra más grave que el asfalto.
+const STEPS := {"level": 0.05, "dirt_hz": 520.0, "paved_hz": 1100.0}
 ## Interfaz: clic corto al enfocar y al aceptar.
 const UI := {"focus": 0.025, "accept": 0.05}

@@ -13,6 +13,9 @@ export const AUDIO = {
     tempo: 76,                    // pulsos por minuto; cada nota cae en corchea (el ánimo lo frena de noche)
   },
 
+  // Pasos (por ahora solo en Godot, AudioSystem.gd): golpe de ruido filtrado por pisada. ESTIMADO, de oído.
+  pasos: { nivel: 0.05, tierraHz: 520, pavimentoHz: 1100 },
+
   // Ambiente: un viento apenas audible (más alto se oía como siseo); pájaros de día; insectos al anochecer.
   ambiente: { viento: 0.012, pajaros: 0.04, insectos: 0.02 },
 

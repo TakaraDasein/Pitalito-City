@@ -41,6 +41,7 @@ const CAMERA_MODES := [
 ]
 var _cam_mode := 0
 var _audio: AudioSystem
+var _ambience: AmbienceSystem
 var _prompt_t := 0.0
 
 
@@ -83,6 +84,11 @@ func _boot() -> void:
 	sky.camera = camera_rig.camera
 	sky.set_weather(Settings.weather)
 	_audio.sky = sky
+	_ambience = AmbienceSystem.new()
+	_ambience.sky = sky
+	_ambience.world = streamer
+	_ambience.player = player
+	add_child(_ambience)
 	hud.sky = sky
 	hud.gps = gps
 	gps.message.connect(hud.toast)
@@ -203,6 +209,7 @@ func set_vehicle(type: String) -> void:
 		if _driving:
 			_set_focus(vehicle, 6.5, 2.2)
 			_audio.vehicle = vehicle
+			_ambience.vehicle_focus = vehicle
 			vehicle.seat_driver()
 	else:
 		var s := WorldData.spawn()
@@ -301,6 +308,7 @@ func _seat_in_vehicle() -> void:
 	player.global_position = vehicle.global_position + Vector3.UP * 50.0 # fuera del camino de la física
 	_set_focus(vehicle, 6.5, 2.2)
 	_audio.vehicle = vehicle
+	_ambience.vehicle_focus = vehicle
 	vehicle.seat_driver()
 	_follow_camera()
 	hud.set_on_foot(false)
@@ -324,6 +332,7 @@ func _take_traffic(car: Dictionary) -> void:
 func _exit_vehicle() -> void:
 	_driving = false
 	_audio.vehicle = null
+	_ambience.vehicle_focus = null
 	vehicle.unseat_driver()
 	vehicle.driven = false
 	player.process_mode = Node.PROCESS_MODE_INHERIT

@@ -152,6 +152,34 @@ static func _make(key: String) -> Material:
 			m.roughness = 0.9 if key == "tree" else 0.5
 			m.metallic = 0.0 if key == "tree" else 0.3
 			return m
+		"particle", "particle_glow", "particle_leaf", "particle_mist":
+			# partículas de ambiente: color por vértice (la rampa de cada familia), sin luz, siempre de frente;
+			# mancha redonda de borde suave (la hoja, cuadrada); la bruma se desvanece donde corta el suelo
+			var m := StandardMaterial3D.new()
+			if key != "particle_leaf":
+				var g := Gradient.new()
+				g.offsets = PackedFloat32Array([0.0, 1.0])
+				g.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 0)])
+				var t := GradientTexture2D.new()
+				t.gradient = g
+				t.fill = GradientTexture2D.FILL_RADIAL
+				t.fill_from = Vector2(0.5, 0.5)
+				t.fill_to = Vector2(0.5, 0.0)
+				t.width = 64
+				t.height = 64
+				m.albedo_texture = t
+			if key == "particle_mist":
+				m.proximity_fade_enabled = true
+				m.proximity_fade_distance = 3.0
+			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			m.vertex_color_use_as_albedo = true
+			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			if key == "particle_glow":
+				m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+			m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+			m.billboard_keep_scale = true
+			m.cull_mode = BaseMaterial3D.CULL_DISABLED
+			return m
 		"signal_lens":
 			var m := ShaderMaterial.new()
 			m.shader = preload("res://src/world/signal_light.gdshader")

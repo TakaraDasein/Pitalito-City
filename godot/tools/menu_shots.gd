@@ -1,7 +1,7 @@
 extends Node
 ## Herramienta: capturas de la carga y los menús (screenshots/menu_*.png). Uso: godot res://tools/menu_shots.tscn
 ## Para no recorrer todo, se nombran las secciones que interesan: `godot res://tools/menu_shots.tscn -- personaje`
-## (garaje, personaje, menus, juego, pies, banca, subir, faros, tomar; varias separadas por espacio). Carga y portada se capturan siempre.
+## (garaje, personaje, menus, juego, pies, banca, subir, faros, tomar, ambiente; varias separadas por espacio). Carga y portada se capturan siempre.
 
 var _main: Node
 var _only := OS.get_cmdline_user_args()
@@ -124,7 +124,40 @@ func _ready() -> void:
 		await _lights_shots()
 	if _want("tomar"):
 		await _take_shots()
+	if _want("ambiente"):
+		await _ambience_shots()
 	get_tree().quit()
+
+
+## Ambiente: busca un sitio con árboles cerca del parque y lo retrata de noche (luciérnagas), de día (hojas,
+## motas) y en la mañana de niebla (bruma). Imprime cuántas partículas pide cada familia.
+func _ambience_shots() -> void:
+	if _main.state != _main.State.PLAYING:
+		_main._start_playing()
+	var sp: Dictionary = WorldData.spawn()
+	var best := Vector2(sp.x, sp.z)
+	var most := -1
+	for i in 60:
+		var a := i * 2.4
+		var r := 30.0 + i * 6.0
+		var c := Vector2(sp.x + cos(a) * r, sp.z + sin(a) * r)
+		var n: int = _main.streamer.trees_near(c.x, c.y, 25.0)
+		if n > most:
+			most = n
+			best = c
+	print("ambiente: %d árboles a 25 m de %s" % [most, best])
+	var player: Player = _main.player
+	player.place(best.x, best.y)
+	_main.camera_rig.pitch = -0.15
+	for h: Array in [[21.5, "noche"], [12.0, "dia"], [6.8, "bruma"]]:
+		_main.sky.set_hour(h[0])
+		await get_tree().create_timer(6.0).timeout
+		var amb: AmbienceSystem = _main._ambience
+		var txt := ""
+		for fam: String in amb._emitters:
+			txt += " %s=%.2f" % [fam, amb._emitters[fam].amount_ratio]
+		print("ambiente %s:%s" % [h[1], txt])
+		await _shot("ambiente_" + h[1])
 
 
 ## Pies sobre escalones: de pie en mitad de la gradería del coliseo, de lado, con y sin el ajuste de piernas.
@@ -197,7 +230,7 @@ func _mount_shots() -> void:
 	for c: Dictionary in _main.traffic._cars.duplicate():
 		_main.traffic.take_car(c)
 	var sp: Dictionary = WorldData.spawn()
-	for type in (["moto"] if "moto" in _only else ["taxi", "pickup", "willys"]):
+	for type in (["moto"] if "moto" in _only else ["taxi", "pickup", "willys", "chiva", "sedan"]):
 		# el jugador lejos antes de colocar el vehículo, y un cuadro de física para que el servidor lo sepa: encimados,
 		# la física dispara al vehículo (una moto salió a 65 m/s)
 		_main.player.place(sp.x + 15.0, sp.z + 15.0)
@@ -222,6 +255,9 @@ func _mount_shots() -> void:
 			var cp := seat + car.global_basis.z * 3.2 + out * 1.6
 			cam.global_position = Vector3(cp.x, WorldData.height(cp.x, cp.z) + 1.3, cp.z)
 			cam.look_at(seat + Vector3.UP * 0.5)
+		if type == "chiva": # grande: de más lejos y más alto, para ver el estribo y la cabina
+			cam.global_position = d + out * 3.5 - car.global_basis.z * 3.5 + Vector3.UP * 4.5
+			cam.look_at(d - out * 0.4 + Vector3.UP * 1.0)
 		cam.make_current()
 		if type == "moto": # tumbada de lado, como queda si la empujan: el personaje la levanta antes de montarse
 			car.teleport(car.global_transform.rotated_local(Vector3.FORWARD, 1.35).translated(Vector3.DOWN * 0.3))
@@ -231,7 +267,7 @@ func _mount_shots() -> void:
 			await _shot("subir_moto_caida")
 		_main._enter_vehicle()
 		var t0 := Time.get_ticks_msec()
-		var shots := {1.4: "puerta", 2.3: "sienta"} if type != "moto" else {1.0: "levanta", 3.4: "pierna1", 3.9: "pierna2"}
+		var shots := ({1.4: "puerta", 2.3: "sienta"} if type != "chiva" else {1.3: "camina", 2.0: "estribo", 2.6: "sienta"}) if type != "moto" else {1.0: "levanta", 3.4: "pierna1", 3.9: "pierna2"}
 		for at: float in shots:
 			while (Time.get_ticks_msec() - t0) / 1000.0 < at:
 				await get_tree().process_frame

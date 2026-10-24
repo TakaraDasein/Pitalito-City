@@ -1,8 +1,8 @@
 class_name AudioSystem
 extends Node
 ## Audio sintetizado en tiempo real (port de web/src/systems/AudioSystem.js, sin archivos): motor del vehículo que
-## se maneja (tono por velocidad y acelerador), viento, pájaros de día, insectos de noche, lluvia, y clics de la
-## interfaz. Dos generadores (mundo e interfaz) a 22 kHz; el del mundo pasa por paso bajo, compresor y una
+## se maneja (tono por velocidad y acelerador), viento, pájaros de día, insectos de noche, lluvia, pasos, música de
+## campanitas (web/src/audio/Musica.js) y clics de la interfaz. Dos generadores (mundo e interfaz) a 22 kHz; el del mundo pasa por paso bajo, compresor y una
 ## reverberación de valle (buses creados aquí). Volumen general y de ambiente en Opciones (Settings).
 
 static var instance: AudioSystem
@@ -24,6 +24,28 @@ var _chirp_t := 0.0          # pájaros: tiempo hasta el próximo canto, y el ca
 var _chirp: Array = []       # [t, dur, f0, f1]
 var _ui_queue: Array = []    # [t, dur, f, amp]
 var _rng := RandomNumberGenerator.new()
+# pasos: [t, dur, a (coef. del paso bajo), amp]; un filtro compartido basta (no se pisan)
+var _steps: Array = []
+var _step_lp := 0.0
+# música: cada nota se sintetiza una vez a un AudioStreamWAV (caché por nota y lado) y suena en una voz libre
+# del bus «Música», que lleva el eco y la reverberación. Sumarlas muestra a muestra en GDScript costaba demasiado.
+var _music_step := 0
+var _music_next := 1.5
+var _music_clock := 0.0
+var _mood := "dia"
+var _bell_cache: Dictionary = {}  # Vector2i(midi, lado) → AudioStreamWAV
+var _voices: Array[AudioStreamPlayer] = []
+var _voice_i := 0
+var _delay: AudioEffectDelay
+
+## Patrón del arpegio (índice de la nota del acorde, −1 = silencio) y ánimos, como Musica.js.
+const PATTERN := [0, 2, 1, 3, -1, 2, 1, -1, 0, 3, 2, -1, 1, -1, 2, -1]
+const MOODS := {
+	"dia": {"tonic": 74, "tempo": 1.0, "skip": 0.12, "chords": [[0, 4, 7, 11], [-3, 2, 5, 9], [-5, 2, 7, 11], [-3, 2, 4, 7]]},
+	"noche": {"tonic": 69, "tempo": 0.8, "skip": 0.2, "chords": [[0, 3, 7, 10], [-4, 3, 5, 8], [-2, 2, 5, 9], [-5, 2, 7, 10]]},
+}
+## Timbre de lámina: [múltiplo, nivel, duración (s)] de cada parcial.
+const BELL := [[1.0, 1.0, 2.4], [2.76, 0.12, 0.9], [5.4, 0.04, 0.4]]
 
 
 func _ready() -> void:
@@ -33,6 +55,12 @@ func _ready() -> void:
 	_setup_buses()
 	_world = _player("Mundo")
 	_ui = _player("Master")
+	for i in 8:
+		var v := AudioStreamPlayer.new()
+		v.bus = "Musica"
+		add_child(v)
+		_voices.push_back(v)
+	WorkerThreadPool.add_task(_build_bells)
 	Settings.changed.connect(_apply_volume)
 	_apply_volume()
 
@@ -58,6 +86,24 @@ func _setup_buses() -> void:
 	rv.wet = AudioConfig.REVERB.wet
 	rv.dry = 1.0
 	AudioServer.add_bus_effect(i, rv)
+	# Música: eco suave (3 corcheas, realimentación 0,3, opaco) y mucha reverberación: campanitas lejos, en el aire
+	AudioServer.add_bus()
+	var mi := AudioServer.bus_count - 1
+	AudioServer.set_bus_name(mi, "Musica")
+	AudioServer.set_bus_send(mi, "Master")
+	_delay = AudioEffectDelay.new()
+	_delay.tap1_active = true
+	_delay.tap1_level_db = linear_to_db(0.5)
+	_delay.tap2_active = false
+	_delay.feedback_active = true
+	_delay.feedback_level_db = linear_to_db(0.3)
+	_delay.feedback_lowpass = 2600.0
+	AudioServer.add_bus_effect(mi, _delay)
+	var mrv := AudioEffectReverb.new()
+	mrv.room_size = 0.85
+	mrv.damping = 0.5
+	mrv.wet = 0.45
+	AudioServer.add_bus_effect(mi, mrv)
 
 
 func _player(bus: String) -> AudioStreamGeneratorPlayback:
@@ -78,6 +124,77 @@ func _apply_volume() -> void:
 	AudioServer.set_bus_mute(m, Settings.volume <= 0.001)
 
 
+## Una pisada: golpe corto de ruido; en tierra más grave y blando que en pavimento, y más fuerte corriendo.
+func footstep(paved: bool, running: bool) -> void:
+	if not active:
+		return
+	var hz: float = AudioConfig.STEPS.paved_hz if paved else AudioConfig.STEPS.dirt_hz
+	var a := 1.0 - exp(-TAU * hz * _rng.randf_range(0.85, 1.15) / AudioConfig.MIX_RATE)
+	_steps.push_back([0.0, 0.07 if paved else 0.11, a, AudioConfig.STEPS.level * (1.4 if running else 1.0) * _rng.randf_range(0.8, 1.1)])
+
+
+## Toca las campanitas que caen dentro de este cuadro (Musica.update de la web). El ánimo cambia al empezar la vuelta.
+func _music(delta: float) -> void:
+	_music_clock += delta
+	var night: float = sky.night if sky else 0.0
+	while _music_next <= _music_clock:
+		if _music_step % (PATTERN.size() * 4) == 0:
+			_mood = "noche" if night > 0.6 else "dia"
+		var m: Dictionary = MOODS[_mood]
+		var eighth: float = (60.0 / AudioConfig.MUSIC.tempo) / 2.0 / float(m.tempo)
+		_delay.tap1_delay_ms = eighth * 3.0 * 1000.0
+		var chord: Array = m.chords[(_music_step / PATTERN.size()) % m.chords.size()]
+		var i: int = PATTERN[_music_step % PATTERN.size()]
+		if i >= 0 and _rng.randf() > float(m.skip) and not _bell_cache.is_empty():
+			var note := int(m.tonic) + int(chord[i]) + (12 if _rng.randf() < 0.1 else 0)
+			var v := _voices[_voice_i]
+			_voice_i = (_voice_i + 1) % _voices.size()
+			v.stream = _bell_cache[Vector2i(note, _music_step % 2)]
+			v.volume_db = linear_to_db((0.06 + _rng.randf() * 0.025) * AudioConfig.MUSIC.volume * Settings.music * AudioConfig.WORLD_GAIN)
+			v.play()
+		_music_step += 1
+		_music_next += eighth
+
+
+## En un hilo, al arrancar: todas las notas que pueden sonar (los dos ánimos, con la octava de más), a los dos lados.
+func _build_bells() -> void:
+	var out := {}
+	for m: Dictionary in MOODS.values():
+		for chord: Array in m.chords:
+			for st: int in chord:
+				for oct in [0, 12]:
+					for side in 2:
+						var key := Vector2i(int(m.tonic) + st + oct, side)
+						if not out.has(key):
+							out[key] = _bell(key.x, side)
+	set_deferred("_bell_cache", out)
+
+
+## Campanita: seno con parciales 2,76× y 5,4× muy tenues (timbre de lámina), ataque inmediato y caída
+## exponencial a −70 dB; los parciales se apagan antes. `side` 0/1 = un poco a la izquierda o a la derecha.
+func _bell(note: int, side: int) -> AudioStreamWAV:
+	var rate := int(AudioConfig.MIX_RATE)
+	var f := 440.0 * pow(2.0, (note - 69) / 12.0)
+	var n := int(2.45 * rate)
+	var pan := 0.35 if side == 1 else -0.35
+	var data := PackedByteArray()
+	data.resize(n * 4)
+	for k in n:
+		var t := float(k) / rate
+		var v := 0.0
+		for pr: Array in BELL:
+			v += sin(TAU * f * pr[0] * t) * pr[1] * exp(-8.1 * t / pr[2])
+		v *= minf(t / 0.006, 1.0) * 0.9
+		data.encode_s16(k * 4, int(clampf(v * (1.0 - pan), -1.0, 1.0) * 32767.0))
+		data.encode_s16(k * 4 + 2, int(clampf(v * (1.0 + pan), -1.0, 1.0) * 32767.0))
+	var w := AudioStreamWAV.new()
+	w.format = AudioStreamWAV.FORMAT_16_BITS
+	w.stereo = true
+	w.mix_rate = rate
+	w.data = data
+	return w
+
+
 ## Clic de interfaz (enfocar / aceptar).
 func ui_click(accept := false) -> void:
 	_ui_queue.push_back([0.0, 0.05 if accept else 0.025, 880.0 if accept else 1320.0, AudioConfig.UI.accept if accept else AudioConfig.UI.focus])
@@ -91,6 +208,8 @@ func _process(delta: float) -> void:
 		var thr := absf(vehicle.engine_force) / maxf(float(vehicle.spec.engine), 1.0)
 		_freq = lerpf(_freq, lerpf(hz[0], hz[1], p) * (1.0 + 0.25 * thr), minf(1.0, delta * 4.0))
 		_throttle = lerpf(_throttle, thr, minf(1.0, delta * 6.0))
+	if active and Settings.music > 0.001:
+		_music(delta)
 	if _world:
 		_fill_world()
 	if _ui:
@@ -140,10 +259,20 @@ func _fill_world() -> void:
 			else:
 				_chirp[0] += dt
 				s += sin(TAU * lerpf(_chirp[2], _chirp[3], k) * _chirp[0]) * sin(PI * k) * bird_amp
+		# pasos: ruido con caída rápida por un paso bajo
+		if not _steps.is_empty():
+			var st: Array = _steps[0]
+			var k: float = st[0] / st[1]
+			_step_lp += (noise - _step_lp) * st[2]
+			s += _step_lp * st[3] * (1.0 - k) * (1.0 - k) * 4.0
+			st[0] += dt
+			if k >= 1.0:
+				_steps.pop_front()
 		s *= AudioConfig.WORLD_GAIN
 		buf[i] = Vector2(s, s)
 	_world.push_buffer(buf)
 	_insect_t = fmod(_insect_t, 1000.0)
+
 	_chirp_t -= n * dt
 	if _chirp_t <= 0.0 and _chirp.is_empty() and active:
 		_chirp_t = _rng.randf_range(1.5, 6.0)

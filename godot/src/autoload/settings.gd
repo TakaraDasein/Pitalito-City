@@ -35,6 +35,8 @@ var ui_scale := 1.0
 ## Sonido: volumen general y del ambiente (viento, pájaros, insectos, lluvia), 0..1.
 var volume := 0.8
 var ambience := 1.0
+## Música de campanitas, 0..1 (Opciones → Música, como en la web).
+var music := 0.6
 ## Por qué se eligió la calidad (para mostrarlo en opciones): "equipo", "fps" o "manual".
 ## Apariencia del personaje (claves de CharacterConfig.DEFAULT_LOOK)
 var look: Dictionary = CharacterConfig.DEFAULT_LOOK.duplicate()
@@ -61,6 +63,7 @@ func _ready() -> void:
 		ui_scale = cfg.get_value("pantalla", "escala_ui", 1.0)
 		volume = cfg.get_value("sonido", "volumen", 0.8)
 		ambience = cfg.get_value("sonido", "ambiente", 1.0)
+		music = cfg.get_value("sonido", "musica", 0.6)
 		look.merge(cfg.get_value("personaje", "apariencia", {}), true)
 		quality_reason = "manual" if not auto_quality else cfg.get_value("grafica", "motivo", "equipo")
 	if auto_quality and quality_reason == "equipo":
@@ -171,5 +174,6 @@ func save() -> void:
 	cfg.set_value("pantalla", "escala_ui", ui_scale)
 	cfg.set_value("sonido", "volumen", volume)
 	cfg.set_value("sonido", "ambiente", ambience)
+	cfg.set_value("sonido", "musica", music)
 	cfg.set_value("personaje", "apariencia", look)
 	cfg.save(PATH)
