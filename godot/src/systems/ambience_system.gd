@@ -20,6 +20,10 @@ var _trees := 0
 var _bursts: Dictionary = {}     # tipo de golpe → [GPUParticles3D…] (una sola descarga cada uno)
 var _burst_i: Dictionary = {}
 var _tension := 0.0
+var _stains: Array[Decal] = []  # sangre en el suelo, en anillo
+var _stain_i := 0
+var _stain_life: PackedFloat32Array
+var _stain_size: PackedVector3Array
 
 
 func _ready() -> void:
@@ -34,7 +38,54 @@ func _ready() -> void:
 			pool.push_back(_make_burst(kind, ParticlesConfig.BURSTS[kind]))
 		_bursts[kind] = pool
 		_burst_i[kind] = 0
+	_build_stains()
 	EventBus.combat_impact.connect(_on_impact)
+
+
+## Manchas de sangre: una textura de borde irregular (ruido sobre un degradado radial) compartida por todas.
+func _build_stains() -> void:
+	var b: Dictionary = ParticlesConfig.BLOOD
+	var img := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	var noise := FastNoiseLite.new()
+	noise.frequency = 0.09
+	var col: Color = b.color
+	for y in 64:
+		for x in 64:
+			var d := Vector2(x - 31.5, y - 31.5).length() / 31.5
+			var a := clampf((1.0 - d) * 2.2 + noise.get_noise_2d(x, y) * 1.4, 0.0, 1.0)
+			img.set_pixel(x, y, Color(col.r * (0.7 + 0.3 * a), col.g, col.b, a * 0.92))
+	var tex := ImageTexture.create_from_image(img)
+	_stain_life.resize(int(b.max))
+	_stain_size.resize(int(b.max))
+	for i in int(b.max):
+		var d := Decal.new()
+		d.texture_albedo = tex
+		d.cull_mask = 1
+		d.upper_fade = 0.2
+		d.lower_fade = 0.2
+		d.visible = false
+		add_child(d)
+		_stains.push_back(d)
+
+
+## Una mancha bajo el golpe, del tamaño según la fuerza; se proyecta hacia abajo sobre el suelo que haya.
+func _stain(at: Vector3, strength: float) -> void:
+	if _stains.is_empty():
+		return
+	var d := _stains[_stain_i]
+	var r := (0.18 + randf() * 0.25) * minf(1.8, strength + 0.3)
+	var p := at + Vector3(randf_range(-0.3, 0.3), 0, randf_range(-0.3, 0.3))
+	var ground := WorldData.height(p.x, p.z)
+	# la caja va de 1,2 m sobre el relieve a 0,6 m bajo él: toca calzadas y andenes, no el pecho de nadie
+	d.global_position = Vector3(p.x, ground + 0.3, p.z)
+	d.rotation.y = randf() * TAU
+	var size := Vector3(r * 2.0, 1.8, r * 2.0 * randf_range(0.6, 1.2))
+	d.size = size
+	d.modulate = Color.WHITE
+	d.visible = true
+	_stain_life[_stain_i] = ParticlesConfig.BLOOD.life
+	_stain_size[_stain_i] = size
+	_stain_i = (_stain_i + 1) % _stains.size()
 
 
 ## Descarga de un golpe: one_shot y explosiva; sale hacia arriba y a los lados, y cae.
@@ -61,6 +112,8 @@ func _on_impact(at: Vector3, kind: String, strength: float) -> void:
 		p.global_position = at
 		p.amount_ratio = clampf(strength, 0.3, 1.0)
 		p.restart()
+		if kind == "carne":
+			_stain(at, strength)
 		# un golpe fuerte contra hueso también saca chispas: el machete raspa
 		if kind == "hueso" and strength > 0.9:
 			_on_impact(at, "metal", 0.4)
@@ -165,6 +218,15 @@ func _ramp(f: Dictionary) -> GradientTexture1D:
 
 
 func _process(delta: float) -> void:
+	# la sangre se encoge al final y desaparece
+	for i in _stains.size():
+		if _stain_life[i] <= 0.0:
+			continue
+		_stain_life[i] -= delta
+		var k := clampf(_stain_life[i] / float(ParticlesConfig.BLOOD.fade), 0.0, 1.0)
+		_stains[i].size = Vector3(_stain_size[i].x * k, _stain_size[i].y, _stain_size[i].z * k)
+		if _stain_life[i] <= 0.0:
+			_stains[i].visible = false
 	if _emitters.is_empty() or player == null:
 		return
 	var walking := vehicle_focus == null and player.visible

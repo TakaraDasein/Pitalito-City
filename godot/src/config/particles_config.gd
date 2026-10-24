@@ -38,6 +38,9 @@ const BURSTS := {
 	"carne": {"max": 16, "n": 16, "life": 0.7, "size": [0.05, 0.03], "gravity": -9.5, "drag": 1.4,
 		"color": [Color("#7a0d0d"), Color("#3d0505")], "alpha": [0.95, 0.6], "speed": 2.6, "spread": 1.1},
 }
+## Sangre en el suelo (Sangre.js de la web): cuántas manchas a la vez, cuánto duran (s) y los últimos segundos en
+## que se encogen. Son Decal: se proyectan sobre lo que haya debajo (relieve, calzada, andén).
+const BLOOD := {"max": 48, "life": 90.0, "fade": 15.0, "color": Color("#5c0606")}
 ## Copias de cada golpe a la vez (golpes seguidos no se cortan unos a otros).
 const BURST_POOL := 4
 ## Tensión de la imagen (PostFX.setTension de la web): sube con enemigos a menos de `radius` m y con el monte cerrado.
