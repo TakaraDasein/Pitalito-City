@@ -368,6 +368,12 @@ edificios armados con piezas y recorribles por dentro.
    caballo. Mitos (web/docs/HISTORIA.md § Mitos y leyendas, con fuentes): el Hojarasquín (ataca solo si se entra
    armado), la Madremonte y su jauría, el venado del monte. Bases: saqueadores y un jefe por zona (la Señora de
    la base, el Coloso, el Pantalla) con barra arriba. Créditos de los modelos en pantalla (CC BY).
+   Ficha por criatura (CreaturesConfig): varios ataques elegidos por distancia, espera y peso (combos, en redondo,
+   con avance, hacia atrás), especiales (aullido, llamado de la jauría, hojarasca, destello que aturde, comer,
+   ráfaga), animación por código para lo que el modelo no trae (embestida, coz, carga, salto, caída de lado,
+   retroceso), hábitat (finca, monte, monte hondo junto a un río, base con corral de barricadas) y LOD (animación
+   a 1/4 de cuadros, pensar menos, sin sombra, sin dibujar). Orientación automática por cadera → cabeza. El
+   Hojarasquín no camina (su único clip es de acecho): se mueve en hojarasca. Prueba: `menu_shots -- uno`.
    Falta: fauna real del bosque (borugo, guatín, aves: la web las tiene), supervivencia (hambre, sed e infección ya se guardan),
    historia y misiones, construcción por bloques.
 6. Oclusores por tile, LOD de toda la ciudad (`CityLOD`), y exportación (filtro de `data/world/*.json` y `*.bin`).

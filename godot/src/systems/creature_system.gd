@@ -37,25 +37,46 @@ func _process(delta: float) -> void:
 	var hour: float = sky.hour if sky else 12.0
 	var night := hour >= 18.5 or hour <= 5.5
 	var from_park := Vector2(p.x, p.z).length()
-	for kind: String in CreaturesConfig.SPAWN:
-		var rule = CreaturesConfig.SPAWN[kind]
-		if not rule is Dictionary or not CreaturesConfig.CREATURES.has(kind):
-			continue
+	var cfg: Dictionary = CreaturesConfig.SPAWN
+	for kind: String in CreaturesConfig.CREATURES:
+		var rule: Dictionary = CreaturesConfig.CREATURES[kind].get("spawn", {})
+		var hab: String = rule.get("habitat", "base")
+		if hab == "base":
+			continue  # las pone FactionSystem
 		if rule.get("night", false) and not night or rule.get("day", false) and night:
 			continue
-		if trees < int(rule.get("forest", 0)) or trees > int(rule.get("forest_max", 9999)):
+		match hab:
+			"finca":
+				if from_park < float(cfg.finca_from_park) or trees > int(cfg.finca_forest_max):
+					continue
+			"monte":
+				if trees < int(rule.get("forest", 14)):
+					continue
+			"monte_hondo":
+				if trees < int(rule.get("forest", 28)) or not _river_near(p, float(rule.get("river", 120.0))):
+					continue
+		if _count(kind) >= int(rule.get("max", 1)) or randf() > float(rule.get("chance", 0.1)):
 			continue
-		if from_park < float(rule.get("out_of_town", 0.0)):
-			continue
-		if _count(kind) >= int(rule.max) or randf() > float(rule.chance):
-			continue
-		var n := randi_range(int(rule.group[0]), int(rule.group[1]))
+		var g: Array = rule.get("group", [1, 1])
+		var n := randi_range(int(g[0]), int(g[1]))
 		var a := randf() * TAU
-		var r := randf_range(CreaturesConfig.SPAWN.radius[0], CreaturesConfig.SPAWN.radius[1])
+		var r := randf_range(cfg.radius[0], cfg.radius[1])
 		var center := p + Vector3(cos(a), 0, sin(a)) * r
 		for i in n:
-			var q := center + Vector3(randf_range(-3, 3), 0, randf_range(-3, 3))
-			spawn(kind, q)
+			spawn(kind, center + Vector3(randf_range(-3, 3), 0, randf_range(-3, 3)))
+
+
+## ¿Hay un río a menos de `radius` m? (12 rumbos a tres distancias contra WaterSystem)
+func _river_near(p: Vector3, radius: float) -> bool:
+	if WaterSystem.instance == null:
+		return false
+	for k in 12:
+		var a := k * TAU / 12.0
+		for f in [0.33, 0.66, 1.0]:
+			var q: Vector3 = p + Vector3(cos(a), 0, sin(a)) * radius * float(f)
+			if not WaterSystem.instance.sample(q.x, q.z).is_empty():
+				return true
+	return false
 
 
 func _count(kind: String) -> int:

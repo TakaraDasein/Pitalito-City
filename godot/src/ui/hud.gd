@@ -24,6 +24,8 @@ var _hurt_a := 0.0
 var _stamina_flash := 0.0
 var _fracture: ColorRect    # vidrio quebrado al recibir (shader); amount se apaga solo
 var _fracture_a := 0.0
+var _white: ColorRect          # destello blanco (el Pantalla)
+var _white_a := 0.0
 var _crosshair: Label        # mira (con arma de fuego en la mano) y munición: cargador / mochila
 var _ammo: Label
 var _boss_box: VBoxContainer   # barra de jefe arriba (Creature.is_boss a menos de BOSS_RANGE)
@@ -435,6 +437,12 @@ func _build_combat() -> void:
 	_boss_box.add_child(_boss_name)
 	_boss_bar = _bar(_boss_box, GuaduaTheme.SALUD, Vector2(520, 14))
 	_boss_box.visible = false
+	_white = ColorRect.new()
+	_white.color = GuaduaTheme.TEXT
+	_white.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_white.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_white.modulate.a = 0.0
+	_root.add_child(_white)
 	EventBus.combat_hit.connect(_on_combat_hit)
 
 
@@ -460,6 +468,11 @@ func _parry_slash(from: Node3D) -> void:
 	m.set_shader_parameter("dir", dir)
 	m.set_shader_parameter("seed", randf() * 100.0)
 	_slash_a = 1.0
+
+
+## Destello que ciega (0..1): la pantalla se pone blanca y se aclara en un segundo.
+func flash_white(k: float) -> void:
+	_white_a = maxf(_white_a, k)
 
 
 ## Golpe que recibe el jugador: la pantalla se quiebra desde el lado de donde vino, más cuanto más daño.
@@ -542,6 +555,8 @@ func _update_combat() -> void:
 	_hurt.modulate.a = maxf(_hurt_a, low if combat.is_alive() else 0.0)
 	_stamina_flash = maxf(0.0, _stamina_flash - dt)
 	_fracture_a = maxf(0.0, _fracture_a - dt / float(CombatConfig.FRACTURE.fade))
+	_white_a = maxf(0.0, _white_a - dt * 0.9)
+	_white.modulate.a = _white_a * 0.92
 	_fracture.visible = _fracture_a > 0.001
 	_slash_a = maxf(0.0, _slash_a - dt / float(CombatConfig.PARRY_SLASH.fade))
 	_slash.visible = _slash_a > 0.001

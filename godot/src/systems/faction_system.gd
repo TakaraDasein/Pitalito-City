@@ -65,6 +65,7 @@ func _extras(z: Dictionary, p: Vector3, d: float) -> void:
 			_bosses.erase(z.id)
 	elif near and boss_kind != "" and not _bosses.has(z.id):
 		_bosses[z.id] = cs.spawn(boss_kind, Vector3(z.x, 0, z.z))
+		_arena(z)
 	var list: Array = _raiders.get(z.id, [])
 	list = list.filter(func(c): return is_instance_valid(c))
 	if far:
@@ -79,6 +80,41 @@ func _extras(z: Dictionary, p: Vector3, d: float) -> void:
 				if c:
 					list.push_back(c)
 	_raiders[z.id] = list
+
+
+## Corral del jefe: barricadas (Kenney, CC0) en círculo alrededor del centro de la zona, con un hueco de entrada
+## hacia el jugador que llega. Sólidas (capa 1). Se arma una vez por zona y queda.
+var _arenas := {}
+func _arena(z: Dictionary) -> void:
+	var a: Dictionary = CreaturesConfig.ARENA
+	if _arenas.has(z.id) or not ResourceLoader.exists(a.model):
+		return
+	var root := Node3D.new()
+	root.name = "corral_" + String(z.id)
+	add_child(root)
+	_arenas[z.id] = root
+	var scene: PackedScene = load(a.model)
+	var n := int(a.pieces)
+	var entry := randi() % n
+	for i in n:
+		if absi(i - entry) < int(a.gap) / 2 + 1 and int(a.gap) > 0:
+			continue
+		var ang := i * TAU / n
+		var at := Vector3(z.x + cos(ang) * float(a.radius), 0, z.z + sin(ang) * float(a.radius))
+		var piece: Node3D = scene.instantiate()
+		piece.position = Vector3(at.x, WorldData.height(at.x, at.z), at.z)
+		piece.rotation.y = -ang + PI * 0.5
+		piece.scale = Vector3.ONE * (TAU * float(a.radius) / n) / 1.0
+		root.add_child(piece)
+		var body := StaticBody3D.new()
+		body.collision_layer = 1
+		var cs := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = Vector3(1.0, 1.0, 0.15)
+		cs.shape = box
+		cs.position.y = 0.5
+		body.add_child(cs)
+		piece.add_child(body)
 
 
 ## Pone un enemigo en `at` (también lo usan las pruebas).

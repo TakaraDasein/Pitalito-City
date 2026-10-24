@@ -35,6 +35,9 @@ const BURSTS := {
 	# parry: chispas verdes, más y más rápidas que un bloqueo (el choque de las armas)
 	"parry": {"max": 34, "n": 34, "life": 0.6, "size": [0.07, 0.015], "gravity": -6.0, "drag": 2.0,
 		"color": [Color("#e6ffd6"), Color("#4fd640")], "alpha": [1.0, 0.0], "glow": true, "speed": 5.0, "spread": 1.0},
+	# hojarasca: el Hojarasquín se deshace y aparece en hojas secas (también cuando la Madremonte llama)
+	"hojarasca": {"max": 60, "n": 60, "life": 1.6, "size": [0.14, 0.08], "gravity": -1.5, "drag": 1.2,
+		"color": [Color("#8a6a2e"), Color("#4f6a2a")], "alpha": [0.95, 0.0], "spin": 6.0, "speed": 3.2, "spread": 1.0},
 	"carne": {"max": 16, "n": 16, "life": 0.7, "size": [0.05, 0.03], "gravity": -9.5, "drag": 1.4,
 		"color": [Color("#7a0d0d"), Color("#3d0505")], "alpha": [0.95, 0.6], "speed": 2.6, "spread": 1.1},
 }

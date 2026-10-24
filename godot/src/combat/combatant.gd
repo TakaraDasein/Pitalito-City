@@ -145,6 +145,18 @@ func in_parry_window() -> bool:
 	return guarding and _guard_t <= float(CombatConfig.PARRY.window)
 
 
+## Aturdido sin poder actuar (el destello del Pantalla).
+func stun(seconds: float) -> void:
+	if not is_alive():
+		return
+	state = State.HIT
+	phase = ""
+	_queued = false
+	guarding = false
+	_timer = seconds
+	_fire("hit", {"zone": "head", "lock": seconds})
+
+
 ## Aturdido por un parry: suelta lo que hacía y queda expuesto.
 func parried(seconds: float) -> void:
 	if not is_alive():

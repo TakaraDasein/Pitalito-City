@@ -152,6 +152,7 @@ func _strike(c: Combatant) -> void:
 	var w := c.weapon
 	var fwd := _forward(c)
 	var p := c.body.global_position
+	var hit_any := false
 	for e: Array in _enemies_of(c, w.reach):
 		var o: Combatant = e[0]
 		var to := o.body.global_position - p
@@ -164,6 +165,7 @@ func _strike(c: Combatant) -> void:
 		var res := o.take_hit(float(w.damage) * c.hit_mult, float(w.poise) * c.hit_mult, zone, c)
 		if res.is_empty():
 			continue
+		hit_any = true
 		if res.get("parried", false):
 			# parry: el arma rebota con chispas, el atacante sale hacia atrás y el tiempo se detiene más
 			if c.body.has_method("push"):
@@ -198,6 +200,9 @@ func _strike(c: Combatant) -> void:
 				_shake(float(f.shake_heavy) if heavy else float(f.shake_deal))
 		var kind := "hueso" if o.team == "faccion" else ("metal" if res.blocked else "carne")
 		EventBus.combat_impact.emit(o.body.global_position + Vector3.UP * (1.6 if zone == "head" else 1.0), kind, minf(1.6, float(w.damage) / 20.0))
+	# ataques con avance (carga, salto): siguen buscando a quién pegar mientras dura la fase activa
+	if not hit_any and float(w.get("dash", 0.0)) > 0.0:
+		return
 	c.mark_hit()
 
 

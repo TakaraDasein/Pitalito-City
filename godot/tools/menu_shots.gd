@@ -1,7 +1,7 @@
 extends Node
 ## Herramienta: capturas de la carga y los menús (screenshots/menu_*.png). Uso: godot res://tools/menu_shots.tscn
 ## Para no recorrer todo, se nombran las secciones que interesan: `godot res://tools/menu_shots.tscn -- personaje`
-## (garaje, personaje, menus, juego, pies, banca, subir, faros, tomar, ambiente, combate, botin, disparos, criaturas, monte; varias separadas por espacio). Carga y portada se capturan siempre.
+## (garaje, personaje, menus, juego, pies, banca, subir, faros, tomar, ambiente, combate, botin, disparos, criaturas, monte, uno; varias separadas por espacio). Carga y portada se capturan siempre.
 
 var _main: Node
 var _only := OS.get_cmdline_user_args()
@@ -136,6 +136,8 @@ func _ready() -> void:
 		await _creature_shots()
 	if _want("monte"):
 		await _monte_shots()
+	if _want("uno"):
+		await _one_by_one()
 	get_tree().quit()
 
 
@@ -298,6 +300,79 @@ func _combat_shots() -> void:
 	while Engine.get_physics_frames() - fw < 30:
 		await get_tree().physics_frame
 	print("combate: recibe — vida %.0f → %.0f, retrocede %.2f m, estado %d" % [hp, player.combat.health, Vector2(player.global_position.x - p0.x, player.global_position.z - p0.z).length(), player.combat.state])
+
+
+## Uno a uno: cada criatura frente al jugador (armado), cada uno de sus ataques forzado a su distancia. Imprime si
+## salió, el daño al jugador, el estado y el efecto; captura el momento del golpe (screenshots/menu_uno_<id>_<ataque>).
+func _one_by_one() -> void:
+	if _main.state != _main.State.PLAYING:
+		_main._start_playing()
+	seed(3)
+	var player: Player = _main.player
+	var cs: CreatureSystem = _main.creatures
+	cs.set_process(false)
+	var sp: Dictionary = WorldData.spawn()
+	player.place(sp.x, sp.z, sp.heading)
+	await get_tree().create_timer(1.0).timeout
+	player.set_armed(true)
+	var cam := Camera3D.new()
+	cam.fov = 55
+	add_child(cam)
+	for kind: String in CreaturesConfig.CREATURES:
+		var spec: Dictionary = CreaturesConfig.CREATURES[kind]
+		var fwd := -player.global_basis.z
+		var c: Creature = cs.spawn(kind, player.global_position + fwd * 4.0)
+		if c == null:
+			print("uno: falta %s" % kind)
+			continue
+		await get_tree().physics_frame
+		for a: Dictionary in spec.get("attacks", []):
+			var d := clampf((float(a.range[0]) + minf(float(a.range[1]), 10.0)) * 0.5, 1.2, 9.0)
+			var at := player.global_position + fwd * d
+			c.global_position = Vector3(at.x, WorldData.height(at.x, at.z) + 0.1, at.z)
+			c.rotation.y = player.rotation.y + PI
+			c.self_c.revive()
+			c.self_c._invulnerable = 0.0
+			player.combat.revive()
+			player.combat._invulnerable = 0.0
+			player.combat.set_guard(false)
+			c.target = player.combat
+			c.dist = d
+			c._cool.clear()
+			var h0 := player.combat.health
+			var ok := c._start(a)
+			for o: Dictionary in spec.get("attacks", []):   # que no lance otro mientras se mide este
+				c._cool[o.id] = c._time + 999.0
+			var shot := false
+			var f0 := Engine.get_physics_frames()
+			while Engine.get_physics_frames() - f0 < 300 and c.self_c.state == Combatant.State.ATTACK:
+				if not shot and c.self_c.phase == "active":
+					shot = true
+					var h := float(spec.height)
+					cam.global_position = player.global_position + player.global_basis.x * (2.5 + h) - fwd * 1.5 + Vector3.UP * (1.2 + h * 0.5)
+					cam.look_at((player.global_position + c.global_position) * 0.5 + Vector3.UP * h * 0.5)
+					cam.make_current()
+					await _shot("uno_%s_%s" % [kind, a.id])
+				await get_tree().physics_frame
+			print("uno: %-14s %-10s salió=%s · daño al jugador %.0f · animación %s · efecto %s" % [kind, a.id, ok, h0 - player.combat.health,
+				a.get("clip", a.get("proc", "-")), a.get("effect", "-")])
+			_main.camera_rig.camera.make_current()
+		# muerte
+		c.self_c.take_hit(99999.0, 0.0)
+		await get_tree().create_timer(1.5).timeout
+		cam.global_position = c.global_position + Vector3(3.0 + float(spec.height), 1.5 + float(spec.height) * 0.5, 2.0)
+		cam.look_at(c.global_position + Vector3.UP * 0.3)
+		cam.make_current()
+		await _shot("uno_%s_muerte" % kind)
+		print("uno: %-14s muerte     estado=%s" % [kind, c.state])
+		_main.camera_rig.camera.make_current()
+		c.queue_free()
+		for o in cs._alive:
+			if is_instance_valid(o) and o != c:
+				o.queue_free()
+		await get_tree().physics_frame
+	cam.queue_free()
+	cs.set_process(true)
 
 
 ## Comportamiento del monte y de las bases: la jauría ataca, el Hojarasquín solo mira si el arma va guardada y

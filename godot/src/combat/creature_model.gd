@@ -38,7 +38,32 @@ static func create(id: String) -> Dictionary:
 	# recortaba como si estuvieran fuera de cámara (el saqueador no se veía)
 	for mi: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
 		mi.extra_cull_margin = float(c.height) * 2.0
-	model.rotation.y = float(c.get("face", PI)) # los modelos de Sketchfab miran a +Z; en Godot adelante es −Z
+	# hacia dónde mira: de la cadera a la cabeza en reposo (no todos miran igual: el Hojarasquín viene hacia −Z y
+	# los demás hacia +Z; con un giro fijo atacaba de espaldas). En Godot adelante es −Z.
+	var face := PI
+	var width := 0.0
+	for sk: Skeleton3D in model.find_children("*", "Skeleton3D", true, false):
+		var xf := _rel(sk, model)
+		var hips := -1
+		var head := -1
+		var mn := Vector3.INF
+		var mx := -Vector3.INF
+		for i in sk.get_bone_count():
+			var bn := sk.get_bone_name(i).to_lower()
+			if hips < 0 and ("hip" in bn or "pelvis" in bn):
+				hips = i
+			if head < 0 and "head" in bn:
+				head = i
+			var o := (xf * sk.get_bone_global_rest(i)).origin
+			mn = mn.min(o)
+			mx = mx.max(o)
+		width = maxf(width, maxf(mx.x - mn.x, mx.z - mn.z))
+		if hips >= 0 and head >= 0:
+			var d := (xf * sk.get_bone_global_rest(head)).origin - (xf * sk.get_bone_global_rest(hips)).origin
+			if Vector2(d.x, d.z).length() > 0.001 and not c.get("humanoid", false):
+				face = atan2(d.x, d.z) # gira el modelo para que ese rumbo quede en −Z
+		break
+	model.rotation.y = float(c.get("face", face))
 	var anim: AnimationPlayer
 	if c.get("humanoid", false):
 		for ap: AnimationPlayer in model.find_children("*", "AnimationPlayer", true, false):
@@ -61,7 +86,7 @@ static func create(id: String) -> Dictionary:
 			anim.get_animation(full).loop_mode = Animation.LOOP_LINEAR if role in ["idle", "walk", "run"] else Animation.LOOP_NONE
 	if anim and clips.has("idle"):
 		anim.play(clips.idle)
-	return {"root": root, "anim": anim, "clips": clips, "spec": c}
+	return {"root": root, "anim": anim, "clips": clips, "spec": c, "width": width * model.scale.x}
 
 
 static func _rel(n: Node, root: Node) -> Transform3D:
