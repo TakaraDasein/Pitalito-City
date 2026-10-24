@@ -1,0 +1,226 @@
+{
+  "generated": "2026-10-23",
+  "models": [
+    {
+      "key": "animation-library",
+      "file": "models/characters/animations.glb",
+      "bytes": 2899316,
+      "count": 1,
+      "title": "Universal Animation Library (Standard)",
+      "author": "Quaternius",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "home": "https://quaternius.com/packs/universalanimationlibrary.html",
+      "url": "https://opengameart.org/sites/default/files/universal_animation_librarystandard.zip",
+      "mirror": "https://opengameart.org/content/universal-animation-library",
+      "pick": "Animation Library[Standard]/Unreal Engine/AL_Standard.fbx",
+      "convert": "blender",
+      "out": "animations.glb",
+      "usedFor": "Los 45 clips de animación y el esqueleto de 65 huesos que comparten todos los personajes"
+    },
+    {
+      "key": "animation-library-2",
+      "file": "models/characters/ual2.glb",
+      "bytes": 1496472,
+      "count": 1,
+      "title": "Universal Animation Library 2 (Standard)",
+      "author": "Quaternius",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "home": "https://quaternius.itch.io/universal-animation-library-2",
+      "url": "https://opengameart.org/sites/default/files/universal_animation_library_2standard.zip",
+      "mirror": "https://opengameart.org/content/universal-animation-library-2",
+      "pick": "Universal Animation Library 2 [Standard]/Unreal-Godot/UAL2_Standard.glb",
+      "clips": [
+        "Zombie_Idle_Loop",
+        "Zombie_Walk_Fwd_Loop",
+        "Zombie_Scratch",
+        "Hit_Knockback",
+        "LayToIdle",
+        "Sword_Regular_A",
+        "Sword_Regular_B",
+        "Sword_Regular_C",
+        "Sword_Block",
+        "Melee_Hook",
+        "TreeChopping_Loop"
+      ],
+      "out": "ual2.glb",
+      "usedFor": "Zombis (caminar, reposo, zarpazo, levantarse) y combate (combos de espada, bloqueo, gancho, hachazo)"
+    },
+    {
+      "key": "base-characters",
+      "file": "models/characters/base/",
+      "bytes": 3488622,
+      "count": 10,
+      "out": "base/",
+      "title": "Universal Base Characters (Standard)",
+      "author": "Quaternius",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "home": "https://quaternius.itch.io/universal-base-characters",
+      "itch": "https://quaternius.itch.io/universal-base-characters",
+      "pickDirs": [
+        "Base Characters/Godot - UE",
+        "Hairstyles/Rigged to Head Bone"
+      ],
+      "outDir": "base",
+      "usedFor": "Cuerpos base de la creación de personaje (complexiones y peinados), mismo esqueleto que las animaciones"
+    },
+    {
+      "key": "animals",
+      "file": "models/characters/animals/",
+      "bytes": 1263960,
+      "count": 5,
+      "out": "animals/",
+      "title": "Farm Animals Animated (Standard)",
+      "author": "Quaternius",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "home": "https://quaternius.itch.io/lowpoly-animated-animals",
+      "itch": "https://quaternius.itch.io/lowpoly-animated-animals",
+      "fbx": [
+        "Cow",
+        "Horse",
+        "Pig",
+        "Sheep",
+        "Pug"
+      ],
+      "outDir": "animals",
+      "usedFor": "Animales de finca, repartidos según el inventario pecuario real del municipio"
+    },
+    {
+      "key": "outfits",
+      "file": "models/characters/outfits/",
+      "bytes": 6439457,
+      "count": 20,
+      "out": "outfits/",
+      "title": "Modular Character Outfits — Fantasy (Standard)",
+      "author": "Quaternius",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "home": "https://quaternius.itch.io/modular-character-outfits-fantasy",
+      "itch": "https://quaternius.itch.io/modular-character-outfits-fantasy",
+      "pickDirs": [
+        "Exports/glTF (Godot-Unreal)/Modular Parts"
+      ],
+      "outDir": "outfits",
+      "usedFor": "Ropa intercambiable del jugador y de las facciones, sobre el mismo esqueleto"
+    },
+    {
+      "key": "guns",
+      "file": "models/weapons/",
+      "bytes": 340540,
+      "count": 6,
+      "title": "50+ LowPoly Guns",
+      "author": "Quaternius",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "home": "https://quaternius.itch.io/50-lowpoly-guns",
+      "itch": "https://quaternius.itch.io/50-lowpoly-guns",
+      "fbx": [
+        "Pistol_1",
+        "Revolver_1",
+        "Shotgun_1",
+        "Shotgun_SawedOff",
+        "AssaultRifle_1",
+        "SniperRifle_1"
+      ],
+      "usedFor": "Pistola, revólver, escopetas, fusil y rifle de cacería (src/config/firearms.config.js)"
+    },
+    {
+      "key": "styloo-guns",
+      "file": "models/weapons/styloo_*.glb",
+      "bytes": 542144,
+      "count": 4,
+      "title": "Guns Asset Pack",
+      "author": "Styloo",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "home": "https://styloo.itch.io/guns-asset-pack",
+      "glb": [
+        "pew",
+        "shotgun",
+        "ak47",
+        "awp"
+      ],
+      "usedFor": "Pistola, escopeta, fusil y rifle (src/config/firearms.config.js)"
+    },
+    {
+      "key": "kenney-car-kit",
+      "file": "models/vehicles/",
+      "bytes": 1486283,
+      "count": 7,
+      "title": "Car Kit 3.1",
+      "author": "Kenney",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "home": "https://kenney.nl/assets/car-kit",
+      "url": "https://kenney.nl/media/pages/assets/car-kit/1a312ec241-1775131960/kenney_car-kit.zip",
+      "glb": [
+        "sedan",
+        "suv",
+        "van",
+        "truck",
+        "delivery",
+        "garbage-truck",
+        "ambulance"
+      ],
+      "out": "vehicles/",
+      "usedFor": "Automóvil, campero, van, camioneta, furgón, recolector y ambulancia del tráfico"
+    },
+    {
+      "file": "models/buildings/",
+      "bytes": 876231,
+      "count": 79,
+      "key": "kenney-building-kit",
+      "title": "Building Kit 1.0",
+      "author": "Kenney",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "home": "https://kenney.nl/assets/building-kit",
+      "url": "https://kenney.nl/media/pages/assets/building-kit/0de7aaa492-1743244741/kenney_building-kit.zip",
+      "pick": "Models/GLB format",
+      "texture": "Textures/colormap.png",
+      "out": "buildings/",
+      "usedFor": "Versión Godot: piezas de los edificios cercanos (paredes, vanos, columnas, escaleras, pisos, techos)"
+    },
+    {
+      "file": "models/furniture/",
+      "bytes": 1960832,
+      "count": 140,
+      "key": "kenney-furniture-kit",
+      "title": "Furniture Kit 1.0",
+      "author": "Kenney",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "home": "https://kenney.nl/assets/furniture-kit",
+      "url": "https://kenney.nl/media/pages/assets/furniture-kit/440e0608a4-1677580847/kenney_furniture-kit.zip",
+      "pick": "Models/GLTF format",
+      "out": "furniture/",
+      "usedFor": "Versión Godot: muebles de los interiores recorribles (cocina, baño, sala, alcoba, tienda)"
+    },
+    {
+      "key": "skeleton",
+      "file": "models/characters/enemies/skeleton.glb",
+      "bytes": 437188,
+      "count": 1,
+      "title": "Esqueleto (generado)",
+      "author": "Generado por el proyecto sobre el armature de Quaternius",
+      "license": "CC0 1.0",
+      "derivaDe": "base/Superhero_Male_FullBody.gltf",
+      "script": "scripts/lib/make-skeleton.py",
+      "from": "base/Superhero_Male_FullBody.gltf",
+      "out": "enemies/skeleton.glb",
+      "usedFor": "Cuerpo de los enemigos de las facciones: comparte los 65 huesos, así hereda los 45 clips y la ropa"
+    }
+  ],
+  "pendientes": [
+    {
+      "title": "LowPoly Animated Animals / Monsters",
+      "author": "Quaternius",
+      "license": "CC0 1.0",
+      "home": "https://quaternius.itch.io/",
+      "usedFor": "Fauna de las zonas boscosas y enemigos (Fases 4 y 5)"
+    }
+  ]
+}

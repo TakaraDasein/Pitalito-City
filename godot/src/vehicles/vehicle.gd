@@ -1,0 +1,102 @@
+class_name Vehicle
+extends VehicleBody3D
+## Vehículo del jugador con física real de Godot (VehicleBody3D + VehicleWheel3D): suspensión, tracción y fricción
+## por rueda, en lugar del modelo cinemático de la web. Cualquier vehículo del catálogo (VehiclesConfig).
+## Pendiente: la moto (dos ruedas) necesita equilibrio propio; con VehicleBody3D se cae de lado.
+
+var spec: Dictionary
+var driven := false
+
+
+## Crea el vehículo del tipo pedido. Se usa en vez de .new() porque el modelo depende del tipo.
+static func create(type: String) -> Vehicle:
+	var v := Vehicle.new()
+	v.spec = VehiclesConfig.spec(type)
+	v.name = v.spec.name
+	return v
+
+
+func _ready() -> void:
+	collision_layer = 4
+	collision_mask = 1 | 2 | 4 | 16
+	mass = spec.mass
+	center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
+	center_of_mass = Vector3(0, 0.35, 0)
+	var m := VehicleModel.create(spec)
+	if m.is_empty():
+		return
+	add_child(m.visual)
+	var size: Vector3 = m.size
+
+	var shape := CollisionShape3D.new()
+	var b := BoxShape3D.new()
+	b.size = Vector3(size.x, size.y * 0.75, size.z)
+	shape.shape = b
+	shape.position.y = m.base_y + size.y * 0.55
+	add_child(shape)
+
+	# Flotación: ocho puntos en la parte baja de la carrocería; desplaza el 45 % de su caja (el resto es motor y
+	# lámina: ESTIMADO). Flota a media altura y la corriente lo arrastra; no se simula que se llene de agua.
+	if WaterSystem.instance:
+		var pts := []
+		for sx: float in [-0.4, 0.4]:
+			for sy: float in [0.25, 0.75]:
+				for sz: float in [-0.4, -0.13, 0.13, 0.4]:
+					pts.push_back(Vector3(size.x * sx, m.base_y + size.y * sy, size.z * sz))
+		WaterSystem.instance.add_body(self, pts, size.x * size.y * size.z * 0.45, size.y * 0.25)
+
+	for w: Dictionary in m.wheels:
+		var wheel := VehicleWheel3D.new()
+		var front: bool = w.front
+		wheel.position = w.pos
+		wheel.use_as_steering = front
+		wheel.use_as_traction = not front
+		wheel.wheel_radius = w.radius
+		wheel.suspension_travel = 0.2
+		wheel.suspension_stiffness = 40.0
+		wheel.wheel_rest_length = 0.15
+		wheel.damping_compression = 2.0
+		wheel.damping_relaxation = 3.0
+		wheel.wheel_friction_slip = 3.5
+		add_child(wheel)
+		var node: Node3D = w.node
+		node.reparent(wheel, false)
+		node.transform = Transform3D(w.basis, Vector3.ZERO)
+
+
+func _physics_process(delta: float) -> void:
+	if not driven:
+		engine_force = 0.0
+		brake = 2.0
+		return
+	var throttle := Input.get_action_strength("move_forward") - Input.get_action_strength("move_back")
+	var turn := Input.get_action_strength("move_left") - Input.get_action_strength("move_right")
+	var speed := linear_velocity.dot(global_basis.z)
+	# Menos giro a más velocidad: el carro no se voltea a 50 km/h
+	var max_steer: float = spec.max_steer * clampf(1.0 - absf(speed) / 40.0, 0.35, 1.0)
+	steering = move_toward(steering, turn * max_steer, 2.5 * delta)
+	# Frenar cuando se acelera en sentido contrario a la marcha; tope de velocidad del catálogo
+	if throttle * speed < -0.5:
+		engine_force = 0.0
+		brake = spec.brake
+	else:
+		var limited: bool = absf(speed) * 3.6 > spec.max_speed
+		engine_force = 0.0 if limited else throttle * spec.engine
+		brake = spec.brake if Input.is_action_pressed("brake") else 0.0
+
+
+## Coloca el vehículo sobre el relieve en (x, z) mirando a `heading`.
+func place(x: float, z: float, heading := 0.0) -> void:
+	global_transform = Transform3D(Basis(Vector3.UP, heading), Vector3(x, WorldData.height(x, z) + 0.6, z))
+	linear_velocity = Vector3.ZERO
+	angular_velocity = Vector3.ZERO
+
+
+## Punto de bajada: al lado izquierdo del conductor, sobre el relieve.
+func exit_point() -> Vector3:
+	var p: Vector3 = global_position + global_basis.x * (spec.width * 0.5 + 0.8)
+	return Vector3(p.x, WorldData.height(p.x, p.z), p.z)
+
+
+func speed_kmh() -> float:
+	return linear_velocity.length() * 3.6

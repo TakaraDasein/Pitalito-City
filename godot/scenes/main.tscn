@@ -1,0 +1,106 @@
+[gd_scene load_steps=20 format=3]
+
+[ext_resource type="Script" path="res://src/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://src/world/terrain_streamer.gd" id="2_terrain"]
+[ext_resource type="Script" path="res://src/world/world_streamer.gd" id="3_world"]
+[ext_resource type="Script" path="res://src/player/player.gd" id="4_player"]
+[ext_resource type="Script" path="res://src/player/camera_rig.gd" id="5_cam"]
+[ext_resource type="Script" path="res://src/ui/hud.gd" id="6_hud"]
+[ext_resource type="Script" path="res://src/world/imagery_ground.gd" id="7_img"]
+[ext_resource type="Script" path="res://src/world/traffic_lights.gd" id="8_sig"]
+[ext_resource type="Script" path="res://src/vehicles/traffic_system.gd" id="9_traffic"]
+[ext_resource type="Script" path="res://src/world/landmark_system.gd" id="10_lm"]
+[ext_resource type="Script" path="res://src/world/sky_system.gd" id="11_sky"]
+[ext_resource type="Script" path="res://src/world/gps.gd" id="12_gps"]
+[ext_resource type="Script" path="res://src/ui/map_screen.gd" id="13_map"]
+[ext_resource type="Script" path="res://src/world/detail_streamer.gd" id="14_detail"]
+[ext_resource type="Script" path="res://src/world/water_system.gd" id="15_water"]
+
+[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
+sky_top_color = Color(0.33, 0.52, 0.78, 1)
+sky_horizon_color = Color(0.72, 0.78, 0.82, 1)
+ground_horizon_color = Color(0.72, 0.78, 0.82, 1)
+ground_bottom_color = Color(0.32, 0.36, 0.3, 1)
+sun_angle_max = 20.0
+
+[sub_resource type="Sky" id="sky"]
+sky_material = SubResource("sky_mat")
+
+[sub_resource type="Environment" id="env"]
+background_mode = 2
+sky = SubResource("sky")
+ambient_light_source = 3
+reflected_light_source = 2
+tonemap_mode = 4
+ssao_enabled = true
+glow_enabled = true
+fog_enabled = true
+fog_light_color = Color(0.7, 0.76, 0.82, 1)
+fog_density = 0.00012
+fog_aerial_perspective = 0.6
+fog_sky_affect = 0.3
+fog_height = -12.0
+fog_height_density = 0.002
+
+[sub_resource type="CameraAttributesPractical" id="cam_attr"]
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1_main")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("env")
+camera_attributes = SubResource("cam_attr")
+
+[node name="Sol" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866, -0.354, 0.354, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 0, 100, 0)
+light_color = Color(1, 0.96, 0.9, 1)
+light_energy = 1.2
+shadow_enabled = true
+directional_shadow_max_distance = 250.0
+
+[node name="Sky" type="Node" parent="." node_paths=PackedStringArray("environment", "sun")]
+script = ExtResource("11_sky")
+environment = NodePath("../WorldEnvironment")
+sun = NodePath("../Sol")
+
+[node name="Terrain" type="Node3D" parent="."]
+script = ExtResource("2_terrain")
+
+[node name="Imagery" type="Node3D" parent="."]
+script = ExtResource("7_img")
+
+[node name="TrafficLights" type="Node" parent="."]
+script = ExtResource("8_sig")
+
+[node name="Water" type="Node3D" parent="."]
+script = ExtResource("15_water")
+
+[node name="Detail" type="Node3D" parent="."]
+script = ExtResource("14_detail")
+
+[node name="Landmarks" type="Node3D" parent="."]
+script = ExtResource("10_lm")
+
+[node name="Traffic" type="Node3D" parent="."]
+script = ExtResource("9_traffic")
+
+[node name="World" type="Node3D" parent="."]
+script = ExtResource("3_world")
+
+[node name="Player" type="CharacterBody3D" parent="."]
+script = ExtResource("4_player")
+
+[node name="CameraRig" type="Node3D" parent="."]
+script = ExtResource("5_cam")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("6_hud")
+
+[node name="GPS" type="Node3D" parent="."]
+script = ExtResource("12_gps")
+
+[node name="UI" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="MapScreen" type="Control" parent="UI"]
+script = ExtResource("13_map")

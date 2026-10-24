@@ -1,0 +1,11 @@
+# Caché del editor e importaciones
+.godot/
+*.tmp
+# Copias sincronizadas desde web/public (tools/sync_from_web.sh); la fuente está en web/
+data/world/
+assets/models/
+assets/textures/
+# Exportaciones
+build/
+screenshots/
+assets/ui/
