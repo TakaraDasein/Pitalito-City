@@ -17,7 +17,8 @@ declarada, español). Arquitectura: [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)
 ## Antes de terminar una tarea
 
 - `godot --headless res://tools/smoke_test.tscn` debe terminar en `RESULTADO: OK`.
-- Con ventana (`godot res://tools/smoke_test.tscn`) revisar las capturas de `screenshots/`.
+- Con ventana (`godot res://tools/smoke_test.tscn`) revisar las capturas de `screenshots/`. Para menús, solo la sección
+  que se tocó: `godot res://tools/menu_shots.tscn -- personaje` (garaje, personaje, menus, juego).
 - Actualizar docs/ARQUITECTURA.md (estructura, pendientes) si cambió algo.
 
 ## Trampas conocidas
