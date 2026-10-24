@@ -1,7 +1,7 @@
 extends Node
 ## Herramienta: capturas de la carga y los menús (screenshots/menu_*.png). Uso: godot res://tools/menu_shots.tscn
 ## Para no recorrer todo, se nombran las secciones que interesan: `godot res://tools/menu_shots.tscn -- personaje`
-## (garaje, personaje, menus, juego, pies, banca, subir; varias separadas por espacio). Carga y portada se capturan siempre.
+## (garaje, personaje, menus, juego, pies, banca, subir, faros; varias separadas por espacio). Carga y portada se capturan siempre.
 
 var _main: Node
 var _only := OS.get_cmdline_user_args()
@@ -120,6 +120,8 @@ func _ready() -> void:
 		await _bench_shots()
 	if _want("subir"):
 		await _mount_shots()
+	if _want("faros"):
+		await _lights_shots()
 	get_tree().quit()
 
 
@@ -226,6 +228,23 @@ func _mount_shots() -> void:
 		await _shot("subir_%s_bajo" % type)
 		cam.queue_free()
 	_main.skip_mount = true
+
+
+## Faros de noche: manejando por la calle, cámara detrás.
+func _lights_shots() -> void:
+	if _main.state != _main.State.PLAYING:
+		_main._start_playing()
+	var sp: Dictionary = WorldData.spawn()
+	_main.vehicle.place(sp.x, sp.z, sp.heading)
+	await get_tree().create_timer(0.5).timeout
+	_main._enter_vehicle()
+	_main.sky.set_hour(21.0)
+	_main._cam_mode = 0
+	_main._follow_camera()
+	await get_tree().create_timer(2.0).timeout
+	print("faros: noche %.2f, energía %.1f" % [_main.sky.night, _main.vehicle._lamp.light_energy if _main.vehicle._lamp else -1.0])
+	await _shot("faros_noche")
+	_main.sky.set_hour(10.0)
 
 
 func _shot(name: String) -> void:

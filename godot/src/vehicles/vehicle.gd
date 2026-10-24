@@ -13,6 +13,11 @@ var driven := false
 ## los materiales recortados). Se fija antes de add_child.
 var with_doors := false
 var _door := {}
+## Cielo del que se lee la noche para los faros (lo asigna main.gd en el vehículo del jugador).
+var sky: SkySystem
+var _lamp: SpotLight3D
+var _glow: Array[BaseMaterial3D] = []  # faros, stops y avisos: copias propias, se encienden de noche
+var _glow_base: Array[float] = []
 var _door_tw: Tween
 var two_wheels := false
 var lean := 0.0
@@ -41,9 +46,10 @@ func _ready() -> void:
 	add_child(m.visual)
 	_model_xf = m.xf
 	VehicleModel.customize(m.visual, spec, Settings.paint_of(spec.type), Settings.plate_of(spec.type))
-	if with_doors:
-		_door = VehicleModel.add_doors(m.visual, spec)
 	var size: Vector3 = m.size
+	if with_doors:
+		_add_lights(m.visual, size, m.base_y)
+		_door = VehicleModel.add_doors(m.visual, spec)
 
 	var shape := CollisionShape3D.new()
 	var b := BoxShape3D.new()
@@ -83,6 +89,44 @@ func _ready() -> void:
 		var node: Node3D = w.node
 		node.reparent(wheel, false)
 		node.transform = Transform3D(w.basis, Vector3.ZERO)
+
+
+## Faros del vehículo propio (como Game.headlamp de la web): una luz focal al frente, sin sombras, y los
+## materiales con emisión del modelo (faros, stops, aviso del taxi) que brillan más de noche.
+func _add_lights(visual: Node3D, size: Vector3, base_y: float) -> void:
+	_lamp = SpotLight3D.new()
+	_lamp.light_color = Color("#fff2d0")
+	_lamp.spot_range = 60.0
+	_lamp.spot_angle = 28.0
+	_lamp.spot_attenuation = 1.2
+	_lamp.light_energy = 0.0
+	_lamp.shadow_enabled = false
+	_lamp.position = Vector3(0, base_y + size.y * 0.4, size.z * 0.5 + 0.1)
+	# SpotLight3D alumbra hacia −Z y el vehículo mira a +Z: media vuelta, y un poco hacia la calle
+	_lamp.rotation = Vector3(-0.06, PI, 0)
+	add_child(_lamp)
+	var seen := {}
+	for mi: MeshInstance3D in visual.find_children("*", "MeshInstance3D", true, false):
+		for i in mi.mesh.get_surface_count():
+			var mat := mi.get_active_material(i) as BaseMaterial3D
+			if mat == null or not mat.emission_enabled:
+				continue
+			if not seen.has(mat):
+				var own := mat.duplicate() as BaseMaterial3D
+				seen[mat] = own
+				_glow.push_back(own)
+				_glow_base.push_back(own.emission_energy_multiplier)
+			mi.set_surface_override_material(i, seen[mat])
+
+
+func _process(_delta: float) -> void:
+	if _lamp == null or sky == null:
+		return
+	var night := sky.night
+	_lamp.light_energy = night * 14.0
+	_lamp.visible = night > 0.02
+	for k in _glow.size():
+		_glow[k].emission_energy_multiplier = _glow_base[k] * (1.0 + night * 5.0)
 
 
 func _physics_process(delta: float) -> void:

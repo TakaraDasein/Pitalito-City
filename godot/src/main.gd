@@ -194,6 +194,7 @@ func set_vehicle(type: String) -> void:
 		vehicle.queue_free()
 	vehicle = Vehicle.create(type)
 	vehicle.with_doors = true
+	vehicle.sky = sky
 	add_child(vehicle)
 	hud.set_vehicle(vehicle.spec.name, vehicle.spec.max_speed)
 	if had:
