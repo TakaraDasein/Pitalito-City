@@ -26,7 +26,7 @@ func _process(_delta: float) -> void:
 	if focus == null:
 		return
 	var center := WorldData.tile_key(focus.global_position.x, focus.global_position.z)
-	var r := WorldConfig.STREAM_RADIUS
+	var r: int = Settings.preset().stream
 	# Pide primero los tiles más cercanos
 	var wanted: Array[Vector2i] = []
 	for dz in range(-r, r + 1):
@@ -104,7 +104,7 @@ func _instantiate(key: Vector2i, r: Dictionary) -> void:
 	var buildings: Dictionary = r.buildings
 	for mat: String in buildings:
 		var batch: MeshBatch = buildings[mat]
-		var mi := _add_mesh(root, batch, MaterialLibrary.get_material(mat), WorldConfig.TILE_VISIBILITY, true)
+		var mi := _add_mesh(root, batch, MaterialLibrary.get_material(mat), float(Settings.preset().tile_vis), true)
 		if mi:
 			mi.name = "edificios_" + mat # DetailStreamer las esconde cuando el tile tiene edificios armados
 		faces.append_array(batch.faces)
@@ -149,7 +149,7 @@ func _instantiate(key: Vector2i, r: Dictionary) -> void:
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = mm
 		mmi.material_override = MaterialLibrary.get_material("tree")
-		mmi.visibility_range_end = WorldConfig.TILE_VISIBILITY
+		mmi.visibility_range_end = float(Settings.preset().tile_vis)
 		root.add_child(mmi)
 	EventBus.tile_loaded.emit(key)
 
@@ -167,7 +167,7 @@ func _multimesh(root: Node3D, mesh: Mesh, items: Array, mat: String, shadows: bo
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
 	mmi.material_override = MaterialLibrary.get_material(mat)
-	mmi.visibility_range_end = WorldConfig.TILE_VISIBILITY
+	mmi.visibility_range_end = float(Settings.preset().tile_vis)
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(mmi)
 

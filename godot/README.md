@@ -21,7 +21,7 @@ godot                                       # o abrir la carpeta en el editor y 
 |---|---|
 | WASD moverse · Shift correr · Espacio saltar | W/S acelerar y frenar · A/D girar · Espacio freno |
 | F subir al carro (a menos de 5 m) | F bajarse |
-| Ratón: cámara · Esc soltar el ratón | |
+| Ratón: cámara · M mapa · Esc pausa (opciones, garaje) | |
 
 ## Qué hay
 

@@ -20,7 +20,7 @@ var _doors: Array[Dictionary] = []
 
 func _ready() -> void:
 	PieceLibrary.ensure_loaded()
-	for i in BuildingsConfig.INTERIOR_LIGHTS:
+	for i in int(Settings.preset().lights):
 		var l := OmniLight3D.new()
 		l.light_color = Color("#ffd9a0") # bombillo cálido
 		l.light_energy = 2.2
@@ -41,7 +41,7 @@ func _process(delta: float) -> void:
 			_set_atlas(key, false)
 		_place_lights()
 	var center := WorldData.tile_key(focus.global_position.x, focus.global_position.z)
-	var r := BuildingsConfig.DETAIL_RADIUS
+	var r: int = Settings.preset().detail
 	for dz in range(-r, r + 1):
 		for dx in range(-r, r + 1):
 			var key := center + Vector2i(dx, dz)
@@ -100,7 +100,7 @@ func _instantiate(key: Vector2i, out: ModularBuilder.Out) -> void:
 	for cell: Vector2i in out.furniture:
 		var items: Dictionary = out.furniture[cell]
 		for name: String in items:
-			_multimesh(root, PieceLibrary.furniture(name), items[name], null, BuildingsConfig.FURNITURE_RANGE, false)
+			_multimesh(root, PieceLibrary.furniture(name), items[name], null, float(Settings.preset().furniture), false)
 	for mat: String in out.batches:
 		var batch: MeshBatch = out.batches[mat]
 		if batch.is_empty():
@@ -120,7 +120,7 @@ func _instantiate(key: Vector2i, out: ModularBuilder.Out) -> void:
 		var gmi := MeshInstance3D.new()
 		gmi.mesh = gm
 		gmi.material_override = MaterialLibrary.get_material("glass_in")
-		gmi.visibility_range_end = BuildingsConfig.FURNITURE_RANGE
+		gmi.visibility_range_end = float(Settings.preset().furniture)
 		gmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		root.add_child(gmi)
 	for cell: Vector2i in out.lining:
@@ -132,7 +132,7 @@ func _instantiate(key: Vector2i, out: ModularBuilder.Out) -> void:
 		var lmi := MeshInstance3D.new()
 		lmi.mesh = lm
 		lmi.material_override = MaterialLibrary.get_material("lining")
-		lmi.visibility_range_end = BuildingsConfig.FURNITURE_RANGE
+		lmi.visibility_range_end = float(Settings.preset().furniture)
 		lmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		root.add_child(lmi)
 	for d: Dictionary in out.doors:
@@ -146,7 +146,7 @@ func _instantiate(key: Vector2i, out: ModularBuilder.Out) -> void:
 		var visual: Node3D = m.visual
 		visual.transform = v.xf
 		for mi: Node in visual.find_children("*", "MeshInstance3D", true, false):
-			(mi as MeshInstance3D).visibility_range_end = BuildingsConfig.FURNITURE_RANGE
+			(mi as MeshInstance3D).visibility_range_end = float(Settings.preset().furniture)
 		root.add_child(visual)
 	# Entrepisos, paredes y escaleras de los recorribles
 	var body := StaticBody3D.new()
@@ -199,7 +199,7 @@ func _add_door(root: Node3D, d: Dictionary) -> void:
 		mi.mesh = part[0]
 		mi.transform = Transform3D(Basis.from_scale(scale), Vector3.ZERO) * part[1]
 		mi.material_override = PieceLibrary.material()
-		mi.visibility_range_end = BuildingsConfig.FURNITURE_RANGE
+		mi.visibility_range_end = float(Settings.preset().furniture)
 		hinge.add_child(mi)
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()

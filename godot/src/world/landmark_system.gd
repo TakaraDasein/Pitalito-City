@@ -43,6 +43,12 @@ static func excluded(p: Vector2) -> bool:
 	return false
 
 
+## Hitos listos en escena (lo espera la pantalla de carga) y cuántos van, para el progreso.
+var loaded := 0
+var total := 0
+var _queue: Array = [] # rutas pedidas en segundo plano, en orden
+
+
 func _ready() -> void:
 	var path := DIR + "/landmarks.json"
 	if not FileAccess.file_exists(path):
@@ -50,19 +56,39 @@ func _ready() -> void:
 	var index: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(path))
 	for id: String in index:
 		var file := "%s/%s.glb" % [DIR, id]
-		if not ResourceLoader.exists(file):
-			continue
-		var packed := load(file) as PackedScene
-		if packed == null:
-			push_warning("No se pudo cargar el hito " + file)
-			continue
-		var scene: Node3D = packed.instantiate()
-		scene.name = id
-		add_child(scene)
-		VehicleModel.use_vertex_colors(scene)
-		_setup_doors(scene)
-		_add_collision(scene)
-		_setup_lights(scene)
+		if ResourceLoader.exists(file):
+			# carga de recursos en hilos: los GLB de los hitos pesan 60 MB y bloqueaban el arranque
+			ResourceLoader.load_threaded_request(file)
+			_queue.push_back([id, file])
+	total = _queue.size()
+
+
+func is_ready() -> bool:
+	return _queue.is_empty()
+
+
+func _process(_delta: float) -> void:
+	# uno por cuadro, cuando su carga termina: armar colisiones y puertas también cuesta
+	if _queue.is_empty():
+		return
+	var id: String = _queue[0][0]
+	var file: String = _queue[0][1]
+	var st := ResourceLoader.load_threaded_get_status(file)
+	if st == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+		return
+	_queue.pop_front()
+	loaded += 1
+	var packed := ResourceLoader.load_threaded_get(file) as PackedScene if st == ResourceLoader.THREAD_LOAD_LOADED else null
+	if packed == null:
+		push_warning("No se pudo cargar el hito " + file)
+		return
+	var scene: Node3D = packed.instantiate()
+	scene.name = id
+	add_child(scene)
+	VehicleModel.use_vertex_colors(scene)
+	_setup_doors(scene)
+	_add_collision(scene)
+	_setup_lights(scene)
 
 
 ## Una colisión de triángulos por malla estática; las hojas de las puertas quedan fuera (llevan la suya).

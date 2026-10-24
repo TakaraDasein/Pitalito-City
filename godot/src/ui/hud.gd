@@ -97,7 +97,7 @@ func _attribution() -> Array:
 
 func set_on_foot(on_foot: bool) -> void:
 	if on_foot:
-		_hint.text = "WASD moverse · Shift correr · Espacio saltar · F subir / abrir · M mapa · Esc soltar el ratón"
+		_hint.text = "WASD moverse · Shift correr · Espacio saltar · F subir / abrir · M mapa · Esc pausa"
 	else:
 		_hint.text = "W/S acelerar y frenar · A/D girar · Espacio freno · F bajarse · M mapa"
 

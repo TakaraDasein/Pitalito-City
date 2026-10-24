@@ -171,6 +171,16 @@ func _on_done(result: int, code: int, _headers: PackedStringArray, body: PackedB
 		_apply(job, body)
 
 
+## true cuando todas las teselas del nivel más fino (z18, alrededor del foco) ya tienen su imagen.
+func near_ready() -> bool:
+	if _tiles.is_empty() or _tiles[0].is_empty():
+		return false
+	for mi: MeshInstance3D in _tiles[0].values():
+		if not (mi.material_override as ShaderMaterial).get_shader_parameter("has_imagery"):
+			return false
+	return true
+
+
 func _apply(job: Array, bytes: PackedByteArray) -> void:
 	var img := Image.new()
 	if img.load_jpg_from_buffer(bytes) != OK and img.load_png_from_buffer(bytes) != OK:

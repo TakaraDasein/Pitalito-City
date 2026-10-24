@@ -6,6 +6,8 @@ extends Node3D
 const SENSITIVITY := 0.0025
 
 var target: Node3D
+## false en menús y pausa: el ratón queda libre y no mueve la cámara.
+var input_enabled := true
 var yaw := 0.0
 var pitch := -0.25
 var _arm: SpringArm3D
@@ -22,7 +24,6 @@ func _ready() -> void:
 	camera.far = 30000.0
 	camera.fov = 65.0
 	_arm.add_child(camera)
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 ## Distancia y altura del brazo según lo que se sigue (a pie o en carro).
@@ -36,18 +37,18 @@ func follow(node: Node3D, distance: float, height: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if not input_enabled:
+		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		yaw -= event.relative.x * SENSITIVITY
-		pitch = clampf(pitch - event.relative.y * SENSITIVITY, -1.2, 0.5)
-	elif event.is_action_pressed("toggle_mouse"):
-		var captured := Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if captured else Input.MOUSE_MODE_CAPTURED
+		var k := SENSITIVITY * Settings.sensitivity
+		yaw -= event.relative.x * k
+		pitch = clampf(pitch - event.relative.y * k * (-1.0 if Settings.invert_y else 1.0), -1.2, 0.5)
 	elif event is InputEventMouseButton and event.pressed:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 func _process(delta: float) -> void:
+	rotation = Vector3(pitch, yaw, 0.0)
 	if target == null:
 		return
 	global_position = global_position.lerp(target.global_position, minf(1.0, 14.0 * delta))
-	rotation = Vector3(pitch, yaw, 0.0)

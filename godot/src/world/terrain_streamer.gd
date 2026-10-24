@@ -14,20 +14,42 @@ var _done: Array = []         # [key, MeshBatch] listos para instanciar
 var _mutex := Mutex.new()
 
 
+## true cuando el relieve lejano de todo el valle ya está en escena (lo espera la pantalla de carga).
+var coarse_ready := false
+var _coarse_task := -1
+var _coarse: Array = []   # MeshBatch por bloque (lo llena el grupo de hilos)
+var _coarse_keys: Array[Vector2i] = []
+
+
 func _ready() -> void:
 	visual_offset = -4.0 # el satélite (ImageryGround) cubre el valle; el relieve queda de respaldo debajo
 	if not WorldData.has_terrain():
+		coarse_ready = true
 		return
+	# El relieve lejano (576 bloques) se arma en hilos: la pantalla de carga sigue animada mientras tanto
 	var count := TerrainBuilder.chunk_count(WorldData)
 	for cz in count:
 		for cx in count:
-			var batch := TerrainBuilder.build(cx, cz, WorldConfig.TERRAIN_COARSE_STEP, WorldData)
-			if batch.is_empty():
-				continue
-			var mi := _mesh_instance(batch)
-			mi.visibility_range_end = WorldConfig.TERRAIN_FAR_RANGE
-			add_child(mi)
-			_far[Vector2i(cx, cz)] = mi
+			_coarse_keys.push_back(Vector2i(cx, cz))
+	_coarse.resize(_coarse_keys.size())
+	_coarse_task = WorkerThreadPool.add_group_task(func(i: int):
+		_coarse[i] = TerrainBuilder.build(_coarse_keys[i].x, _coarse_keys[i].y, WorldConfig.TERRAIN_COARSE_STEP, WorldData),
+		_coarse_keys.size())
+
+
+func _finish_coarse() -> void:
+	WorkerThreadPool.wait_for_group_task_completion(_coarse_task)
+	_coarse_task = -1
+	for i in _coarse.size():
+		var batch: MeshBatch = _coarse[i]
+		if batch.is_empty():
+			continue
+		var mi := _mesh_instance(batch)
+		mi.visibility_range_end = WorldConfig.TERRAIN_FAR_RANGE
+		add_child(mi)
+		_far[_coarse_keys[i]] = mi
+	_coarse.clear()
+	coarse_ready = true
 
 
 ## Bloquea hasta tener el relieve con colisión bajo `pos`: el jugador no debe aparecer sobre el vacío.
@@ -37,7 +59,9 @@ func warm_up(pos: Vector3) -> void:
 
 
 func _process(_delta: float) -> void:
-	if focus == null or not WorldData.has_terrain():
+	if _coarse_task >= 0 and WorkerThreadPool.is_group_task_completed(_coarse_task):
+		_finish_coarse()
+	if focus == null or not WorldData.has_terrain() or not coarse_ready:
 		return
 	var center := TerrainBuilder.chunk_of(focus.global_position.x, focus.global_position.z, WorldData)
 	var r := int(ceil(WorldConfig.TERRAIN_NEAR_RANGE / (WorldConfig.TERRAIN_CHUNK_CELLS * WorldData.terrain_cell)))
@@ -110,5 +134,7 @@ func _mesh_instance(batch: MeshBatch) -> MeshInstance3D:
 
 
 func _exit_tree() -> void:
+	if _coarse_task >= 0:
+		WorkerThreadPool.wait_for_group_task_completion(_coarse_task)
 	for id: int in _pending.values():
 		WorkerThreadPool.wait_for_task_completion(id)

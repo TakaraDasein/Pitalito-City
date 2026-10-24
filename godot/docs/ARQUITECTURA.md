@@ -167,6 +167,23 @@ la Alcaldía, puerta cerrada (bloquea), abrir y entrar, local real, y la escaler
 - Evaluado y descartado: FluidNinja (plugin de Unreal, sin Godot ni Linux). Alternativas MIT de la comunidad:
   WaterBox (flotación) y Boujie Water Shader (océano); no hicieron falta.
 
+## Carga, menús y calidad
+
+- **Arranque por etapas** (`Main._boot`): relieve lejano en un grupo de hilos → 9 tiles alrededor del parque →
+  hitos con `ResourceLoader.load_threaded_request` → casas armadas → suelo satelital cercano (máx. 5 s) → 20
+  cuadros seguidos sin tirones. La pantalla de carga avanza con lo que de verdad está listo, no con un reloj.
+  La pantalla de inicio de Godot va en café oscuro, sin imagen: empalma con la de carga.
+- **Pantalla de carga** (`ui/loading_screen.gd`): tallo de guadua que se llena con sus nudos, grano de café que
+  respira, la etapa en una línea. Medido: 2,5 s con la RTX 4060, ~1 s sin GPU.
+- **Calidad** (`autoload/settings.gd`): baja / media / alta (resolución 3D con FSR2, sombras, SSAO, glow, MSAA,
+  radio de tiles y de casas armadas, muebles, luces). "Automática" la elige por el equipo (GPU dedicada,
+  integrada o por software; núcleos) y la afina con los fps de los primeros segundos de juego (< 40 baja,
+  > 110 sube, con aviso). Se guarda en `user://ajustes.cfg`; las pruebas no la tocan (`Settings.persist`).
+- **Menús** (`ui/menus.gd`): principal (con la cámara girando sobre el Parque), pausa (Esc), opciones (calidad,
+  sensibilidad, eje invertido, pantalla completa, controles), garaje con vista previa de los 12 vehículos (la
+  moto queda fuera hasta tener equilibrio propio) y créditos con las licencias. Teclado y mando.
+- Herramienta: `tools/menu_shots.tscn` captura la carga y cada menú.
+
 ## Hilos: la regla
 
 1. **En hilos** (WorkerThreadPool): leer JSON, consultar `WorldData.height()`, llenar `MeshBatch`.
@@ -242,7 +259,7 @@ edificios armados con piezas y recorribles por dentro.
 
 1. Estructuras con referencias del usuario: cubierta curva de celosía (foto 4, ubicación por confirmar),
    confirmar el lado de la pasarela. Hecho: ríos, puentes viales y pasarela. Hecho: Coliseo recorrible; baño y cocina con tabique propio, vidrio interior, una luz por cuarto.
-2. Menús (principal, pausa, opciones con presets de calidad, créditos) y garaje para elegir, pintar y emplacar.
+2. Garaje: pintar y emplacar (la elección ya está). Audio en opciones cuando haya audio.
 3. Personaje: creador con cuerpos, peinados y trajes (ya sincronizados), retarget con `BoneMap`, montar al
    personaje en el vehículo (clip `Driving`), sentarse en bancas.
 4. Moto jugable: VehicleBody3D de dos ruedas se cae; necesita equilibrio propio.

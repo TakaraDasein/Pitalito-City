@@ -18,23 +18,51 @@ const ENTER_DISTANCE := 5.0
 @onready var detail: DetailStreamer = $Detail
 @onready var map_screen: MapScreen = $UI/MapScreen
 
+enum State { LOADING, MENU, PLAYING, PAUSED }
+
+## true en las pruebas: al terminar de cargar entra directo a jugar, sin menú.
+var skip_menu := false
+var state := State.LOADING
 var vehicle: Vehicle
 var _driving := false
+var _loading: LoadingScreen
+var _menus: Menus
+var _orbit := 0.0
+var _fps_samples: Array[float] = []
+var _play_time := 0.0
+var _measured := false
 
 
 func _ready() -> void:
+	_loading = LoadingScreen.new()
+	add_child(_loading)
+	_menus = Menus.new()
+	add_child(_menus)
+	_menus.play_requested.connect(_start_playing)
+	_menus.resume_requested.connect(_resume)
+	_menus.main_menu_requested.connect(_to_menu)
+	_menus.vehicle_chosen.connect(set_vehicle)
+	Settings.changed.connect(_apply_quality)
+	_apply_quality()
+	hud.visible = false
+	camera_rig.input_enabled = false
+	_boot()
+
+
+## Arranque: el mundo se arma por etapas mientras la pantalla de carga anima. Cada etapa espera lo que de verdad
+## hace falta para jugar sin tirones (no un temporizador), y al final se esperan cuadros estables.
+func _boot() -> void:
 	var s := WorldData.spawn()
 	var start := Vector3(s.x, WorldData.height(s.x, s.z), s.z)
+	_loading.set_stage("Levantando el relieve del Valle de Laboyos", 0.05)
+	await get_tree().process_frame
+	while not terrain.coarse_ready:
+		await get_tree().process_frame
 	terrain.warm_up(start)
-	streamer.warm_up(start)
-	detail.world = streamer
-	detail.warm_up(start)
 	player.camera_rig = camera_rig
 	player.place(s.x, s.z, s.heading)
 	camera_rig.yaw = s.heading
 	camera_rig.global_position = player.global_position
-
-	# Un carro estacionado frente al spawn (ESTIMADO: ubicación de juego, no dato)
 	traffic.lights = traffic_lights
 	sky.camera = camera_rig.camera
 	hud.sky = sky
@@ -43,15 +71,160 @@ func _ready() -> void:
 	map_screen.gps = gps
 	map_screen.waypoint_requested.connect(gps.set_waypoint)
 	map_screen.teleport_requested.connect(teleport)
-	vehicle = Vehicle.create("willys") # el primero del garaje de la web (PLAYER_ROSTER)
-	add_child(vehicle)
-	var ahead := player.global_position - player.global_basis.z * 6.0 + player.global_basis.x * 3.0
-	vehicle.place(ahead.x, ahead.z, s.heading)
+	detail.world = streamer
+	set_vehicle(_menus.current_vehicle)
 	_set_focus(player, 2.4, 1.6)
+	# calles, edificios y árboles: los 9 tiles alrededor del parque, construidos en hilos
+	var center := WorldData.tile_key(start.x, start.z)
+	var ring := []
+	for dz in range(-1, 2):
+		for dx in range(-1, 2):
+			if WorldData.tiles.has(center + Vector2i(dx, dz)):
+				ring.push_back(center + Vector2i(dx, dz))
+	while true:
+		var have := ring.filter(func(k): return streamer.tile_node(k) != null).size()
+		_loading.set_stage("Trazando calles y casas reales", 0.15 + 0.35 * have / maxf(ring.size(), 1))
+		if have == ring.size():
+			break
+		await get_tree().process_frame
+	# hitos (Catedral, Alcaldía, Coliseo…) cargados en segundo plano
+	while not landmarks.is_ready():
+		_loading.set_stage("Construyendo la Catedral, la Alcaldía y el Coliseo", 0.5 + 0.2 * landmarks.loaded / maxf(landmarks.total, 1))
+		await get_tree().process_frame
+	# casas por dentro del tile del parque
+	var t0 := Time.get_ticks_msec()
+	while detail.get_child_count() <= int(Settings.preset().lights) and Time.get_ticks_msec() - t0 < 8000:
+		_loading.set_stage("Amoblando las casas", 0.75)
+		await get_tree().process_frame
+	# suelo satelital cercano (se descarga; sin red, se sigue sin esperar más de 5 s)
+	t0 = Time.get_ticks_msec()
+	while not imagery.near_ready() and Time.get_ticks_msec() - t0 < 5000:
+		_loading.set_stage("Bajando la imagen satelital", 0.85)
+		await get_tree().process_frame
+	# cuadros estables: 20 seguidos sin un tirón de más de 1,6× la mediana (máximo 3 s)
+	_loading.set_stage("Listo", 0.95)
+	var frames: Array[float] = []
+	var steady := 0
+	t0 = Time.get_ticks_msec()
+	while steady < 20 and Time.get_ticks_msec() - t0 < 3000:
+		await get_tree().process_frame
+		var dt := get_process_delta_time()
+		frames.push_back(dt)
+		var sorted := frames.duplicate()
+		sorted.sort()
+		var median: float = sorted[sorted.size() / 2]
+		steady = steady + 1 if dt < median * 1.6 + 0.004 else 0
+	_loading.finish()
+	_loading = null
+	if skip_menu:
+		_start_playing()
+	else:
+		_to_menu()
+
+
+func _apply_quality() -> void:
+	var env: WorldEnvironment = $WorldEnvironment
+	Settings.apply_to(get_viewport(), env.environment, $Sol)
+
+
+func _to_menu() -> void:
+	state = State.MENU
+	map_screen.allowed = false
+	get_tree().paused = false
+	hud.visible = false
+	camera_rig.input_enabled = false
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_menus.open("principal", true)
+
+
+func _start_playing() -> void:
+	state = State.PLAYING
+	map_screen.allowed = true
+	_menus.hide_all()
+	get_tree().paused = false
+	hud.visible = true
+	camera_rig.input_enabled = true
+	camera_rig.follow(vehicle if _driving else player, 6.5 if _driving else 2.4, 2.2 if _driving else 1.6)
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	_play_time = 0.0
+	_fps_samples.clear()
+
+
+func _pause() -> void:
+	state = State.PAUSED
+	map_screen.allowed = false
+	get_tree().paused = true
+	camera_rig.input_enabled = false
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_menus.open("pausa", true)
+
+
+func _resume() -> void:
+	_menus.hide_all()
+	_start_playing()
+
+
+## Cambia el vehículo del jugador (garaje). Si estaba manejando, sigue manejando el nuevo en el mismo lugar.
+func set_vehicle(type: String) -> void:
+	var xf := Transform3D()
+	var had := vehicle != null
+	if had:
+		xf = vehicle.global_transform
+		vehicle.queue_free()
+	vehicle = Vehicle.create(type)
+	add_child(vehicle)
+	if had:
+		vehicle.global_transform = Transform3D(Basis(Vector3.UP, xf.basis.get_euler().y), xf.origin + Vector3.UP * 0.5)
+		vehicle.driven = _driving
+		if _driving:
+			_set_focus(vehicle, 6.5, 2.2)
+	else:
+		var s := WorldData.spawn()
+		var ahead := player.global_position - player.global_basis.z * 6.0 + player.global_basis.x * 3.0
+		vehicle.place(ahead.x, ahead.z, s.heading)
+
+
+func _process(delta: float) -> void:
+	match state:
+		State.MENU:
+			# cámara que gira lento sobre el Parque Principal, con la Catedral al fondo
+			_orbit += delta * 0.05
+			var c: Array = WorldData.manifest.landmarks.get("parquePrincipal", {"c": [0, 0]}).c
+			var center := Vector3(c[0], WorldData.height(c[0], c[1]) + 2.0, c[1])
+			camera_rig.global_position = center + Vector3(sin(_orbit), 0, cos(_orbit)) * 4.0
+			camera_rig.yaw = _orbit
+			camera_rig.pitch = -0.18
+			camera_rig.follow(null, 70.0, 22.0)
+		State.PLAYING:
+			_measure_quality(delta)
+
+
+## Calidad automática: tras 3 s de juego se miden 5 s de fps; si no llega a 40 baja un nivel, si pasa de 110 sube.
+func _measure_quality(delta: float) -> void:
+	if _measured or not Settings.auto_quality:
+		return
+	_play_time += delta
+	if _play_time < 3.0:
+		return
+	_fps_samples.push_back(1.0 / maxf(delta, 0.0001))
+	if _play_time < 8.0:
+		return
+	_measured = true
+	var avg := 0.0
+	for f in _fps_samples:
+		avg += f
+	avg /= _fps_samples.size()
+	var q := Settings.measure(avg)
+	if q != "":
+		hud.toast("Calidad ajustada a %s para tu equipo (%d fps)" % [q.capitalize(), int(avg)])
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not event.is_action_pressed("interact"):
+	if state == State.PLAYING and event.is_action_pressed("toggle_mouse") and not map_screen.is_open:
+		_pause()
+		get_viewport().set_input_as_handled()
+		return
+	if state != State.PLAYING or not event.is_action_pressed("interact"):
 		return
 	if _driving:
 		_exit_vehicle()

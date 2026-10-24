@@ -11,16 +11,27 @@ var _entry := {}
 
 
 func _ready() -> void:
+	Settings.persist = false
 	# La prueba sigue corriendo cuando el mapa pausa el juego; el juego sí se pausa
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_main = load("res://scenes/main.tscn").instantiate()
 	_main.process_mode = Node.PROCESS_MODE_PAUSABLE
+	_main.skip_menu = true # la prueba entra directo a jugar al terminar la carga
 	add_child(_main)
 	# El ratón del escritorio no debe mover la cámara durante la prueba
 	_main.camera_rig.set_process_unhandled_input(false)
 
 
-func _process(_delta: float) -> void:
+var _load_t := 0.0
+
+
+func _process(delta: float) -> void:
+	# la cuenta de cuadros arranca cuando termina la pantalla de carga
+	if _main.state == _main.State.LOADING:
+		_load_t += delta
+		return
+	if _frame == 0:
+		print("  carga: %.1f s · calidad %s (%s)" % [_load_t, Settings.quality, Settings.quality_reason])
 	_frame += 1
 	if _walk_active:
 		_walk_step()

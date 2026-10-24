@@ -11,6 +11,8 @@ signal teleport_requested(x: float, z: float)
 var focus: Node3D
 var gps: GPS
 var is_open := false
+## Solo se abre jugando (no en la carga, el menú o la pausa).
+var allowed := false
 
 var _zoom := 1.6  # píxeles de pantalla por píxel de mapa
 var _center := Vector2.ZERO  # (x, z) del mundo en el centro de la vista
@@ -83,7 +85,7 @@ func toggle(force := -1) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("map"):
+	if event.is_action_pressed("map") and (allowed or is_open):
 		toggle()
 		get_viewport().set_input_as_handled()
 	elif is_open and event.is_action_pressed("ui_cancel"):
