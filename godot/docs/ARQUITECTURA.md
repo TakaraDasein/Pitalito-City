@@ -312,10 +312,13 @@ edificios armados con piezas y recorribles por dentro.
 
 1. Estructuras con referencias del usuario: cubierta curva de celosía (foto 4, ubicación por confirmar),
    confirmar el lado de la pasarela. Hecho: ríos, puentes viales y pasarela. Hecho: Coliseo recorrible; baño y cocina con tabique propio, vidrio interior, una luz por cuarto.
-2. Garaje: pintar y emplacar (la elección ya está). Audio en opciones cuando haya audio.
-3. Personaje: hecho (creador, retarget, pies y mirada, bancas, subir y bajar). Pendiente: puertas que se abran.
-4. Moto jugable: VehicleBody3D de dos ruedas se cae; necesita equilibrio propio.
-5. Audio (motor, ambiente, lluvia, música) y partículas de ambiente (bruma de la mañana, motas a contraluz).
+2. Vehículos (lo que falta del bloque 3): faros de noche en el vehículo propio (la web tiene uno), tomar un
+   vehículo del tráfico (la web lo hace), subir a la moto pasando la pierna (la web lo hace con IK de piernas),
+   entrada de la chiva por la escalera, y los del Car Kit (una sola pieza: sin puerta que abrir). Hecho: garaje con
+   pintura y placa, moto con equilibrio propio, conductor sentado, puertas del taxi y la camioneta, vano del Willys.
+3. Personaje: hecho (creador, retarget, pies y mirada, bancas, subir y bajar).
+4. Audio: hecho motor, ambiente, lluvia e interfaz; falta música y pasos. Partículas de ambiente (luciérnagas de
+   noche bajo los árboles, hojas con el viento, bruma de la mañana): la web tiene AmbienceSystem.
 6. Combate y armas, fauna, supervivencia/zombis, facciones y bases, botín e inventario, historia y misiones,
    construcción por bloques: un nodo por sistema, comunicados por `EventBus`.
 7. Oclusores por tile, LOD de toda la ciudad (`CityLOD`), y exportación (filtro de `data/world/*.json` y `*.bin`).
