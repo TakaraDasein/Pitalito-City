@@ -51,6 +51,142 @@ static func create(spec: Dictionary, driver := false) -> Dictionary:
 	return {"visual": visual, "wheels": wheels, "size": size, "base_y": (box.position.y) * scale.y, "xf": xf}
 
 
+## Puerta del conductor (spec.door, en el espacio del modelo de la web). Las carrocerías de la web son perfiles
+## extruidos macizos: no hay un costado que abrir. Así que se recorta al dibujar:
+##  · la carrocería deja de dibujarse dentro de la caja de la puerta (y se ve por dentro: sin descarte de caras
+##    traseras, la pared del otro lado y el techo se leen como el interior);
+##  · la hoja es una copia de esas mismas piezas que solo se dibuja dentro de la caja, colgada de una bisagra en
+##    el borde delantero: calza exacto con la pintura, la manija, la franja o el espejo, porque es el modelo mismo.
+## Los shaders salen del que Godot genera para cada StandardMaterial3D (mismo aspecto), con el recorte añadido.
+## La caja va de 0,15 m afuera del costado a DOOR_DEPTH adentro. Devuelve { hinge, open, side } o {}.
+const DOOR_DEPTH := 0.12  # cuánto se mete la caja desde el costado: el grosor de una puerta (con 0,3 se veía un bloque)
+const DOOR_OPEN := 1.15   # ángulo de apertura (rad)
+
+static var _door_shaders := {}
+
+
+static func add_doors(visual: Node3D, spec: Dictionary) -> Dictionary:
+	var d: Dictionary = spec.get("door", {})
+	var body: Node3D = visual.get_node_or_null("body")
+	if d.is_empty() or body == null or not spec.has("seat"):
+		return {}
+	var side := signf(float(spec.seat[0])) # lado del conductor en el modelo de la web (−x)
+	var half := float(spec.width) * 0.5
+	# caja en el espacio de `body`: desde 0,15 m afuera del costado hasta DOOR_DEPTH adentro
+	var x_out := side * (half + 0.15)
+	var x_in := side * (half - DOOR_DEPTH)
+	var lo := Vector3(minf(x_out, x_in), d.y[0], d.z[0])
+	var size := Vector3(absf(x_out - x_in), d.y[1] - d.y[0], d.z[1] - d.z[0])
+	var frame := Transform3D(Basis(), lo)
+	var hinge: Node3D = null
+	if d.get("panel", false):
+		hinge = Node3D.new()
+		hinge.name = "puerta_conductor"
+		hinge.position = Vector3(side * half, 0, d.z[0])
+		body.add_child(hinge)
+	for mi: MeshInstance3D in body.find_children("*", "MeshInstance3D", true, false):
+		if mi.get_parent() == hinge:
+			continue
+		var rel := _rel(mi, body)
+		var box := rel * mi.get_aabb()
+		# el recorte es local a la caja: basta con que la pieza la toque (tablero o sillas quedan fuera de ella)
+		if not box.intersects(AABB(lo, size)):
+			continue
+		var to_box := frame.affine_inverse() * rel
+		_door_materials(mi, to_box, size, false)
+		if hinge:
+			var leaf := MeshInstance3D.new()
+			leaf.mesh = mi.mesh
+			leaf.transform = hinge.transform.affine_inverse() * rel
+			leaf.cast_shadow = mi.cast_shadow
+			hinge.add_child(leaf)
+			for i in mi.mesh.get_surface_count():
+				leaf.set_surface_override_material(i, mi.get_active_material(i))
+			_door_materials(leaf, to_box, size, true, mi)
+	return {"hinge": hinge, "open": side * DOOR_OPEN, "side": side}
+
+
+static func _rel(n: Node3D, root: Node3D) -> Transform3D:
+	var t := Transform3D()
+	var cur: Node = n
+	while cur and cur != root:
+		t = (cur as Node3D).transform * t
+		cur = cur.get_parent()
+	return t
+
+
+## Cambia cada superficie por la versión recortada de su material. `leaf`: se dibuja solo dentro de la caja.
+static func _door_materials(mi: MeshInstance3D, to_box: Transform3D, size: Vector3, leaf: bool, src: MeshInstance3D = null) -> void:
+	var from := src if src else mi
+	for i in mi.mesh.get_surface_count():
+		var m := from.get_active_material(i) as BaseMaterial3D
+		if m == null:
+			continue
+		var clear := m.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED
+		var sm := ShaderMaterial.new()
+		sm.shader = _door_shader(clear)
+		sm.render_priority = m.render_priority
+		sm.set_shader_parameter("albedo", m.albedo_color)
+		sm.set_shader_parameter("use_tex", m.albedo_texture != null)
+		if m.albedo_texture:
+			sm.set_shader_parameter("tex", m.albedo_texture)
+		sm.set_shader_parameter("use_vcol", m.vertex_color_use_as_albedo)
+		sm.set_shader_parameter("metallic", m.metallic)
+		sm.set_shader_parameter("roughness", m.roughness)
+		var em := m.emission * m.emission_energy_multiplier if m.emission_enabled else Color.BLACK
+		sm.set_shader_parameter("emission", em)
+		sm.set_shader_parameter("use_em_tex", m.emission_enabled and m.emission_texture != null)
+		if m.emission_texture:
+			sm.set_shader_parameter("em_tex", m.emission_texture)
+		sm.set_shader_parameter("door_xf", to_box)
+		sm.set_shader_parameter("door_size", size)
+		sm.set_shader_parameter("door_leaf", 1.0 if leaf else 0.0)
+		mi.set_surface_override_material(i, sm)
+
+
+## Equivalente reducido de StandardMaterial3D (lo que usan los vehículos horneados: color, textura, color de
+## vértice, metal, rugosidad, emisión y vidrio transparente) más el recorte de la caja de la puerta.
+static func _door_shader(clear: bool) -> Shader:
+	if _door_shaders.has(clear):
+		return _door_shaders[clear]
+	var sh := Shader.new()
+	sh.code = """shader_type spatial;
+render_mode cull_disabled%s;
+uniform vec4 albedo : source_color = vec4(1.0);
+uniform bool use_tex = false;
+uniform sampler2D tex : source_color, filter_linear_mipmap, repeat_enable;
+uniform bool use_vcol = false;
+uniform float metallic = 0.0;
+uniform float roughness = 0.8;
+uniform vec4 emission : source_color = vec4(0.0);
+uniform bool use_em_tex = false;
+uniform sampler2D em_tex : source_color, filter_linear_mipmap;
+uniform mat4 door_xf;
+uniform vec3 door_size;
+uniform float door_leaf;
+varying vec3 door_p;
+
+void vertex() {
+	door_p = (door_xf * vec4(VERTEX, 1.0)).xyz;
+}
+
+void fragment() {
+	bool door_in = all(greaterThanEqual(door_p, vec3(0.0))) && all(lessThanEqual(door_p, door_size));
+	if (door_in == (door_leaf < 0.5)) { discard; }
+	vec4 c = albedo;
+	if (use_tex) { c *= texture(tex, UV); }
+	if (use_vcol) { c *= COLOR; }
+	ALBEDO = c.rgb;
+	METALLIC = metallic;
+	ROUGHNESS = roughness;
+	EMISSION = emission.rgb * (use_em_tex ? texture(em_tex, UV).rgb : vec3(1.0));
+	%s
+}
+""" % [", depth_draw_opaque, blend_mix" if clear else "", "ALPHA = c.a;" if clear else ""]
+	_door_shaders[clear] = sh
+	return sh
+
+
 ## Pintura y placa sobre el modelo ya armado. Pintura: el material del color de fábrica (colors[0]) se reemplaza
 ## por una copia con el color nuevo (los demás vehículos comparten el original). Placa: el material con la textura
 ## de placa (256×128 de la web) pasa a amarillo liso y encima va el texto con Label3D, una por placa.

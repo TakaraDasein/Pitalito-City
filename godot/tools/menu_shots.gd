@@ -182,38 +182,49 @@ func _bench_shots() -> void:
 	await _shot("banca_de_pie")
 
 
-## Subir y bajar del vehículo con la coreografía (caminar a la puerta, abrir, sentarse; y al revés).
+## Subir y bajar del vehículo con la coreografía (caminar a la puerta, abrir, sentarse; y al revés), en los que
+## tienen puerta (taxi, camioneta) y el de vano abierto (Willys).
 func _mount_shots() -> void:
 	if _main.state != _main.State.PLAYING:
 		_main._start_playing()
 	_main.skip_mount = false
-	var car: Vehicle = _main.vehicle
-	var player: Player = _main.player
-	var d := car.door_world()
-	player.place(d.x + car.global_basis.x.x * 2.0 + car.global_basis.z.x * 2.0, d.z + car.global_basis.x.z * 2.0 + car.global_basis.z.z * 2.0)
-	_main.camera_rig.yaw = car.rotation.y + PI * 0.5
-	_main.camera_rig.pitch = -0.2
-	await get_tree().create_timer(1.0).timeout
-	_main._enter_vehicle()
-	var t0 := Time.get_ticks_msec()
-	var shots := {0.9: "subir_camina", 2.0: "subir_puerta", 3.0: "subir_sienta"}
-	for at: float in shots:
-		while (Time.get_ticks_msec() - t0) / 1000.0 < at:
+	var sp: Dictionary = WorldData.spawn()
+	for type in ["taxi", "pickup", "willys"]:
+		_main.set_vehicle(type)
+		var car: Vehicle = _main.vehicle
+		car.place(sp.x, sp.z, sp.heading)
+		await get_tree().create_timer(0.8).timeout
+		var player: Player = _main.player
+		var d := car.door_world()
+		var out := Vector3(d.x - car.global_position.x, 0, d.z - car.global_position.z).normalized()
+		player.place(d.x + out.x * 2.0 + car.global_basis.z.x * 1.5, d.z + out.z * 2.0 + car.global_basis.z.z * 1.5)
+		# cámara fija al costado del conductor, un poco adelante, a la altura de los ojos
+		var cam := Camera3D.new()
+		cam.fov = 50
+		add_child(cam)
+		cam.global_position = d + out * 3.6 - car.global_basis.z * 1.8 + Vector3.UP * 1.5
+		cam.look_at(d - out * 0.6 + Vector3.UP * 0.9)
+		cam.make_current()
+		await get_tree().create_timer(0.8).timeout
+		_main._enter_vehicle()
+		var t0 := Time.get_ticks_msec()
+		var shots := {1.4: "puerta", 2.3: "sienta"}
+		for at: float in shots:
+			while (Time.get_ticks_msec() - t0) / 1000.0 < at:
+				await get_tree().process_frame
+			await _shot("subir_%s_%s" % [type, shots[at]])
+		while player.is_mounting():
 			await get_tree().process_frame
-		await _shot(shots[at])
-	while player.is_mounting():
-		await get_tree().process_frame
-	print("subir: %.1f s, manejando = %s" % [(Time.get_ticks_msec() - t0) / 1000.0, _main._driving])
-	await get_tree().create_timer(0.5).timeout
-	await _shot("subir_listo")
-	_main._exit_vehicle()
-	await get_tree().create_timer(0.5).timeout
-	await _shot("bajar")
-	while player.is_mounting():
-		await get_tree().process_frame
-	await get_tree().create_timer(0.5).timeout
-	print("bajar: en el suelo = %s, a %.2f m de la puerta" % [player.is_on_floor(), player.global_position.distance_to(car.door_world())])
-	await _shot("bajar_listo")
+		await get_tree().create_timer(0.6).timeout
+		print("subir %s: %.1f s, manejando = %s" % [type, (Time.get_ticks_msec() - t0) / 1000.0, _main._driving])
+		await _shot("subir_%s_listo" % type)
+		_main._exit_vehicle()
+		while player.is_mounting():
+			await get_tree().process_frame
+		await get_tree().create_timer(0.6).timeout
+		print("bajar %s: en el suelo = %s" % [type, player.is_on_floor()])
+		await _shot("subir_%s_bajo" % type)
+		cam.queue_free()
 	_main.skip_mount = true
 
 

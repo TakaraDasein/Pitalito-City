@@ -9,6 +9,11 @@ extends VehicleBody3D
 
 var spec: Dictionary
 var driven := false
+## Con puerta del conductor que abre (solo el vehículo del jugador: el tráfico no la necesita y así no paga
+## los materiales recortados). Se fija antes de add_child.
+var with_doors := false
+var _door := {}
+var _door_tw: Tween
 var two_wheels := false
 var lean := 0.0
 ## Conductor visible (el personaje del jugador sentado con el clip Driving), si el vehículo tiene asiento.
@@ -36,6 +41,8 @@ func _ready() -> void:
 	add_child(m.visual)
 	_model_xf = m.xf
 	VehicleModel.customize(m.visual, spec, Settings.paint_of(spec.type), Settings.plate_of(spec.type))
+	if with_doors:
+		_door = VehicleModel.add_doors(m.visual, spec)
 	var size: Vector3 = m.size
 
 	var shape := CollisionShape3D.new()
@@ -160,6 +167,21 @@ func place(x: float, z: float, heading := 0.0) -> void:
 
 
 ## Punto de bajada: al lado izquierdo del conductor, sobre el relieve.
+## true si hay hoja que abrir (taxi, camioneta); el Willys tiene vano abierto y la moto nada.
+func has_door_leaf() -> bool:
+	return _door.get("hinge") != null
+
+
+func set_door(open: bool, dur := 0.45) -> void:
+	var h: Node3D = _door.get("hinge")
+	if h == null:
+		return
+	if _door_tw and _door_tw.is_valid():
+		_door_tw.kill()
+	_door_tw = create_tween()
+	_door_tw.tween_property(h, "rotation:y", float(_door.open) if open else 0.0, dur).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT if open else Tween.EASE_IN)
+
+
 ## Asiento del conductor en el mundo (donde quedan los pies del personaje sentado, igual que seat_driver).
 func seat_world() -> Vector3:
 	var s: Array = spec.get("seat", [0.0, 0.5, 0.0])

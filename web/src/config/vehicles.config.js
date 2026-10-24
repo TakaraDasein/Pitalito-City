@@ -7,6 +7,9 @@ export const VEHICLES = {
     // Dónde se sienta el conductor, en el espacio del vehículo. El personaje real se cuelga ahí (ver
     // PlayerSystem.#enter); los vehículos del tráfico siguen usando el muñeco de cajas, que es mucho más barato.
     seat: [-0.34, 0.47, 0.12],
+    // Vano de la tina del CJ (los Willys de vereda andan sin puertas). Puerta del conductor, en el espacio del MODELO (src/entities/vehicles/models/): z y alto que abarca. `panel`:
+    // hay hoja que se abre (bisagra adelante); sin panel es un vano abierto. La usa Godot (VehicleModel.add_doors).
+    door: { z: [-0.5, 0.45], y: [0.62, 1.8], panel: false },
     description: 'El campero de las veredas del Huila. Aguanta todo, no corre tanto.',
     maxSpeed: 120, reverseSpeed: 25,
     accel: 9, brake: 16, drag: 0.0028, rolling: 0.35,
@@ -20,6 +23,9 @@ export const VEHICLES = {
     // Dónde se sienta el conductor, en el espacio del vehículo. El personaje real se cuelga ahí (ver
     // PlayerSystem.#enter); los vehículos del tráfico siguen usando el muñeco de cajas, que es mucho más barato.
     seat: [-0.35, 0.11, 0.02],
+    // Puerta del conductor, en el espacio del MODELO (src/entities/vehicles/models/): z y alto que abarca. `panel`:
+    // hay hoja que se abre (bisagra adelante); sin panel es un vano abierto. La usa Godot (VehicleModel.add_doors).
+    door: { z: [-0.72, 0.36], y: [0.36, 1.47], panel: true },
     description: 'Hatchback amarillo de servicio público. Ágil en las calles del centro.',
     maxSpeed: 140, reverseSpeed: 30,
     accel: 10.5, brake: 18, drag: 0.0022, rolling: 0.3,
@@ -33,6 +39,9 @@ export const VEHICLES = {
     // Dónde se sienta el conductor, en el espacio del vehículo. El personaje real se cuelga ahí (ver
     // PlayerSystem.#enter); los vehículos del tráfico siguen usando el muñeco de cajas, que es mucho más barato.
     seat: [-0.4, 0.37, -0.18],
+    // Puerta del conductor, en el espacio del MODELO (src/entities/vehicles/models/): z y alto que abarca. `panel`:
+    // hay hoja que se abre (bisagra adelante); sin panel es un vano abierto. La usa Godot (VehicleModel.add_doors).
+    door: { z: [-0.9, 0.17], y: [0.5, 1.79], panel: true },
     description: 'Doble cabina 4x4 cargada de café. Pesada pero estable.',
     maxSpeed: 150, reverseSpeed: 28,
     accel: 8.8, brake: 17, drag: 0.0025, rolling: 0.32,

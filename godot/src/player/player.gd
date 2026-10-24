@@ -192,12 +192,12 @@ func mount(v: Vehicle, done: Callable) -> void:
 	if to_door.length() > 0.2:
 		steps.push_back({"phase": "walk", "dur": clampf(to_door.length() / WALK, 0.2, 2.5), "from": global_position, "to": door,
 			"rot0": rotation.y, "rot1": atan2(-to_door.x, -to_door.z)})
-	if not v.two_wheels:
+	if v.has_door_leaf():
 		steps.push_back({"phase": "open", "dur": 0.9, "from": door, "to": door, "rot0": atan2(-to_door.x, -to_door.z) if to_door.length() > 0.2 else rotation.y,
 			"rot1": atan2(out.x, out.z)}) # de frente a la puerta (hacia el vehículo)
 	# de espaldas al asiento, baja y entra; termina mirando al frente del vehículo
 	steps.push_back({"phase": "enter", "dur": 1.0, "from": door, "to": v.seat_world(), "rot0": atan2(-out.x, -out.z), "rot1": atan2(-fwd.x, -fwd.z)})
-	_mount = {"steps": steps, "i": -1, "t": 0.0, "done": done}
+	_mount = {"steps": steps, "i": -1, "t": 0.0, "done": done, "vehicle": v}
 	_next_step()
 
 
@@ -215,7 +215,8 @@ func dismount(v: Vehicle, done: Callable) -> void:
 	if _tree:
 		_playback().start("sit")
 	_mount = {"steps": [{"phase": "exit", "dur": 1.1, "from": v.seat_world(), "to": door, "rot0": rotation.y, "rot1": atan2(-out.x, -out.z)}],
-		"i": -1, "t": 0.0, "done": done}
+		"i": -1, "t": 0.0, "done": done, "vehicle": v}
+	v.set_door(true, 0.3)
 	_next_step()
 
 
@@ -229,7 +230,10 @@ func _next_step() -> void:
 	if _mount.i >= _mount.steps.size():
 		var done: Callable = _mount.done
 		var last: Dictionary = _mount.steps[-1]
+		var v: Vehicle = _mount.vehicle
 		_mount = {}
+		if is_instance_valid(v):
+			v.set_door(false) # cierra al quedar sentado, o al salir y quedar de pie
 		if last.phase == "exit":
 			collision_layer = 2
 			collision_mask = 1 | 4 | 16
@@ -240,6 +244,7 @@ func _next_step() -> void:
 	match _mount.steps[_mount.i].phase:
 		"open":
 			_playback().travel("interact")
+			(_mount.vehicle as Vehicle).set_door(true)
 		"enter":
 			_playback().travel("sit")
 		"exit":
