@@ -55,6 +55,8 @@ func _ready() -> void:
 		_model.add_child(_anim)
 		_anim.root_node = NodePath("..")
 		_anim.add_animation_library(CharacterModel.LIB, CharacterModel.library())
+		var u: Dictionary = CombatConfig.ENEMY_UNIFORM
+		CharacterModel.dress_parts(_model, u.parts, u.sex, u.color)
 		_attach_weapon(CombatConfig.WEAPONS[spec.weapon].model)
 		_anim.play(CharacterModel.clip("Sword_Idle"))
 	self_c = Combatant.new(self, spec.stats, spec.weapon, "faccion", spec.name)

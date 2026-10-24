@@ -17,5 +17,13 @@ const ENGINE := {"level": 0.035, "throttle": 0.04, "filter": [260.0, 700.0]}
 const MUSIC := {"volume": 0.55, "tempo": 76.0}
 ## Pasos: golpe sordo de ruido filtrado por pisada (ESTIMADO, de oído). Tierra más grave que el asfalto.
 const STEPS := {"level": 0.05, "dirt_hz": 520.0, "paved_hz": 1100.0}
+## Golpes (ESTIMADO, de oído): paso bajo del ruido (Hz), duración (s), nivel y tono (Hz, 0 = sin tono).
+const HITS := {
+	"metal": {"hz": 3500.0, "dur": 0.32, "level": 0.07, "tone": 2350.0},
+	"hueso": {"hz": 2200.0, "dur": 0.08, "level": 0.09, "tone": 0.0},
+	"carne": {"hz": 320.0, "dur": 0.14, "level": 0.12, "tone": 0.0},
+}
+## Tajo del arma al aire (ESTIMADO).
+const SWING := {"hz": 900.0, "dur": 0.2, "level": 0.035}
 ## Interfaz: clic corto al enfocar y al aceptar.
 const UI := {"focus": 0.025, "accept": 0.05}

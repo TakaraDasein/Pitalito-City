@@ -97,6 +97,25 @@ static func _dress(model: Node3D, look: Dictionary, sex: String) -> void:
 		_hat(skel)
 
 
+## Viste un cuerpo cualquiera con estas piezas (mismo armazón), teñidas de un color: el uniforme de los Restos.
+static func dress_parts(model: Node3D, parts: Array, sex: String, color: Color) -> void:
+	var skel: Skeleton3D = model.find_child(SKELETON, true, false)
+	if skel == null:
+		return
+	for part: String in parts:
+		var f := CharacterConfig.part_file(part, sex)
+		if not ResourceLoader.exists(f):
+			continue
+		var src: Node = load(f).instantiate()
+		for mi: MeshInstance3D in src.find_children("*", "MeshInstance3D", true, false):
+			mi.owner = null
+			mi.get_parent().remove_child(mi)
+			skel.add_child(mi)
+			mi.skeleton = NodePath("..")
+			_tint(mi, color)
+		src.free()
+
+
 ## `flat`: fuera la textura (la del cuerpo es un traje de superhéroe con manchas, no piel; igual que en la web),
 ## se conserva el mapa de normales para que el relieve del cuerpo se siga leyendo.
 static func _tint(mi: MeshInstance3D, color: Color, flat := false) -> void:

@@ -304,6 +304,8 @@ func _build_help() -> void:
 		["Shift", "Correr"], ["Espacio", "Saltar, salir del agua · manejando: freno"],
 		["F", "Subir o bajar del vehículo, abrir y cerrar puertas"], ["E", "Información del edificio o lugar al frente"],
 		["M", "Mapa: clic = destino GPS, doble clic = viajar"], ["C", "Cámara: cerca, lejos, aérea"],
+		["X", "Sacar o guardar el arma (armado no se interactúa)"], ["Clic · clic der.", "Golpear (encadena) · cubrirse"],
+		["Ctrl · Q", "Rodar · fijar blanco"], ["Z / rueda", "Cambiar de arma"],
 		["N", "Adelantar 3 horas"], ["V", "Garaje"], ["H", "Esta ayuda"], ["F3", "Datos técnicos"], ["Esc", "Pausa, opciones"]]:
 		var k := Label.new()
 		k.text = row[0]

@@ -27,6 +27,9 @@ var _rng := RandomNumberGenerator.new()
 # pasos: [t, dur, a (coef. del paso bajo), amp]; un filtro compartido basta (no se pisan)
 var _steps: Array = []
 var _step_lp := 0.0
+# golpes y tajos: [t, dur, a (paso bajo del ruido), amp, f (tono, 0 = sin tono), barrido]; filtro compartido
+var _hits: Array = []
+var _hit_lp := 0.0
 # música: cada nota se sintetiza una vez a un AudioStreamWAV (caché por nota y lado) y suena en una voz libre
 # del bus «Música», que lleva el eco y la reverberación. Sumarlas muestra a muestra en GDScript costaba demasiado.
 var _music_step := 0
@@ -131,6 +134,24 @@ func footstep(paved: bool, running: bool) -> void:
 	var hz: float = AudioConfig.STEPS.paved_hz if paved else AudioConfig.STEPS.dirt_hz
 	var a := 1.0 - exp(-TAU * hz * _rng.randf_range(0.85, 1.15) / AudioConfig.MIX_RATE)
 	_steps.push_back([0.0, 0.07 if paved else 0.11, a, AudioConfig.STEPS.level * (1.4 if running else 1.0) * _rng.randf_range(0.8, 1.1)])
+
+
+## Un golpe que entró (AmbienceSystem, desde CombatSystem): metal suena a lámina, hueso a chasquido seco,
+## carne a golpe sordo. Lo mismo que las partículas: según contra qué entró.
+func impact(kind: String, strength: float) -> void:
+	if not active:
+		return
+	var h: Dictionary = AudioConfig.HITS.get(kind, AudioConfig.HITS.carne)
+	var a := 1.0 - exp(-TAU * float(h.hz) / AudioConfig.MIX_RATE)
+	_hits.push_back([0.0, float(h.dur), a, float(h.level) * clampf(strength, 0.4, 1.4), float(h.tone), 0.0])
+
+
+## El tajo del arma al aire: ruido que se abre y se cierra, más grave con armas pesadas.
+func swing(weight: float) -> void:
+	if not active:
+		return
+	var s: Dictionary = AudioConfig.SWING
+	_hits.push_back([0.0, float(s.dur), 1.0 - exp(-TAU * float(s.hz) / AudioConfig.MIX_RATE), float(s.level) * clampf(weight, 0.5, 1.5), 0.0, 1.0])
 
 
 ## Toca las campanitas que caen dentro de este cuadro (Musica.update de la web). El ánimo cambia al empezar la vuelta.
@@ -259,6 +280,19 @@ func _fill_world() -> void:
 			else:
 				_chirp[0] += dt
 				s += sin(TAU * lerpf(_chirp[2], _chirp[3], k) * _chirp[0]) * sin(PI * k) * bird_amp
+		# golpes y tajos: ruido filtrado (y tono en el metal); el tajo sube y baja en vez de caer
+		if not _hits.is_empty():
+			var hs: Array = _hits[0]
+			var hk: float = hs[0] / hs[1]
+			_hit_lp += (noise - _hit_lp) * hs[2]
+			var env := sin(PI * hk) if hs[5] > 0.0 else (1.0 - hk) * (1.0 - hk) * (1.0 - hk)
+			var v: float = _hit_lp * 3.0
+			if hs[4] > 0.0:
+				v = v * 0.4 + sin(TAU * hs[4] * hs[0]) * 0.6 + sin(TAU * hs[4] * 1.37 * hs[0]) * 0.3
+			s += v * env * hs[3]
+			hs[0] += dt
+			if hk >= 1.0:
+				_hits.pop_front()
 		# pasos: ruido con caída rápida por un paso bajo
 		if not _steps.is_empty():
 			var st: Array = _steps[0]

@@ -668,6 +668,8 @@ func _on_combat(evt: String, data: Dictionary) -> void:
 	match evt:
 		"attack":
 			node = "c_" + str(data.clip)
+			if AudioSystem.instance:
+				AudioSystem.instance.swing(float(combat.weapon.poise) / 30.0)
 		"roll":
 			node = "c_Roll"
 		"hit":

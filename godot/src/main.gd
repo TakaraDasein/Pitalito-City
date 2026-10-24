@@ -396,7 +396,8 @@ func _follow_camera() -> void:
 func _interaction() -> Array:
 	if _driving:
 		return [0.0, "Bajarse", func(): _exit_vehicle()]
-	if player.is_mounting():
+	# con el arma en la mano no se interactúa: los dos modos a pie no se pisan (X guarda el arma)
+	if player.is_mounting() or player.armed:
 		return []
 	if player.sitting:
 		return [0.0, "Levantarse", func(): player.stand()]

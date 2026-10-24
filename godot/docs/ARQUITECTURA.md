@@ -336,8 +336,11 @@ edificios armados con piezas y recorribles por dentro.
    (importado como huesos con el retarget humanoide), enemigos de los Restos (FICCIÓN DECLARADA) con la decisión
    de la web, que aparecen en sus zonas lejos de la cabecera, y barras de vida, resistencia y blanco en el HUD.
    Teclas como la web: X sacar/guardar, clic golpear, clic der. cubrirse, Ctrl rodar, Q fijar, Z o rueda cambiar.
-   Falta: armas de fuego, partículas y sonido del golpe (`EventBus.combat_impact` ya se emite), tensión de
-   postproceso, uniforme de los Restos, fauna, supervivencia, botín e inventario, historia y misiones, bloques.
+   Golpes: chispas, polvo de hueso y sangre (descargas GPU de `AmbienceSystem`), sonido del golpe y del tajo
+   (`AudioSystem.impact/swing`), tensión de la imagen con enemigos cerca (saturación y contraste del entorno),
+   uniforme de los Restos (ropa de camino teñida). Armado no se interactúa (como en la web).
+   Falta: armas de fuego, sangre en el suelo, fauna, supervivencia, botín e inventario, historia y misiones,
+   construcción por bloques.
 6. Oclusores por tile, LOD de toda la ciudad (`CityLOD`), y exportación (filtro de `data/world/*.json` y `*.bin`).
 7. Tamaño de los hitos: cada GLB lleva sus texturas incrustadas (60 MB entre los 8); compartirlas con un
    `.res` de materiales o exportarlas aparte.

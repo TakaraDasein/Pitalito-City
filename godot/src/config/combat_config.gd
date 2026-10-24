@@ -67,6 +67,8 @@ const ENEMIES := {
 }
 const ENEMY_MIX := {"centinela": 5.0, "machetero": 3.0, "cabo": 1.0}
 const ENEMY_BODY := "res://assets/models/characters/enemies/skeleton.glb"
+## Uniforme (FACTIONS.restos.look de la web): la ropa de camino teñida; debajo no hay nadie.
+const ENEMY_UNIFORM := {"parts": ["{S}_Ranger_Body", "{S}_Ranger_Legs"], "sex": "Male", "color": Color("#8a9163")}
 ## Zonas de control (ficción, lejos de la cabecera para que la ciudad quede siempre segura) y aparición.
 const ZONES := [
 	{"id": "filo-norte", "name": "El filo del norte", "x": -1900.0, "z": -3400.0, "radius": 520.0, "enemies": 5},

@@ -17,6 +17,8 @@ var night := 0.0
 var wet := 0.0
 ## Multiplicador de la niebla bajo el monte cerrado (lo pone AmbienceSystem, como env.fogExtra de la web).
 var fog_extra := 1.0
+## Tensión del combate (0..1, la pone AmbienceSystem): baja la saturación y sube el contraste.
+var tension := 0.0
 var mode := Weather.AUTO
 var camera: Camera3D
 
@@ -136,6 +138,9 @@ func update_now() -> void:
 	((_rain.draw_pass_1 as QuadMesh).material as StandardMaterial3D).albedo_color.a = wet * 0.55
 	if camera:
 		_rain.global_position = camera.global_position + Vector3.UP * 20.0
+	env.adjustment_enabled = true
+	env.adjustment_saturation = 1.0 - tension * ParticlesConfig.TENSION.saturation
+	env.adjustment_contrast = 1.0 + tension * ParticlesConfig.TENSION.contrast
 
 
 ## Hora legible para el HUD.

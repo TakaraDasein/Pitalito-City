@@ -15,6 +15,13 @@ export const AUDIO = {
 
   // Pasos (por ahora solo en Godot, AudioSystem.gd): golpe de ruido filtrado por pisada. ESTIMADO, de oído.
   pasos: { nivel: 0.05, tierraHz: 520, pavimentoHz: 1100 },
+  // Golpes y tajo (por ahora solo en Godot): ruido filtrado, y tono de lámina en el metal. ESTIMADO, de oído.
+  golpes: {
+    metal: { hz: 3500, dur: 0.32, nivel: 0.07, tono: 2350 },
+    hueso: { hz: 2200, dur: 0.08, nivel: 0.09, tono: 0 },
+    carne: { hz: 320, dur: 0.14, nivel: 0.12, tono: 0 },
+  },
+  tajo: { hz: 900, dur: 0.2, nivel: 0.035 },
 
   // Ambiente: un viento apenas audible (más alto se oía como siseo); pájaros de día; insectos al anochecer.
   ambiente: { viento: 0.012, pajaros: 0.04, insectos: 0.02 },

@@ -26,6 +26,20 @@ const FAMILIES := {
 		"color": [Color("#fff1cf"), Color("#ffd99a")], "alpha": [0.55, 0.0], "glow": true, "fade": true, "speed": 0.18, "spread": 1.0},
 }
 
+## Golpes (EMISIONES de la web): lo que suelta un impacto según contra qué entra. n partículas por golpe.
+const BURSTS := {
+	"metal": {"max": 18, "n": 18, "life": 0.45, "size": [0.055, 0.012], "gravity": -9.0, "drag": 2.2,
+		"color": [Color("#fff3c4"), Color("#ff7a1a")], "alpha": [1.0, 0.0], "glow": true, "speed": 3.4, "spread": 0.9},
+	"hueso": {"max": 14, "n": 14, "life": 0.9, "size": [0.07, 0.3], "gravity": -2.5, "drag": 2.0,
+		"color": [Color("#e8e2d0"), Color("#b9b2a0")], "alpha": [0.75, 0.0], "speed": 2.4, "spread": 1.0},
+	"carne": {"max": 16, "n": 16, "life": 0.7, "size": [0.05, 0.03], "gravity": -9.5, "drag": 1.4,
+		"color": [Color("#7a0d0d"), Color("#3d0505")], "alpha": [0.95, 0.6], "speed": 2.6, "spread": 1.1},
+}
+## Copias de cada golpe a la vez (golpes seguidos no se cortan unos a otros).
+const BURST_POOL := 4
+## Tensión de la imagen (PostFX.setTension de la web): sube con enemigos a menos de `radius` m y con el monte cerrado.
+const TENSION := {"radius": 30.0, "enemy": 0.8, "forest": 0.35, "saturation": 0.28, "contrast": 0.12}
+
 ## Ritmo de emisión (partículas por segundo a pleno) para las familias que en la web se emiten de a pocas:
 ## bruma 1 cada 0,18 s, motas 2 cada 0,12 s, luciérnagas 2 y hojas 1 cada 0,25 s; polvo: 3 por paso (~2 pasos/s).
 const RATE := {"polvo": 6.0, "luciernagas": 8.0, "hojas": 4.0, "bruma": 5.5, "motas": 16.0}

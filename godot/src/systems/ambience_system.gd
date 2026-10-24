@@ -17,6 +17,9 @@ var _emitters: Dictionary = {}   # familia → GPUParticles3D
 var _step_acc := 0.0
 var _slow_t := 0.0
 var _trees := 0
+var _bursts: Dictionary = {}     # tipo de golpe → [GPUParticles3D…] (una sola descarga cada uno)
+var _burst_i: Dictionary = {}
+var _tension := 0.0
 
 
 func _ready() -> void:
@@ -25,6 +28,45 @@ func _ready() -> void:
 	var q: float = ParticlesConfig.QUALITY_SCALE.get(Settings.quality, 1.0)
 	for fam: String in ParticlesConfig.FAMILIES:
 		_emitters[fam] = _make(fam, ParticlesConfig.FAMILIES[fam], q)
+	for kind: String in ParticlesConfig.BURSTS:
+		var pool := []
+		for i in ParticlesConfig.BURST_POOL:
+			pool.push_back(_make_burst(kind, ParticlesConfig.BURSTS[kind]))
+		_bursts[kind] = pool
+		_burst_i[kind] = 0
+	EventBus.combat_impact.connect(_on_impact)
+
+
+## Descarga de un golpe: one_shot y explosiva; sale hacia arriba y a los lados, y cae.
+func _make_burst(kind: String, f: Dictionary) -> GPUParticles3D:
+	var p := _make(kind, f.merged({"speed": f.speed, "spread": f.spread}), 1.0)
+	p.amount = int(f.n)
+	p.amount_ratio = 1.0
+	p.one_shot = true
+	p.explosiveness = 1.0
+	p.emitting = false
+	var pm := p.process_material as ParticleProcessMaterial
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	pm.emission_sphere_radius = 0.08
+	pm.initial_velocity_min = float(f.speed) * 0.4
+	return p
+
+
+## Un golpe entró (CombatSystem): partículas según contra qué, y el sonido.
+func _on_impact(at: Vector3, kind: String, strength: float) -> void:
+	if _bursts.has(kind):
+		var pool: Array = _bursts[kind]
+		var p: GPUParticles3D = pool[_burst_i[kind]]
+		_burst_i[kind] = (_burst_i[kind] + 1) % pool.size()
+		p.global_position = at
+		p.amount_ratio = clampf(strength, 0.3, 1.0)
+		p.restart()
+		# un golpe fuerte contra hueso también saca chispas: el machete raspa
+		if kind == "hueso" and strength > 0.9:
+			_on_impact(at, "metal", 0.4)
+			return
+	if AudioSystem.instance:
+		AudioSystem.instance.impact(kind, strength)
 
 
 func _make(fam: String, f: Dictionary, q: float) -> GPUParticles3D:
@@ -32,7 +74,7 @@ func _make(fam: String, f: Dictionary, q: float) -> GPUParticles3D:
 	p.name = fam
 	var life: float = f.life
 	p.lifetime = life
-	p.amount = maxi(4, mini(int(f.max * q), ceili(float(ParticlesConfig.RATE[fam]) * life)))
+	p.amount = maxi(4, mini(int(f.max * q), ceili(float(ParticlesConfig.RATE.get(fam, f.get("n", 10))) * life)))
 	p.amount_ratio = 0.0
 	p.local_coords = false
 	p.visibility_aabb = AABB(Vector3(-60, -20, -60), Vector3(120, 40, 120))
@@ -51,7 +93,7 @@ func _make(fam: String, f: Dictionary, q: float) -> GPUParticles3D:
 			pm.emission_ring_axis = Vector3.UP
 			pm.emission_ring_radius = r[1]
 			pm.emission_ring_inner_radius = r[0]
-			pm.emission_ring_height = {"bruma": 2.5, "motas": 3.5, "luciernagas": 1.8, "hojas": 3.0}[fam]
+			pm.emission_ring_height = {"bruma": 2.5, "motas": 3.5, "luciernagas": 1.8, "hojas": 3.0}.get(fam, 0.5)
 	pm.direction = Vector3.UP
 	pm.spread = 180.0 * clampf(float(f.spread), 0.0, 1.0)
 	pm.initial_velocity_min = float(f.speed) * 0.5
@@ -177,6 +219,17 @@ func _process(delta: float) -> void:
 	if sky:
 		var closed := minf(1.0, _trees / 14.0)
 		sky.fog_extra = lerpf(sky.fog_extra, 1.0 + closed * 0.9, minf(1.0, delta * 1.5))
+		# tensión: enemigos cerca y monte cerrado cierran la imagen y le quitan color (no cambia escena ni música)
+		var near := 0.0
+		if CombatSystem.instance:
+			var tc: Dictionary = ParticlesConfig.TENSION
+			for c: Combatant in CombatSystem.instance.combatants:
+				if c.team != "player" and c.is_alive():
+					var d := Vector2(c.body.global_position.x - at.x, c.body.global_position.z - at.z).length()
+					near = maxf(near, 1.0 - d / float(tc.radius))
+			var want := minf(1.0, near * float(tc.enemy) + closed * float(tc.forest))
+			_tension = lerpf(_tension, want, minf(1.0, delta * 1.5))
+			sky.tension = _tension
 	var forest := clampf(float(_trees - ParticlesConfig.FOREST_MIN + 1) / 6.0, 0.0, 1.0)
 	var is_night := hour >= 18.5 or hour <= 5.5
 	var flies: GPUParticles3D = _emitters.luciernagas
