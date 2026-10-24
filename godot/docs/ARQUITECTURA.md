@@ -319,8 +319,8 @@ edificios armados con piezas y recorribles por dentro.
 3. Personaje: hecho (creador, retarget, pies y mirada, bancas, subir y bajar).
 4. Audio: hecho motor, ambiente, lluvia e interfaz; falta música y pasos. Partículas de ambiente (luciérnagas de
    noche bajo los árboles, hojas con el viento, bruma de la mañana): la web tiene AmbienceSystem.
-6. Combate y armas, fauna, supervivencia/zombis, facciones y bases, botín e inventario, historia y misiones,
+5. Combate y armas, fauna, supervivencia/zombis, facciones y bases, botín e inventario, historia y misiones,
    construcción por bloques: un nodo por sistema, comunicados por `EventBus`.
-7. Oclusores por tile, LOD de toda la ciudad (`CityLOD`), y exportación (filtro de `data/world/*.json` y `*.bin`).
-8. Tamaño de los hitos: cada GLB lleva sus texturas incrustadas (60 MB entre los 8); compartirlas con un
+6. Oclusores por tile, LOD de toda la ciudad (`CityLOD`), y exportación (filtro de `data/world/*.json` y `*.bin`).
+7. Tamaño de los hitos: cada GLB lleva sus texturas incrustadas (60 MB entre los 8); compartirlas con un
    `.res` de materiales o exportarlas aparte.
