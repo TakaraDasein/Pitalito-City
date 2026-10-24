@@ -96,7 +96,15 @@ try {
       E.flattenInstances(root);
       root.updateMatrixWorld(true);
       files[`${l.id}.glb`] = toB64(await exporter.parseAsync(root, { binary: true }));
-      index[l.id] = { name: l.name, exclusion: l.exclusion(manifest) };
+      // asientos (bancas): la web los guarda como interacciones con un cierre sitAt(x, z, y, heading); se llama
+      // cada una con un jugador de mentira que solo anota los argumentos (el resto de interacciones no se ejecuta)
+      const seats = [];
+      for (const fn of l.interactables || []) {
+        const fake = { playerSys: { character: { sitAt: (x, z, y, heading) => seats.push({ x, z, y, heading }) } }, hud: { info() {} } };
+        const it = typeof fn === 'function' ? fn(fake) : fn;
+        if (it?.tipo === 'asiento') it.run();
+      }
+      index[l.id] = { name: l.name, exclusion: l.exclusion(manifest), seats };
     }
     return { files, index };
   });

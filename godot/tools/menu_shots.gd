@@ -1,7 +1,7 @@
 extends Node
 ## Herramienta: capturas de la carga y los menús (screenshots/menu_*.png). Uso: godot res://tools/menu_shots.tscn
 ## Para no recorrer todo, se nombran las secciones que interesan: `godot res://tools/menu_shots.tscn -- personaje`
-## (garaje, personaje, menus, juego, pies; varias separadas por espacio). Carga y portada se capturan siempre.
+## (garaje, personaje, menus, juego, pies, banca; varias separadas por espacio). Carga y portada se capturan siempre.
 
 var _main: Node
 var _only := OS.get_cmdline_user_args()
@@ -115,6 +115,8 @@ func _ready() -> void:
 		await _shot("pausa")
 	if _want("pies"):
 		await _feet_shots()
+	if _want("banca"):
+		await _bench_shots()
 	get_tree().quit()
 
 
@@ -149,6 +151,32 @@ func _feet_shots() -> void:
 			var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(f + Vector3.UP * 0.6, f + Vector3.DOWN * 1.5, 1 | 16, [player.get_rid()]))
 			print("pies %s: %s sobre el suelo %.2f m" % ["con ajuste" if on else "sin ajuste", side, f.y - hit.position.y if hit else -1.0])
 		await _shot("pies_" + ("ajuste" if on else "sin"))
+
+
+## Bancas del parque: sentarse (clip de entrar y quieto) y levantarse, de tres cuartos.
+func _bench_shots() -> void:
+	if _main.state != _main.State.PLAYING:
+		_main._start_playing()
+	var lm: LandmarkSystem = _main.landmarks
+	while not lm.is_ready():
+		await get_tree().process_frame
+	if lm.seats.is_empty():
+		print("banca: no hay asientos")
+		return
+	var st: Dictionary = lm.seats[0]
+	var player: Player = _main.player
+	player.place(st.x + 0.7, st.z + 0.7)
+	await get_tree().create_timer(0.5).timeout
+	print("banca: opción = ", _main._interaction()[1] if not _main._interaction().is_empty() else "ninguna")
+	player.sit(st)
+	_main.camera_rig.yaw = float(st.heading) + 0.7 # de frente-lado
+	_main.camera_rig.pitch = -0.15
+	await get_tree().create_timer(2.5).timeout
+	await _shot("banca_sentado")
+	player.stand()
+	await get_tree().create_timer(2.0).timeout
+	print("banca: de pie en el suelo = %s, a %.2f m del asiento" % [player.is_on_floor(), Vector2(player.global_position.x - st.x, player.global_position.z - st.z).length()])
+	await _shot("banca_de_pie")
 
 
 func _shot(name: String) -> void:

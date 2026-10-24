@@ -48,9 +48,25 @@ func _ready() -> void:
 			await RenderingServer.frame_post_draw
 			await _report(player, c, on)
 			get_viewport().get_texture().get_image().save_png("res://screenshots/pies_%s_%s.png" % [c, "ajuste" if on else "sin"])
+		if c == "plano":
+			await _look_shot(player, cam, x)
 		player.queue_free()
 		x += 6.0
 	get_tree().quit()
+
+
+## Mirada: de frente al personaje, el punto de mirada adelante a su derecha y arriba; cabeza y pecho deben girar.
+func _look_shot(player: Player, cam: Camera3D, x: float) -> void:
+	player.set_physics_process(false) # que no pise look_point con la cámara
+	cam.global_position = Vector3(x, _base + 1.6, -2.6)
+	cam.look_at(Vector3(x, _base + 1.4, 0))
+	for k in [["frente", Vector3(x, _base + 1.6, -10)], ["lado", Vector3(x - 6, _base + 2.5, -5)]]:
+		player._rig.look_point = k[1]
+		for i in 40:
+			await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png("res://screenshots/pies_mirada_%s.png" % k[0])
+	player.set_physics_process(true)
 
 
 func _build_case(c: String, x: float) -> void:

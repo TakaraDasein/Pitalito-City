@@ -16,6 +16,9 @@ const FLOAT_AT := 1.3
 const SWIM_SPEED := 1.9
 
 var swimming := false
+## Sentado en una banca: sin física ni control hasta que termina de levantarse.
+var sitting := false
+var _standing_t := 0.0  # > 0 mientras dura el clip de levantarse
 
 ## Cámara de la que se toma el rumbo (la asigna main.gd).
 var camera_rig: CameraRig
@@ -88,6 +91,18 @@ func _setup_tree(player: AnimationPlayer) -> void:
 	sm.add_node("move", move)
 	sm.add_node("air", air)
 	sm.add_node("swim", swim)
+	# sentarse: entrar → quieto (en bucle) → salir; las de entrar y salir pasan solas al terminar el clip
+	for p: Array in [["sit_enter", "Sitting_Enter"], ["sit", "Sitting_Idle"], ["sit_exit", "Sitting_Exit"]]:
+		var node := AnimationNodeAnimation.new()
+		node.animation = CharacterModel.clip(p[1])
+		sm.add_node(p[0], node)
+	for pair: Array in [["move", "sit_enter", false], ["sit_enter", "sit", true], ["sit", "sit_exit", false], ["sit_exit", "move", true]]:
+		var t := AnimationNodeStateMachineTransition.new()
+		t.xfade_time = 0.25
+		if pair[2]:
+			t.switch_mode = AnimationNodeStateMachineTransition.SWITCH_MODE_AT_END
+			t.advance_mode = AnimationNodeStateMachineTransition.ADVANCE_MODE_AUTO
+		sm.add_transition(pair[0], pair[1], t)
 	for pair: Array in [["Start", "move"], ["move", "air"], ["air", "move"], ["move", "swim"], ["swim", "move"], ["air", "swim"], ["swim", "air"]]:
 		var tr := AnimationNodeStateMachineTransition.new()
 		tr.xfade_time = 0.2
@@ -101,6 +116,9 @@ func _setup_tree(player: AnimationPlayer) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if sitting or _standing_t > 0.0:
+		_seated(delta)
+		return
 	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var yaw := camera_rig.yaw if camera_rig else 0.0
 	var dir := Vector3(input.x, 0.0, input.y).rotated(Vector3.UP, yaw)
@@ -148,11 +166,54 @@ func _physics_process(delta: float) -> void:
 		_tree.set("parameters/move/blend_position", Vector2(velocity.x, velocity.z).length())
 
 
+## Sentarse en un asiento de LandmarkSystem.seats: se coloca en él (los pies a su altura, mirando a su frente) y
+## el clip baja el cuerpo. Sin colisión mientras tanto: la cápsula atravesaría la banca.
+func sit(seat: Dictionary) -> void:
+	if sitting or _tree == null:
+		return
+	sitting = true
+	velocity = Vector3.ZERO
+	collision_layer = 0
+	collision_mask = 0
+	global_position = Vector3(seat.x, seat.y, seat.z)
+	# heading de la web es el giro del cuerpo con su modelo; aquí el modelo va girado PI dentro del cuerpo y eso ya
+	# lo compensa (medido: con + PI quedaba mirando al espaldar)
+	rotation.y = float(seat.heading)
+	_playback().travel("sit")
+
+
+## Levantarse: el clip de salir, y al terminar un paso al frente antes de volver a tener colisión.
+func stand() -> void:
+	if not sitting:
+		return
+	sitting = false
+	_standing_t = 1.2
+	_playback().travel("move")
+
+
+func _seated(delta: float) -> void:
+	_update_rig()
+	if sitting:
+		# cualquier intento de caminar o saltar levanta al personaje
+		if Input.get_vector("move_left", "move_right", "move_forward", "move_back").length() > 0.5 or Input.is_action_just_pressed("jump"):
+			stand()
+		return
+	_standing_t -= delta
+	if _standing_t <= 0.0:
+		global_position += -global_basis.z * 0.45 + Vector3.UP * 0.1
+		collision_layer = 2
+		collision_mask = 1 | 4 | 16
+
+
+func _playback() -> AnimationNodeStateMachinePlayback:
+	return _tree.get("parameters/playback")
+
+
 ## Pies al suelo y mirada hacia donde apunta la cámara (un punto lejano en su eje, no la cámara misma).
 func _update_rig() -> void:
 	if _rig == null:
 		return
-	_rig.feet_enabled = is_on_floor() and not swimming
+	_rig.feet_enabled = is_on_floor() and not swimming and not sitting and _standing_t <= 0.0
 	_rig.look_enabled = not swimming
 	var cam := get_viewport().get_camera_3d()
 	if cam:

@@ -19,6 +19,9 @@ static var exclusions: Array[PackedVector2Array] = []
 
 var doors: Array[Dictionary] = [] # { name, pos, leaves: [{ hinge, sd }], open, angle }
 var lights := 0
+## Asientos (bancas del parque…), horneados desde las interacciones de la web: { x, y, z, heading } con y = altura
+## de los pies del personaje sentado y heading = giro del cuerpo sentado (convención de la web).
+var seats: Array[Dictionary] = []
 
 
 ## Carga las exclusiones antes de que el streamer construya el primer tile.
@@ -55,6 +58,8 @@ func _ready() -> void:
 		return
 	var index: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(path))
 	for id: String in index:
+		for st: Dictionary in index[id].get("seats", []):
+			seats.push_back(st)
 		var file := "%s/%s.glb" % [DIR, id]
 		if ResourceLoader.exists(file):
 			# carga de recursos en hilos: los GLB de los hitos pesan 60 MB y bloqueaban el arranque
@@ -179,6 +184,17 @@ func door_near(p: Vector3, radius := 3.5) -> Dictionary:
 		if dist < bd:
 			bd = dist
 			best = d
+	return best
+
+
+func seat_near(p: Vector3, radius := 1.4) -> Dictionary:
+	var best := {}
+	var bd := radius
+	for st: Dictionary in seats:
+		var dist := Vector2(st.x - p.x, st.z - p.z).length()
+		if dist < bd and absf(st.y - p.y) < 1.0:
+			bd = dist
+			best = st
 	return best
 
 

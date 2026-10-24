@@ -344,8 +344,13 @@ func _follow_camera() -> void:
 func _interaction() -> Array:
 	if _driving:
 		return [0.0, "Bajarse", func(): _exit_vehicle()]
+	if player.sitting:
+		return [0.0, "Levantarse", func(): player.stand()]
 	var here := player.global_position
 	var options := []
+	var seat := landmarks.seat_near(here)
+	if not seat.is_empty():
+		options.push_back([Vector2(seat.x - here.x, seat.z - here.z).length() + 0.3, "Sentarse en la banca", func(): player.sit(seat)])
 	var to_car := here.distance_to(vehicle.global_position)
 	if to_car < ENTER_DISTANCE:
 		options.push_back([to_car, "Subir al " + vehicle.spec.name, func(): _enter_vehicle()])
