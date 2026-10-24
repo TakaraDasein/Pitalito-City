@@ -32,6 +32,9 @@ var paints: Dictionary = {}
 var plates: Dictionary = {}
 ## Escala de la interfaz (0,8–1,4): para pantallas grandes o lectura cómoda.
 var ui_scale := 1.0
+## Sonido: volumen general y del ambiente (viento, pájaros, insectos, lluvia), 0..1.
+var volume := 0.8
+var ambience := 1.0
 ## Por qué se eligió la calidad (para mostrarlo en opciones): "equipo", "fps" o "manual".
 var quality_reason := "equipo"
 var gpu_name := ""
@@ -53,6 +56,8 @@ func _ready() -> void:
 		paints = cfg.get_value("garaje", "pinturas", {})
 		plates = cfg.get_value("garaje", "placas", {})
 		ui_scale = cfg.get_value("pantalla", "escala_ui", 1.0)
+		volume = cfg.get_value("sonido", "volumen", 0.8)
+		ambience = cfg.get_value("sonido", "ambiente", 1.0)
 		quality_reason = "manual" if not auto_quality else cfg.get_value("grafica", "motivo", "equipo")
 	if auto_quality and quality_reason == "equipo":
 		quality = detect()
@@ -160,4 +165,6 @@ func save() -> void:
 	cfg.set_value("garaje", "pinturas", paints)
 	cfg.set_value("garaje", "placas", plates)
 	cfg.set_value("pantalla", "escala_ui", ui_scale)
+	cfg.set_value("sonido", "volumen", volume)
+	cfg.set_value("sonido", "ambiente", ambience)
 	cfg.save(PATH)

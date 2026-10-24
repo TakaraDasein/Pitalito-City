@@ -38,10 +38,13 @@ const CAMERA_MODES := [
 	{"name": "aérea", "foot": [45.0, 2.0], "car": [60.0, 2.0], "pitch": -1.25},
 ]
 var _cam_mode := 0
+var _audio: AudioSystem
 var _prompt_t := 0.0
 
 
 func _ready() -> void:
+	_audio = AudioSystem.new()
+	add_child(_audio)
 	_loading = LoadingScreen.new()
 	add_child(_loading)
 	_menus = Menus.new()
@@ -76,6 +79,7 @@ func _boot() -> void:
 	traffic.lights = traffic_lights
 	sky.camera = camera_rig.camera
 	sky.set_weather(Settings.weather)
+	_audio.sky = sky
 	hud.sky = sky
 	hud.gps = gps
 	gps.message.connect(hud.toast)
@@ -140,6 +144,7 @@ func _apply_quality() -> void:
 
 func _to_menu() -> void:
 	state = State.MENU
+	_audio.active = false
 	map_screen.allowed = false
 	get_tree().paused = false
 	hud.visible = false
@@ -150,6 +155,7 @@ func _to_menu() -> void:
 
 func _start_playing() -> void:
 	state = State.PLAYING
+	_audio.active = true
 	map_screen.allowed = true
 	_menus.hide_all()
 	get_tree().paused = false
@@ -163,6 +169,7 @@ func _start_playing() -> void:
 
 func _pause() -> void:
 	state = State.PAUSED
+	_audio.active = false
 	map_screen.allowed = false
 	get_tree().paused = true
 	camera_rig.input_enabled = false
@@ -190,6 +197,7 @@ func set_vehicle(type: String) -> void:
 		vehicle.driven = _driving
 		if _driving:
 			_set_focus(vehicle, 6.5, 2.2)
+			_audio.vehicle = vehicle
 	else:
 		var s := WorldData.spawn()
 		var ahead := player.global_position - player.global_basis.z * 6.0 + player.global_basis.x * 3.0
@@ -275,6 +283,7 @@ func _enter_vehicle() -> void:
 	player.process_mode = Node.PROCESS_MODE_DISABLED
 	player.global_position = vehicle.global_position + Vector3.UP * 50.0 # fuera del camino de la física
 	_set_focus(vehicle, 6.5, 2.2)
+	_audio.vehicle = vehicle
 	_follow_camera()
 	hud.set_on_foot(false)
 	EventBus.vehicle_entered.emit(vehicle)
@@ -282,6 +291,7 @@ func _enter_vehicle() -> void:
 
 func _exit_vehicle() -> void:
 	_driving = false
+	_audio.vehicle = null
 	vehicle.driven = false
 	var p := vehicle.exit_point()
 	player.process_mode = Node.PROCESS_MODE_INHERIT

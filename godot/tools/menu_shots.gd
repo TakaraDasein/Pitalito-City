@@ -25,6 +25,10 @@ func _ready() -> void:
 	_main._menus._paint("chiva", "#d62828")
 	await get_tree().create_timer(1.0).timeout
 	await _shot("garaje_chiva")
+	_main._menus._garage_show(_main._menus._garage_types.find("sedan"))
+	_main._menus._paint("sedan", "#cf534f")
+	await get_tree().create_timer(1.0).timeout
+	await _shot("garaje_sedan")
 	_main._menus.open("creditos")
 	await get_tree().create_timer(0.5).timeout
 	await _shot("creditos")
@@ -52,6 +56,8 @@ func _ready() -> void:
 	Input.action_press("move_forward")
 	await get_tree().create_timer(3.0).timeout
 	await _shot("manejando")
+	var bus := AudioServer.get_bus_index("Mundo")
+	print("audio: motor %.1f Hz · pico del bus Mundo %.1f dB · driver %s" % [_main._audio._freq, AudioServer.get_bus_peak_volume_left_db(bus, 0), AudioServer.get_driver_name() if AudioServer.has_method("get_driver_name") else ProjectSettings.get_setting("audio/driver/driver")])
 	Input.action_release("move_forward")
 	_main._cam_mode = 2
 	_main._follow_camera()

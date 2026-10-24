@@ -119,6 +119,8 @@ func _button(parent: Container, text: String, action: Callable, hint := "") -> B
 	b.tooltip_text = hint
 	parent.add_child(b)
 	UiFx.wire_button(b)
+	b.focus_entered.connect(func(): if AudioSystem.instance: AudioSystem.instance.ui_click())
+	b.pressed.connect(func(): if AudioSystem.instance: AudioSystem.instance.ui_click(true))
 	return b
 
 
@@ -237,6 +239,19 @@ func _build_options() -> void:
 	inv.button_pressed = Settings.invert_y
 	inv.toggled.connect(func(on): Settings.invert_y = on; Settings.save())
 	col.add_child(inv)
+	_section(col, "Sonido")
+	var vol := HSlider.new()
+	vol.max_value = 1.0
+	vol.step = 0.05
+	vol.value = Settings.volume
+	vol.value_changed.connect(func(v): Settings.volume = v; Settings.save(); Settings.changed.emit())
+	_row(col, "Volumen", vol)
+	var amb := HSlider.new()
+	amb.max_value = 1.0
+	amb.step = 0.05
+	amb.value = Settings.ambience
+	amb.value_changed.connect(func(v): Settings.ambience = v; Settings.save())
+	_row(col, "Ambiente", amb)
 	_section(col, "Mundo")
 	var weather := OptionButton.new()
 	for item in ["Automático (aguaceros)", "Despejado", "Lluvia"]:
@@ -458,8 +473,10 @@ func _garage_show(i: int) -> void:
 			sw.add_theme_stylebox_override(st, s2)
 		sw.pressed.connect(func(): _paint(t, hex))
 		_garage_paints.add_child(sw)
+	# los del Car Kit no traen placa
+	_garage_plate.get_parent().get_child(_garage_plate.get_index() - 1).visible = spec.source == "baked"
+	_garage_plate.visible = spec.source == "baked"
 	_garage_plate.text = Settings.plate_of(t)
-	_garage_plate.editable = spec.source == "baked"
 	_garage_use.text = "En uso" if t == current_vehicle else "Usar este vehículo"
 	_garage_use.disabled = t == current_vehicle
 
