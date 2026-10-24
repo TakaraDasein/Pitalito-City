@@ -32,6 +32,15 @@ func _ready() -> void:
 	_main._menus.open("personaje")
 	await get_tree().create_timer(1.0).timeout
 	await _shot("personaje")
+	# de cerca: la cara (aquí se vio el hundimiento de la piel)
+	var cam: Camera3D = _main._menus._char_view.get_camera_3d()
+	var cam_xf := cam.transform
+	cam.position = Vector3(0, 1.45, 1.1)
+	cam.rotation = Vector3(0.12, 0, 0)
+	_main._menus._char_model.rotation.y = 0.3
+	await get_tree().create_timer(0.6).timeout
+	await _shot("personaje_cara")
+	cam.transform = cam_xf
 	_main._menus._char_set("cuerpo", "b")
 	_main._menus._char_set("pelo", "largo")
 	_main._menus._char_set("sombrero", false)

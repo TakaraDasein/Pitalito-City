@@ -66,14 +66,15 @@ static func _dress(model: Node3D, look: Dictionary, sex: String) -> void:
 		return
 	var skin := Color(CharacterConfig.SKIN.get(look.get("piel", "3"), CharacterConfig.SKIN["3"])[1])
 	var hair := Color(CharacterConfig.HAIR_COLOR.get(look.get("pelocolor", "negro"), CharacterConfig.HAIR_COLOR.negro)[1])
-	var clothed: bool = not CharacterConfig.OUTFITS.get(look.get("ropa", "campo"), {}).get("parts", []).is_empty()
-	# piel: tinte del tono y, con ropa, se mete un poco hacia adentro (el cuerpo es más ancho que la ropa)
+	var parts: Array = CharacterConfig.OUTFITS.get(look.get("ropa", "campo"), {}).get("parts", [])
+	# piel: tinte del tono, y lo que tapa la ropa se mete hacia adentro (el cuerpo es más ancho que su ropa)
 	# el cuerpo trae tres mallas: cuerpo (piel), cejas (color del pelo) y ojos (sin tocar)
 	for mi: MeshInstance3D in skel.find_children("*", "MeshInstance3D", false, false):
 		if mi.name == "Eyebrows":
 			_tint(mi, hair, 0.0)
 		elif mi.name != "Eyes":
-			_tint(mi, skin, CharacterConfig.SKIN_SHRINK if clothed else 0.0, true)
+			_tint(mi, skin, true)
+			mi.mesh = _fitted(mi, parts)
 	var files: Array[String] = []
 	for part: String in CharacterConfig.OUTFITS.get(look.get("ropa", "campo"), {}).get("parts", []):
 		files.push_back(CharacterConfig.part_file(part, sex))
@@ -99,7 +100,7 @@ static func _dress(model: Node3D, look: Dictionary, sex: String) -> void:
 			skel.add_child(mi)
 			mi.skeleton = NodePath("..")
 			if f in hair_files:
-				_tint(mi, hair, 0.0)
+				_tint(mi, hair)
 		src.free()
 	if look.get("sombrero", false) and not look.get("capucha", false):
 		_hat(skel)
@@ -107,7 +108,7 @@ static func _dress(model: Node3D, look: Dictionary, sex: String) -> void:
 
 ## `flat`: fuera la textura (la del cuerpo es un traje de superhéroe con manchas, no piel; igual que en la web),
 ## se conserva el mapa de normales para que el relieve del cuerpo se siga leyendo.
-static func _tint(mi: MeshInstance3D, color: Color, shrink: float, flat := false) -> void:
+static func _tint(mi: MeshInstance3D, color: Color, flat := false) -> void:
 	for i in mi.get_surface_override_material_count():
 		var m := mi.get_active_material(i)
 		if not m is StandardMaterial3D:
@@ -119,10 +120,59 @@ static func _tint(mi: MeshInstance3D, color: Color, shrink: float, flat := false
 			d.roughness_texture = null
 		d.roughness = maxf(0.55, d.roughness)
 		d.metallic = 0.0
-		if shrink > 0.0:
-			d.grow = true
-			d.grow_amount = -shrink
 		mi.set_surface_override_material(i, d)
+
+
+static var _fit_cache := {}
+
+
+## Piel ajustada a la ropa. La web encoge todo el cuerpo por igual, y eso hunde también la cara y las manos
+## (la cara quedaba de calavera, con ojos y cejas por fuera). Aquí cada vértice se mete según cuánto lo mueven
+## huesos tapados por las piezas puestas: la cara, el cuello y las manos no se tocan, y como el peso de la piel
+## cambia suave entre huesos, el borde (muñeca, cuello del camisón) no hace escalón. Se hornea una vez por
+## combinación de cuerpo y piezas, en la pose de enlace, y la piel lo anima igual.
+static func _fitted(mi: MeshInstance3D, parts: Array) -> Mesh:
+	var covered := {}
+	for part: String in parts:
+		for prefix: String in CharacterConfig.COVERS.get(part.get_slice("_", 2), []):
+			covered[prefix] = true
+	if covered.is_empty() or mi.skin == null or not mi.mesh is ArrayMesh:
+		return mi.mesh
+	var key := "%s|%s" % [mi.mesh.resource_path, ",".join(covered.keys())]
+	if _fit_cache.has(key):
+		return _fit_cache[key]
+	var shrink_of := PackedFloat32Array()
+	for b in mi.skin.get_bind_count():
+		var bone := String(mi.skin.get_bind_name(b))
+		var on := false
+		for prefix: String in covered:
+			on = on or bone.begins_with(prefix)
+		shrink_of.push_back(CharacterConfig.SKIN_SHRINK if on else 0.0)
+	var src := mi.mesh as ArrayMesh
+	var out := ArrayMesh.new()
+	for si in src.get_surface_count():
+		var arrays := src.surface_get_arrays(si)
+		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+		var bones: PackedInt32Array = arrays[Mesh.ARRAY_BONES]
+		var weights: PackedFloat32Array = arrays[Mesh.ARRAY_WEIGHTS]
+		var per := bones.size() / maxi(verts.size(), 1)
+		for v in verts.size():
+			var d := 0.0
+			for k in per:
+				var b := bones[v * per + k]
+				if b < shrink_of.size():
+					d += shrink_of[b] * weights[v * per + k]
+			verts[v] -= normals[v] * d
+		arrays[Mesh.ARRAY_VERTEX] = verts
+		# canales extra del glTF que el material no usa: sin su formato exacto, add_surface los rechaza
+		for c in [Mesh.ARRAY_CUSTOM0, Mesh.ARRAY_CUSTOM1, Mesh.ARRAY_CUSTOM2, Mesh.ARRAY_CUSTOM3]:
+			arrays[c] = null
+		var flags := src.surface_get_format(si) & Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS
+		out.add_surface_from_arrays(src.surface_get_primitive_type(si), arrays, [], {}, flags)
+		out.surface_set_material(si, src.surface_get_material(si))
+	_fit_cache[key] = out
+	return out
 
 
 ## Sombrero aguadeño (paja toquilla, ala ancha y cinta negra), procedural sobre el hueso de la cabeza.

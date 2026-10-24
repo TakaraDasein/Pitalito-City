@@ -241,7 +241,7 @@ capucha, hombreras, sombrero aguadeño, piel, color de pelo, y los oficios que f
 `CharacterModel.create(look)` viste el cuerpo: las mallas de ropa y pelo traen el mismo esqueleto con los mismos
 nombres de huesos, así que se pasan al `Skeleton3D` del cuerpo (`skeleton = ".."`) y la piel se enlaza por
 nombre, con un solo AnimationPlayer. La piel pierde la textura de traje del paquete (tono plano con su mapa de
-normales, como la web) y con ropa se mete 3 cm por la normal (`grow` negativo) para no asomar. El sombrero es
+normales, como la web) y solo lo que tapa la ropa se mete 3 cm por la normal (horneado por vértice según los huesos cubiertos, `COVERS`): la web encoge todo el cuerpo y hunde la cara. El sombrero es
 procedural sobre el hueso `Head`; con sombrero o capucha el pelo pasa a corto para no atravesar la tela.
 La apariencia se guarda en `Settings.look`; el menú **Personaje** (portada y pausa) la edita con vista previa en
 el estudio del garaje, y al cambiarla se rearman el jugador y el conductor sentado.

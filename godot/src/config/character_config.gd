@@ -5,11 +5,16 @@ class_name CharacterConfig
 const BASE := "res://assets/models/characters/"
 
 ## Cuánto se mete la piel bajo la ropa (m): los cuerpos del paquete son más corpulentos que su ropa. La web usa
-## 0,017; en Godot el desplazamiento por normal deja asomar el pecho y los muslos con eso (medido en capturas).
+## 0,017 en todo el cuerpo; aquí solo bajo la ropa (ver COVERS), y con menos asomaban pecho y muslos (capturas).
 const SKIN_SHRINK := 0.03
+## Qué huesos tapa cada tipo de pieza (prefijos de nombre): solo esos vértices se meten bajo la ropa.
+const COVERS := {
+	"Body": ["pelvis", "spine_", "clavicle_"], "Arms": ["upperarm_", "lowerarm_"],
+	"Legs": ["pelvis", "thigh_", "calf_"], "Feet": ["foot_", "ball_"],
+}
 ## Altura del ala del sombrero sobre el hueso de la cabeza (m). La web usa 0,14 sobre su hueso; aquí el origen
 ## del hueso "Head" queda más alto y con eso flotaba (ajustado mirando las capturas).
-const HAT_LIFT := 0.11
+const HAT_LIFT := 0.155
 
 const BODIES := {
 	"a": {"name": "Complexión A", "file": "base/Superhero_Male_FullBody.gltf", "clothes": "Male"},
