@@ -312,10 +312,10 @@ edificios armados con piezas y recorribles por dentro.
 
 1. Estructuras con referencias del usuario: cubierta curva de celosía (foto 4, ubicación por confirmar),
    confirmar el lado de la pasarela. Hecho: ríos, puentes viales y pasarela. Hecho: Coliseo recorrible; baño y cocina con tabique propio, vidrio interior, una luz por cuarto.
-2. Vehículos (lo que falta del bloque 3): faros de noche en el vehículo propio (la web tiene uno), tomar un
-   vehículo del tráfico (la web lo hace), subir a la moto pasando la pierna (la web lo hace con IK de piernas),
-   entrada de la chiva por la escalera, y los del Car Kit (una sola pieza: sin puerta que abrir). Hecho: garaje con
-   pintura y placa, moto con equilibrio propio, conductor sentado, puertas del taxi y la camioneta, vano del Willys.
+2. Vehículos (lo que falta del bloque 3): entrada de la chiva por la escalera y los del Car Kit (una sola pieza:
+   sin puerta que abrir). Hecho: garaje con pintura y placa, moto con equilibrio propio (levantarla si está caída,
+   montarse pasando la pierna), conductor sentado, puertas del taxi y la camioneta, vano del Willys, faros de
+   noche, tomar un vehículo del tráfico.
 3. Personaje: hecho (creador, retarget, pies y mirada, bancas, subir y bajar).
 4. Audio: hecho motor, ambiente, lluvia e interfaz; falta música y pasos. Partículas de ambiente (luciérnagas de
    noche bajo los árboles, hojas con el viento, bruma de la mañana): la web tiene AmbienceSystem.
