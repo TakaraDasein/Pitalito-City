@@ -34,4 +34,7 @@ console.log(`relieve: ${t.size}×${t.size} celdas de ${t.cell} m → ${dst}`);
 (cd "$here/../web" && node tools/bake-godot.mjs "$here/assets/textures/procedural" "$here/assets/models/vehicles/baked" "$here/assets/models/landmarks") \
   || echo "AVISO: no se pudo hornear (¿Chromium en /usr/bin/chromium o CHROMIUM_PATH?)"
 
+# rsync --delete borró los .import: se vuelve a poner el retarget humanoide de los personajes
+python3 "$here/tools/import/apply_retarget.py"
+
 echo "Listo. Abre godot/ en el editor (o 'godot --headless --import') para importar los modelos."

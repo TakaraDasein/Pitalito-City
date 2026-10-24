@@ -1,11 +1,13 @@
 class_name CharacterModel
-## Arma el personaje: cuerpo base de Quaternius (CC0) + biblioteca de 45 clips que comparte el mismo esqueleto
-## de 65 huesos. Las animaciones vienen con la ruta "Rig/Skeleton3D" y los cuerpos con "Armature/Skeleton3D":
-## se reescriben una sola vez y la biblioteca queda compartida entre todos los personajes.
+## Arma el personaje: cuerpo base de Quaternius (CC0) + biblioteca de 45 clips que comparte el mismo esqueleto.
+## Todo pasa por el retarget humanoide del importador (tools/import/apply_retarget.py): el esqueleto se llama
+## "GeneralSkeleton" con nombres del perfil de Godot (Hips, Head, LeftFoot…) y los clips usan rutas
+## "%GeneralSkeleton:…", así que la biblioteca sirve tal cual para cualquier cuerpo con ese perfil.
 ## Ojo: el importador de Godot quita el sufijo "_Loop" del nombre y deja el clip cíclico ("Idle_Loop" → "Idle").
 
 const ANIMATIONS := "res://assets/models/characters/animations.glb"
 const LIB := "ual"
+const SKELETON := "GeneralSkeleton"
 
 static var _library: AnimationLibrary
 
@@ -16,25 +18,8 @@ static func library() -> AnimationLibrary:
 	_library = AnimationLibrary.new()
 	var src: Node = load(ANIMATIONS).instantiate()
 	var player: AnimationPlayer = src.find_child("AnimationPlayer", true, false)
-	var skeleton: Skeleton3D = src.find_child("Skeleton3D", true, false)
 	for anim_name in player.get_animation_list():
-		var anim: Animation = player.get_animation(anim_name).duplicate(true)
-		var rotated := {}
-		for t in anim.get_track_count():
-			var path := String(anim.track_get_path(t))
-			if path.begins_with("Rig/"):
-				anim.track_set_path(t, NodePath("Armature/" + path.substr(4)))
-			if anim.track_get_type(t) == Animation.TYPE_ROTATION_3D:
-				rotated[path.get_slice(":", 1)] = true
-		# Los huesos que el clip no rota quedarían en el reposo del cuerpo, que no es el mismo: el "root" de los
-		# cuerpos está girado −90° (eje Z arriba de Unreal) y el personaje se acostaba. Se fija el reposo del clip.
-		for b in skeleton.get_bone_count():
-			var bone := skeleton.get_bone_name(b)
-			if not rotated.has(bone):
-				var t := anim.add_track(Animation.TYPE_ROTATION_3D)
-				anim.track_set_path(t, NodePath("Armature/Skeleton3D:" + bone))
-				anim.rotation_track_insert_key(t, 0.0, skeleton.get_bone_rest(b).basis.get_rotation_quaternion())
-		_library.add_animation(anim_name, anim)
+		_library.add_animation(anim_name, player.get_animation(anim_name))
 	src.free()
 	return _library
 
@@ -61,7 +46,7 @@ static func create(look := {}) -> Node3D:
 ## Viste el cuerpo. Ropa y pelo traen el mismo esqueleto de 65 huesos con los mismos nombres: sus mallas se pasan
 ## al Skeleton3D del cuerpo y la piel se enlaza por nombre de hueso, sin copiar esqueletos ni animar dos veces.
 static func _dress(model: Node3D, look: Dictionary, sex: String) -> void:
-	var skel: Skeleton3D = model.find_child("Skeleton3D", true, false)
+	var skel: Skeleton3D = model.find_child(SKELETON, true, false)
 	if skel == null:
 		return
 	var skin := Color(CharacterConfig.SKIN.get(look.get("piel", "3"), CharacterConfig.SKIN["3"])[1])
@@ -134,8 +119,8 @@ static var _fit_cache := {}
 static func _fitted(mi: MeshInstance3D, parts: Array) -> Mesh:
 	var covered := {}
 	for part: String in parts:
-		for prefix: String in CharacterConfig.COVERS.get(part.get_slice("_", 2), []):
-			covered[prefix] = true
+		for bone: String in CharacterConfig.COVERS.get(part.get_slice("_", 2), []):
+			covered[bone] = true
 	if covered.is_empty() or mi.skin == null or not mi.mesh is ArrayMesh:
 		return mi.mesh
 	var key := "%s|%s" % [mi.mesh.resource_path, ",".join(covered.keys())]
@@ -145,8 +130,8 @@ static func _fitted(mi: MeshInstance3D, parts: Array) -> Mesh:
 	for b in mi.skin.get_bind_count():
 		var bone := String(mi.skin.get_bind_name(b))
 		var on := false
-		for prefix: String in covered:
-			on = on or bone.begins_with(prefix)
+		for part: String in covered:
+			on = on or bone.contains(part)
 		shrink_of.push_back(CharacterConfig.SKIN_SHRINK if on else 0.0)
 	var src := mi.mesh as ArrayMesh
 	var out := ArrayMesh.new()

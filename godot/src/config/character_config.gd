@@ -7,10 +7,11 @@ const BASE := "res://assets/models/characters/"
 ## Cuánto se mete la piel bajo la ropa (m): los cuerpos del paquete son más corpulentos que su ropa. La web usa
 ## 0,017 en todo el cuerpo; aquí solo bajo la ropa (ver COVERS), y con menos asomaban pecho y muslos (capturas).
 const SKIN_SHRINK := 0.03
-## Qué huesos tapa cada tipo de pieza (prefijos de nombre): solo esos vértices se meten bajo la ropa.
+## Qué huesos tapa cada tipo de pieza (parte del nombre humanoide, sirve a los dos lados): solo esos vértices se
+## meten bajo la ropa.
 const COVERS := {
-	"Body": ["pelvis", "spine_", "clavicle_"], "Arms": ["upperarm_", "lowerarm_"],
-	"Legs": ["pelvis", "thigh_", "calf_"], "Feet": ["foot_", "ball_"],
+	"Body": ["Hips", "Spine", "Chest", "Shoulder"], "Arms": ["UpperArm", "LowerArm"],
+	"Legs": ["Hips", "UpperLeg", "LowerLeg"], "Feet": ["Foot", "Toes"],
 }
 ## Altura del ala del sombrero sobre el hueso de la cabeza (m). La web usa 0,14 sobre su hueso; aquí el origen
 ## del hueso "Head" queda más alto y con eso flotaba (ajustado mirando las capturas).
