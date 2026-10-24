@@ -53,6 +53,7 @@ func _ready() -> void:
 	combat = CombatSystem.new()
 	add_child(combat)
 	combat.add(player.combat, true)
+	combat.camera_rig = camera_rig
 	factions = FactionSystem.new()
 	factions.name = "Restos"
 	factions.focus = player

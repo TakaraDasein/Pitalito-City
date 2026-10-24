@@ -30,6 +30,9 @@ var _weapon_index := 1   # machete
 var _weapon_slot: BoneAttachment3D
 var _dead_t := 0.0
 var _push := Vector3.ZERO
+var _push_applied := Vector3.ZERO  # lo que se sumó del empujón el cuadro anterior (se quita antes de acelerar)
+var _recoil := 0.0       # sacudida del cuerpo al recibir sin aturdirse (rad, vuelve sola)
+var _lunge_t := 0.0      # medio paso adelante del golpe en curso
 
 ## Cámara de la que se toma el rumbo (la asigna main.gd).
 var camera_rig: CameraRig
@@ -133,7 +136,7 @@ func _setup_tree(player: AnimationPlayer) -> void:
 		sm.add_transition(pair[0], pair[1], tr)
 
 	# combate: un nodo por clip ("c_<clip>"); el de ataque se estira a lo que dura el golpe (_on_combat)
-	var clips := ["Roll", "Hit_Chest", "Death01", "Sword_Block"]
+	var clips := ["Roll", "Hit_Chest", "Hit_Head", "Death01", "Sword_Block"]
 	for w: Dictionary in CombatConfig.WEAPONS.values():
 		for c: String in w.combo:
 			if not c in clips:
@@ -191,6 +194,9 @@ func _physics_process(delta: float) -> void:
 	swimming = not water.is_empty() and float(water.depth) > SWIM_DEPTH and global_position.y < float(water.surface) + 0.5
 	set_collision_mask_value(5, not swimming)
 	_update_rig()
+	# nadando el arma no se ve (va a la espalda) ni se usa
+	if _weapon_slot:
+		_weapon_slot.visible = not swimming
 	if swimming:
 		_swim(dir, water, delta)
 		return
@@ -203,13 +209,22 @@ func _physics_process(delta: float) -> void:
 	if not water.is_empty() and float(water.surface) > global_position.y + 0.2:
 		speed *= 0.55 # caminar con el agua a las rodillas
 	var target := dir * speed
+	# el empujón no es velocidad propia: se quita el del cuadro anterior antes de acelerar (si no, se acumulaba
+	# cuadro a cuadro y un golpe mandaba al jugador a 15 m)
+	velocity -= _push_applied
 	velocity.x = move_toward(velocity.x, target.x, 30.0 * delta)
 	velocity.z = move_toward(velocity.z, target.z, 30.0 * delta)
+	if _lunge_t > 0.0 and combat.state == Combatant.State.ATTACK:
+		_lunge_t -= delta
+		var f := -global_basis.z * float(CombatConfig.FEEL.lunge)
+		velocity.x = f.x
+		velocity.z = f.z
 	if rolling:
 		var r := combat.roll_step(delta) / maxf(delta, 0.0001)
 		velocity.x = r.x
 		velocity.z = r.z
 	velocity += _push
+	_push_applied = _push
 	_push = _push.lerp(Vector3.ZERO, minf(1.0, delta * 8.0))
 	_step_up(delta)
 	move_and_slide()
@@ -239,6 +254,7 @@ func _physics_process(delta: float) -> void:
 ## deslizándose al asiento mientras gira hacia el frente del vehículo. `done` se llama al quedar sentado: ahí
 ## main.gd pasa al conductor sentado del vehículo, que sigue con el clip de manejar.
 func mount(v: Vehicle, done: Callable) -> void:
+	_holster()
 	velocity = Vector3.ZERO
 	collision_layer = 0
 	collision_mask = 0
@@ -469,6 +485,7 @@ func _mounting(delta: float) -> void:
 ## Sentarse en un asiento de LandmarkSystem.seats: se coloca en él (los pies a su altura, mirando a su frente) y
 ## el clip baja el cuerpo. Sin colisión mientras tanto: la cápsula atravesaría la banca.
 func sit(seat: Dictionary) -> void:
+	_holster()
 	if sitting or _tree == null:
 		return
 	sitting = true
@@ -586,7 +603,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif not armed:
 		return
 	elif event.is_action_pressed("combat_attack"):
-		combat.attack()
+		_attack()
 	elif event.is_action_pressed("combat_guard"):
 		combat.set_guard(true)
 	elif event.is_action_released("combat_guard"):
@@ -599,6 +616,35 @@ func _unhandled_input(event: InputEvent) -> void:
 		cycle_weapon(1)
 	elif event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
 		cycle_weapon(1 if event.button_index == MOUSE_BUTTON_WHEEL_DOWN else -1)
+
+
+## Golpear con ayuda: se gira hacia el enemigo que tiene delante (o el fijado) y, si está un poco lejos, da
+## medio paso hacia él al soltar el golpe. Sin enemigo cerca, el golpe va hacia donde se camina o mira la cámara.
+func _attack() -> void:
+	var t := CombatSystem.instance.assist_target(combat) if CombatSystem.instance else null
+	if not combat.is_busy() or combat.phase == "recover":
+		if t:
+			var to := t.body.global_position - global_position
+			rotation.y = atan2(-to.x, -to.z)
+		else:
+			var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+			if input.length() > 0.1 and camera_rig:
+				var d := Vector3(input.x, 0, input.y).rotated(Vector3.UP, camera_rig.yaw)
+				rotation.y = atan2(-d.x, -d.z)
+	if combat.attack() and t:
+		var dist := Vector2(t.body.global_position.x - global_position.x, t.body.global_position.z - global_position.z).length()
+		_lunge_t = 0.18 if dist > float(CombatConfig.FEEL.lunge_min) else 0.0
+
+
+## Guarda el arma sin aviso (al subir a un vehículo o sentarse: con las manos ocupadas no se pelea).
+func _holster() -> void:
+	if armed:
+		armed = false
+		combat.set_guard(false)
+		if CombatSystem.instance and combat.lock_target:
+			CombatSystem.instance.toggle_lock(combat, 0.0)
+		combat.set_weapon("manos")
+		_show_weapon("")
 
 
 ## Sacar o guardar el arma. Guardada: sin blanco ni guardia.
@@ -630,18 +676,7 @@ func _show_weapon(id: String) -> void:
 	if _weapon_slot:
 		_weapon_slot.queue_free()
 		_weapon_slot = null
-	var model: String = CombatConfig.WEAPONS.get(id, {}).get("model", "")
-	var skel: Skeleton3D = _model.find_child(CharacterModel.SKELETON, true, false) if _model else null
-	var path: String = CombatConfig.WEAPON_DIR + model + ".glb"
-	if model == "" or skel == null or skel.find_bone("RightHand") < 0 or not ResourceLoader.exists(path):
-		return
-	_weapon_slot = BoneAttachment3D.new()
-	_weapon_slot.bone_name = "RightHand"
-	skel.add_child(_weapon_slot)
-	var w: Node3D = load(path).instantiate()
-	w.rotation = CombatConfig.GRIP_ROTATION
-	w.position = CombatConfig.GRIP_POSITION
-	_weapon_slot.add_child(w)
+	_weapon_slot = CharacterModel.attach_weapon(_model, id) if _model else null
 
 
 ## Rueda hacia donde se mueve; quieto, hacia donde mira la cámara.
@@ -673,8 +708,29 @@ func _on_combat(evt: String, data: Dictionary) -> void:
 		"roll":
 			node = "c_Roll"
 		"hit":
+			node = "c_Hit_Head" if data.get("zone", "") == "head" else "c_Hit_Chest"
+			_hurt(1.0)
+		"flinch":
+			_recoil = float(CombatConfig.FEEL.recoil)
+			_hurt(0.6)
+			return
+		"blocked":
+			_recoil = float(CombatConfig.FEEL.recoil) * 0.4
+			return
+		"parry":
+			# desvió el golpe: el brazo cede un poco y aviso en pantalla
+			_recoil = float(CombatConfig.FEEL.recoil) * 0.6
+			if HUD.instance:
+				HUD.instance.toast("¡Desviado!", 0.8)
+			return
+		"parried":
 			node = "c_Hit_Chest"
+		"tired":
+			if HUD.instance:
+				HUD.instance.flash_stamina()
+			return
 		"death":
+			_hurt(1.0)
 			node = "c_Death01"
 			_dead_t = 4.0
 			if HUD.instance:
@@ -686,17 +742,30 @@ func _on_combat(evt: String, data: Dictionary) -> void:
 	_playback().start(node)
 
 
+## Recibió daño: destello en el borde de la pantalla.
+func _hurt(k: float) -> void:
+	if HUD.instance:
+		HUD.instance.flash_hurt(k)
+
+
 ## Por cuadro: guardia (clip en bucle), volver al movimiento al terminar, y levantarse después de caer.
 func _combat_tick(delta: float) -> void:
 	if _tree == null:
 		return
 	var pb := _playback()
+	# sacudida: el cuerpo se echa atrás y vuelve (golpe que entra sin aturdir)
+	if _model:
+		_recoil = move_toward(_recoil, 0.0, delta * float(CombatConfig.FEEL.recoil_back) * maxf(_recoil, 0.05))
+		_model.rotation.x = -_recoil
 	if combat.state == Combatant.State.DEAD:
 		_dead_t -= delta
 		if _dead_t <= 0.0:
 			combat.revive()
 			pb.travel("move")
 		return
+	# mantener el clic derecho: al terminar otra acción vuelve a cubrirse solo
+	if armed and combat.state == Combatant.State.IDLE and not combat.guarding and Input.is_action_pressed("combat_guard"):
+		combat.set_guard(true)
 	if combat.state == Combatant.State.IDLE:
 		if combat.guarding:
 			if pb.get_current_node() != "c_Sword_Block":

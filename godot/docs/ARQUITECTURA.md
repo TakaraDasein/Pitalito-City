@@ -339,6 +339,14 @@ edificios armados con piezas y recorribles por dentro.
    Golpes: chispas, polvo de hueso y sangre (descargas GPU de `AmbienceSystem`), sonido del golpe y del tajo
    (`AudioSystem.impact/swing`), tensión de la imagen con enemigos cerca (saturación y contraste del entorno),
    uniforme de los Restos (ropa de camino teñida). Armado no se interactúa (como en la web).
+   Pulido (CombatConfig.FEEL, PARRY, HITSTUN, FRACTURE, PACK): hitstop en tiempo real, temblor de cámara (trauma),
+   ayuda de giro y medio paso al golpear, cancelar la recuperación rodando, parry (guardia recién levantada:
+   desvía, aturde al atacante y el contraataque pega × 1,6), reacción al golpe con clip y retroceso fuera de un
+   ataque, borde rojo y pantalla quebrada al recibir (shader `ui/shaders/fracture.gdshader`, desde el atacante),
+   enemigos por turnos (2 atacan, el resto rodea), que se cubren a veces, avisan antes de pegar y se hunden al
+   morir. Agarre de armas medido sobre la mano (`CharacterModel.attach_weapon`): mango a lo largo de la palma,
+   hoja por el lado del pulgar y filo hacia los nudillos (comprobado en la guardia: filo abajo-adelante). El arma
+   se guarda sola al subir a un vehículo o sentarse, y no se ve nadando.
    Falta: armas de fuego, sangre en el suelo, fauna, supervivencia, botín e inventario, historia y misiones,
    construcción por bloques.
 6. Oclusores por tile, LOD de toda la ciudad (`CityLOD`), y exportación (filtro de `data/world/*.json` y `*.bin`).

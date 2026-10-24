@@ -12,6 +12,10 @@ var yaw := 0.0
 var pitch := -0.25
 ## Blanco fijado del combate: la cámara gira sola hasta encuadrarlo (como en Dark Souls).
 var lock_target: Node3D
+## Temblor (modelo de "trauma"): sube con cada golpe y baja solo; el desplazamiento es trauma² para que los
+## golpes leves apenas se noten y los fuertes sí.
+var _trauma := 0.0
+var _shake_t := 0.0
 var _arm: SpringArm3D
 var camera: Camera3D
 
@@ -54,6 +58,24 @@ func _process(delta: float) -> void:
 		var to := lock_target.global_position - target.global_position
 		yaw = lerp_angle(yaw, atan2(-to.x, -to.z), minf(1.0, 6.0 * delta))
 	rotation = Vector3(pitch, yaw, 0.0)
+	if _trauma > 0.0 and camera:
+		# tiempo real: el temblor sigue durante el hitstop
+		var real := delta / maxf(Engine.time_scale, 0.01)
+		_shake_t += real * 38.0
+		var k := _trauma * _trauma
+		camera.h_offset = sin(_shake_t * 1.3) * 0.09 * k
+		camera.v_offset = sin(_shake_t * 1.9 + 1.1) * 0.07 * k
+		camera.rotation.z = sin(_shake_t * 1.1 + 2.3) * 0.025 * k
+		_trauma = maxf(0.0, _trauma - real * 1.6)
+		if _trauma == 0.0:
+			camera.h_offset = 0.0
+			camera.v_offset = 0.0
+			camera.rotation.z = 0.0
 	if target == null:
 		return
 	global_position = global_position.lerp(target.global_position, minf(1.0, 14.0 * delta))
+
+
+## Sacude la cámara (0..1; se acumula hasta 1).
+func shake(amount: float) -> void:
+	_trauma = minf(1.0, _trauma + amount)

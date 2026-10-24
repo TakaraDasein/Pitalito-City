@@ -19,6 +19,11 @@ var _bars: VBoxContainer
 var _lock_mark: VBoxContainer
 var _lock_name: Label
 var _lock_bar: ProgressBar
+var _hurt: TextureRect      # borde rojo al recibir daño (se apaga solo)
+var _hurt_a := 0.0
+var _stamina_flash := 0.0
+var _fracture: ColorRect    # vidrio quebrado al recibir (shader); amount se apaga solo
+var _fracture_a := 0.0
 
 const BLUE := Color("#005b8c")    # placas de nomenclatura de Pitalito
 const ZONE_BANNER_TIME := 3.0
@@ -353,6 +358,62 @@ func _build_combat() -> void:
 	dot.add_theme_color_override("font_color", GuaduaTheme.CREMA)
 	_lock_mark.add_child(dot)
 	_lock_mark.visible = false
+	# borde de daño: degradado radial transparente al centro, sangre en las orillas; no tapa clics
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
+	g.colors = PackedColorArray([Color(GuaduaTheme.SALUD, 0.0), Color(GuaduaTheme.SALUD, 0.0), Color(GuaduaTheme.SALUD, 0.85)])
+	var tex := GradientTexture2D.new()
+	tex.gradient = g
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 1.0)
+	_hurt = TextureRect.new()
+	_hurt.texture = tex
+	_hurt.stretch_mode = TextureRect.STRETCH_SCALE
+	_hurt.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_hurt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hurt.modulate.a = 0.0
+	_root.add_child(_hurt)
+	_root.move_child(_hurt, 0)
+	_fracture = ColorRect.new()
+	_fracture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_fracture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fm := ShaderMaterial.new()
+	fm.shader = preload("res://src/ui/shaders/fracture.gdshader")
+	_fracture.material = fm
+	_fracture.visible = false
+	_root.add_child(_fracture)
+	_root.move_child(_fracture, 0)
+	EventBus.combat_hit.connect(_on_combat_hit)
+
+
+## Golpe que recibe el jugador: la pantalla se quiebra desde el lado de donde vino, más cuanto más daño.
+func _on_combat_hit(res: Dictionary) -> void:
+	if combat == null or res.get("target") != combat or res.get("parried", false):
+		return
+	var f: Dictionary = CombatConfig.FRACTURE
+	var k: float = float(f.blocked) if res.blocked else clampf(float(res.damage) / float(f.full_damage), float(f.min), 1.0)
+	if res.get("dead", false):
+		k = 1.0
+	var center := Vector2(0.5, 0.5)
+	var from: Node3D = res.get("attacker_body")
+	if from and camera and not camera.is_position_behind(from.global_position):
+		var vp := get_viewport().get_visible_rect().size
+		center = (camera.unproject_position(from.global_position + Vector3.UP * 1.2) / vp).clamp(Vector2(0.15, 0.15), Vector2(0.85, 0.85))
+	var m := _fracture.material as ShaderMaterial
+	m.set_shader_parameter("center", center)
+	m.set_shader_parameter("seed", randf() * 100.0)
+	_fracture_a = maxf(_fracture_a, k)
+
+
+## Destello de daño (0..1): se suma y se apaga en medio segundo.
+func flash_hurt(k: float) -> void:
+	_hurt_a = minf(1.0, _hurt_a + 0.55 * k)
+
+
+## La barra de resistencia parpadea: no alcanzó para golpear o rodar.
+func flash_stamina() -> void:
+	_stamina_flash = 0.6
 
 
 func _bar(parent: Container, fill: Color, size: Vector2) -> ProgressBar:
@@ -375,6 +436,17 @@ func _update_combat() -> void:
 	_bars.visible = player.visible and (player.get("armed") or hurt)
 	_health.value = combat.health / float(combat.stats.health)
 	_stamina.value = combat.stamina / float(combat.stats.stamina)
+	var dt := get_process_delta_time() / maxf(Engine.time_scale, 0.01)
+	_hurt_a = maxf(0.0, _hurt_a - dt * 1.8)
+	# con poca vida el borde queda latiendo
+	var low := clampf(1.0 - _health.value / 0.3, 0.0, 1.0) * (0.25 + 0.15 * sin(Time.get_ticks_msec() * 0.006))
+	_hurt.modulate.a = maxf(_hurt_a, low if combat.is_alive() else 0.0)
+	_stamina_flash = maxf(0.0, _stamina_flash - dt)
+	_fracture_a = maxf(0.0, _fracture_a - dt / float(CombatConfig.FRACTURE.fade))
+	_fracture.visible = _fracture_a > 0.001
+	if _fracture.visible:
+		(_fracture.material as ShaderMaterial).set_shader_parameter("amount", _fracture_a * _fracture_a * (3.0 - 2.0 * _fracture_a))
+	_stamina.modulate = Color(1, 1, 1, 0.35 if fmod(_stamina_flash * 10.0, 2.0) > 1.0 else 1.0)
 	var t := combat.lock_target
 	_lock_mark.visible = t != null and t.is_alive() and camera != null and not camera.is_position_behind(t.body.global_position + Vector3.UP * 1.0)
 	if _lock_mark.visible:

@@ -29,7 +29,7 @@ func _process(delta: float) -> void:
 		# muertos de hace rato o zona lejana: se retiran
 		for e: Enemy in list.duplicate():
 			var far := Vector2(e.global_position.x - p.x, e.global_position.z - p.z).length() > CombatConfig.SPAWN.despawn_radius
-			if far or e.dead_for(12.0):
+			if far or e.gone():
 				if not e.self_c.is_alive():
 					_cooldown[z.id] = CombatConfig.SPAWN.respawn_seconds
 				list.erase(e)

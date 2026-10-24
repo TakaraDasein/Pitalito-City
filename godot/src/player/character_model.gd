@@ -97,6 +97,31 @@ static func _dress(model: Node3D, look: Dictionary, sex: String) -> void:
 		_hat(skel)
 
 
+## Cuelga el arma de la mano derecha empuñada de verdad (CombatConfig.GRIP_*): el centro del puño se mide en
+## este cuerpo (la mano femenina es más chica) y el arma se pone con su empuñadura ahí. null si no hay arma.
+static func attach_weapon(model: Node3D, id: String) -> BoneAttachment3D:
+	var w: Dictionary = CombatConfig.WEAPONS.get(id, {})
+	var file: String = w.get("model", "")
+	var skel: Skeleton3D = model.find_child(SKELETON, true, false) if model else null
+	var path := CombatConfig.WEAPON_DIR + file + ".glb"
+	if file == "" or skel == null or skel.find_bone("RightHand") < 0 or not ResourceLoader.exists(path):
+		return null
+	var hand := skel.get_bone_global_rest(skel.find_bone("RightHand"))
+	var knuckle := Vector3(0, 0.1, 0)
+	if skel.find_bone("RightMiddleProximal") >= 0:
+		knuckle = hand.affine_inverse() * skel.get_bone_global_rest(skel.find_bone("RightMiddleProximal")).origin
+	var palm := Vector3(0.0, knuckle.y * CombatConfig.GRIP_ALONG, CombatConfig.GRIP_PALM)
+	var slot := BoneAttachment3D.new()
+	slot.name = "arma"
+	slot.bone_name = "RightHand"
+	skel.add_child(slot)
+	var mesh: Node3D = load(path).instantiate()
+	var b := CombatConfig.GRIP_BASIS
+	mesh.transform = Transform3D(b * Basis(Vector3.UP, float(w.get("twist", 0.0))), palm - b * Vector3(0, float(w.get("grip", 0.0)), 0))
+	slot.add_child(mesh)
+	return slot
+
+
 ## Viste un cuerpo cualquiera con estas piezas (mismo armazón), teñidas de un color: el uniforme de los Restos.
 static func dress_parts(model: Node3D, parts: Array, sex: String, color: Color) -> void:
 	var skel: Skeleton3D = model.find_child(SKELETON, true, false)

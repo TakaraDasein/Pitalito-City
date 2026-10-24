@@ -4,6 +4,9 @@ extends CharacterBody3D
 ## que el jugador + Combatant + la decisión de la web (web/src/entities/combat/Enemy.js, su árbol inline):
 ## muerto no hace nada; sin nadie a la vista vigila girando despacio; si ve al jugador lo encara, se acerca y a
 ## distancia de golpe pega (con pausa entre golpes) o, de vez en cuando, se aparta rodando.
+## Pulido de Godot (CombatConfig.PACK y FEEL): solo unos pocos atacan a la vez (turno en CombatSystem) y el
+## resto rodea al jugador esperando; avisa antes de pegar (sonido corto); se sacude al recibir; el cuerpo se
+## hunde en el suelo un rato después de caer.
 ##
 ## No trae combate propio: el mismo Combatant y el mismo CombatSystem que el jugador.
 
@@ -24,6 +27,12 @@ var _time := 0.0
 var _push := Vector3.ZERO
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _dead_t := 0.0
+var _recoil := 0.0
+var _circle_dir := 1.0       # hacia qué lado rodea esperando turno
+var _circle_flip := 0.0
+var _saw_swing := false      # ya decidió si se cubre de este golpe del jugador
+var _guard_left := 0.0       # cuánto le queda cubierto
+var _guard_delay := -1.0     # reacción: se cubre después de esta espera
 
 
 static func create(kind: String, at: Vector3, zone_id := "") -> Enemy:
@@ -57,7 +66,7 @@ func _ready() -> void:
 		_anim.add_animation_library(CharacterModel.LIB, CharacterModel.library())
 		var u: Dictionary = CombatConfig.ENEMY_UNIFORM
 		CharacterModel.dress_parts(_model, u.parts, u.sex, u.color)
-		_attach_weapon(CombatConfig.WEAPONS[spec.weapon].model)
+		CharacterModel.attach_weapon(_model, spec.weapon)
 		_anim.play(CharacterModel.clip("Sword_Idle"))
 	self_c = Combatant.new(self, spec.stats, spec.weapon, "faccion", spec.name)
 	self_c.on_trigger = _on_combat
@@ -68,20 +77,6 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	if CombatSystem.instance and self_c:
 		CombatSystem.instance.remove(self_c)
-
-
-func _attach_weapon(model: String) -> void:
-	var skel: Skeleton3D = _model.find_child(CharacterModel.SKELETON, true, false)
-	var path: String = CombatConfig.WEAPON_DIR + model + ".glb"
-	if skel == null or skel.find_bone("RightHand") < 0 or not ResourceLoader.exists(path):
-		return
-	var slot := BoneAttachment3D.new()
-	slot.bone_name = "RightHand"
-	skel.add_child(slot)
-	var w: Node3D = load(path).instantiate()
-	w.rotation = CombatConfig.GRIP_ROTATION
-	w.position = CombatConfig.GRIP_POSITION
-	slot.add_child(w)
 
 
 func push(v: Vector3) -> void:
@@ -95,7 +90,12 @@ func _on_combat(evt: String, data: Dictionary) -> void:
 	match evt:
 		"attack": clip = str(data.clip)
 		"roll": clip = "Roll"
-		"hit": clip = "Hit_Chest"
+		"hit": clip = "Hit_Head" if data.get("zone", "") == "head" else "Hit_Chest"
+		"parried": clip = "Hit_Chest"
+		"parry": clip = "Sword_Block"
+		"flinch", "blocked":
+			_recoil = float(CombatConfig.FEEL.recoil) * (0.4 if evt == "blocked" else 1.0)
+			return
 		"death": clip = "Death01"
 	var full := CharacterModel.clip(clip)
 	if not _anim.has_animation(full):
@@ -104,6 +104,11 @@ func _on_combat(evt: String, data: Dictionary) -> void:
 	if data.has("lock"): # el clip dura lo que el golpe
 		speed = _anim.get_animation(full).length / maxf(float(data.lock), 0.05)
 	_anim.play(full, 0.1, speed)
+	if evt == "attack" and AudioSystem.instance:
+		# aviso: el tajo suena al empezar la preparación, así se puede leer y esquivar
+		AudioSystem.instance.swing(0.7)
+	if evt == "death" and CombatSystem.instance:
+		CombatSystem.instance.release_turn(self_c)
 
 
 # ───────────── Percepción y decisión ─────────────
@@ -127,27 +132,48 @@ func _perceive() -> void:
 func _physics_process(delta: float) -> void:
 	_time += delta
 	var c := self_c
-	var move := 0.0
+	var move := Vector3.ZERO
+	var running := false
+	var cs := CombatSystem.instance
 	if c.is_alive():
 		_perceive()
-		if not c.is_busy():
+		if cs and target == null:
+			cs.release_turn(c)
+		_react(delta)
+		if not c.is_busy() and not c.guarding:
 			if target:
 				var to := target.body.global_position - global_position
+				to.y = 0.0
 				rotation.y = lerp_angle(rotation.y, atan2(-to.x, -to.z), minf(1.0, delta * 6.0))
-				if dist <= float(ai.attack_distance):
+				var my_turn := cs.take_turn(c) if cs else true
+				var reach := float(ai.attack_distance)
+				if my_turn and dist <= reach:
 					if randf() < float(ai.dodge) * delta: # de vez en cuando se aparta a un lado
 						var side := global_basis.x * (1.0 if randf() < 0.5 else -1.0)
 						c.roll(Vector3(side.x, 0, side.z).normalized())
 					elif _time >= _next_swing and c.attack():
-						_next_swing = _time + float(ai.pause)
+						_next_swing = _time + float(ai.pause) * randf_range(0.8, 1.3)
+						# suelta el turno al pegar: si hay más esperando, se van alternando
+						if cs:
+							cs.release_turn(c)
+				elif my_turn:
+					move = to.normalized() * float(ai.speed) * (1.6 if dist > 8.0 else 1.0)
+					running = dist > 8.0
 				else:
-					move = float(ai.speed) * (1.6 if dist > 8.0 else 1.0)
+					# sin turno: rodea a distancia, cambiando de lado de vez en cuando (no se amontonan)
+					_circle_flip -= delta
+					if _circle_flip <= 0.0:
+						_circle_flip = randf_range(1.5, 3.5)
+						_circle_dir = -_circle_dir if randf() < 0.5 else _circle_dir
+					var keep: float = CombatConfig.PACK.circle_distance
+					var radial := to.normalized() * clampf(dist - keep, -1.0, 1.0) * float(ai.speed)
+					var tangent := to.normalized().cross(Vector3.UP) * _circle_dir * float(CombatConfig.PACK.circle_speed)
+					move = radial + tangent
 			else:
 				rotation.y += delta * 0.35 # vigila: gira despacio sobre su sitio
 	else:
 		_dead_t += delta
-	var fwd := -global_basis.z
-	var v := Vector3(fwd.x, 0, fwd.z) * move
+	var v := move
 	if c.state == Combatant.State.ROLL:
 		v = c.roll_step(delta) / maxf(delta, 0.0001)
 	velocity.x = v.x + _push.x
@@ -155,17 +181,61 @@ func _physics_process(delta: float) -> void:
 	_push = _push.lerp(Vector3.ZERO, minf(1.0, delta * 8.0))
 	if not is_on_floor():
 		velocity.y -= _gravity * delta
-	move_and_slide()
+	# el cuerpo, después de un rato, se hunde en el suelo (sin colisión) y luego lo retira FactionSystem
+	var cp: Dictionary = CombatConfig.CORPSE
+	if not c.is_alive() and _dead_t > float(cp.stay):
+		collision_layer = 0
+		collision_mask = 0
+		if _model:
+			_model.position.y = -1.9 * minf(1.0, (_dead_t - float(cp.stay)) / float(cp.sink))
+	else:
+		move_and_slide()
 	var ground := WorldData.height(global_position.x, global_position.z)
 	if global_position.y < ground - 2.0:
 		global_position.y = ground + 0.5
-	# animación de andar / quieto cuando no hay clip de combate en curso
-	if _anim and c.is_alive() and not c.is_busy():
-		var want := CharacterModel.clip("Walk" if move > 0.0 and move < 4.0 else ("Jog_Fwd" if move > 0.0 else "Sword_Idle"))
+	if _model:
+		_recoil = move_toward(_recoil, 0.0, delta * float(CombatConfig.FEEL.recoil_back) * maxf(_recoil, 0.05))
+		_model.rotation.x = -_recoil
+	# andar / correr / de lado / quieto cuando no hay clip de combate en curso
+	if _anim and c.is_alive() and not c.is_busy() and not c.guarding:
+		var speed := Vector2(move.x, move.z).length()
+		var want := CharacterModel.clip("Sword_Idle")
+		if speed > 0.2:
+			want = CharacterModel.clip("Jog_Fwd" if running else "Walk")
 		if _anim.current_animation != want:
 			_anim.play(want, 0.2)
+
+
+## Ver venir el golpe del jugador: con probabilidad `block` se cubre, tras una reacción al azar (si llega justo,
+## desvía). Se baja la guardia al rato.
+func _react(delta: float) -> void:
+	var c := self_c
+	var p: Combatant = target
+	var swinging := p != null and p.state == Combatant.State.ATTACK and p.phase == "windup"
+	if swinging and not _saw_swing and dist <= float(p.weapon.reach) + 0.6:
+		_saw_swing = true
+		if randf() < float(ai.get("block", 0.0)) and not c.is_busy():
+			_guard_delay = randf_range(0.0, 0.22)
+	elif not swinging and p != null and p.state != Combatant.State.ATTACK:
+		_saw_swing = false
+	if _guard_delay >= 0.0:
+		_guard_delay -= delta
+		if _guard_delay < 0.0:
+			c.set_guard(true)
+			_guard_left = 0.7
+			if _anim:
+				_anim.play(CharacterModel.clip("Sword_Block"), 0.08)
+	if c.guarding:
+		_guard_left -= delta
+		if _guard_left <= 0.0 or c.is_busy():
+			c.set_guard(false)
 
 
 ## Lleva muerto más de `seconds` (para retirarlo).
 func dead_for(seconds: float) -> bool:
 	return not self_c.is_alive() and _dead_t > seconds
+
+
+## Retirar ya (se hundió del todo).
+func gone() -> bool:
+	return not self_c.is_alive() and _dead_t > float(CombatConfig.CORPSE.stay) + float(CombatConfig.CORPSE.sink)

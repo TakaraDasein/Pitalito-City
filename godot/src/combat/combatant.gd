@@ -5,7 +5,9 @@ extends RefCounted
 ##
 ## Es el mismo objeto para el jugador y los enemigos: lo único que cambia son las cifras y el arma. La IA llama a
 ## attack() y roll() igual que lo hace el teclado. No conoce a los demás: quién recibe el golpe lo decide
-## CombatSystem. Al cuerpo le avisa por `on_trigger(evento, datos)`: "attack" {clip, lock}, "roll", "hit", "death".
+## CombatSystem. Al cuerpo le avisa por `on_trigger(evento, datos)`: "attack" {clip, lock}, "roll", "hit" {zone},
+## "flinch" {zone} (el golpe entró sin aturdir: solo se sacude), "death", "blocked", "tired" (no le alcanza la
+## resistencia para lo que pidió).
 
 enum State { IDLE, ATTACK, ROLL, HIT, DEAD }
 
@@ -34,6 +36,10 @@ var _since_swing := INF
 var _queued := false
 var _times := {}
 var hit_mult := 1.0
+var _guard_t := INF          # tiempo desde que levantó la guardia (la ventana de parry es el principio)
+var _parry_ready := true     # se vuelve a abrir la ventana tras CombatConfig.PARRY.cooldown
+var _since_guard_drop := INF
+var riposte := false         # lo desviaron: el siguiente golpe que reciba pega más
 
 
 func _init(b: Node3D, s: Dictionary, w := "manos", t := "player", n := "") -> void:
@@ -72,7 +78,10 @@ func attack() -> bool:
 	if state == State.ATTACK and phase != "windup":
 		_queued = true
 		return false
-	if is_busy() or stamina < float(weapon.stamina):
+	if is_busy():
+		return false
+	if stamina < float(weapon.stamina):
+		_fire("tired", {})
 		return false
 	_spend(weapon.stamina)
 	var combo: Array = weapon.combo
@@ -92,8 +101,15 @@ func attack() -> bool:
 
 ## Rueda en una dirección del mundo (vector horizontal normalizado).
 func roll(dir: Vector3) -> bool:
-	if not is_alive() or is_busy() or stamina < float(CombatConfig.ROLL.stamina):
+	# en la recuperación de un golpe se puede cancelar rodando (no en la preparación ni en el golpe mismo)
+	var cancel: bool = CombatConfig.FEEL.roll_cancel and state == State.ATTACK and phase == "recover"
+	if not is_alive() or (is_busy() and not cancel):
 		return false
+	if stamina < float(CombatConfig.ROLL.stamina):
+		_fire("tired", {})
+		return false
+	phase = ""
+	_queued = false
 	_spend(CombatConfig.ROLL.stamina)
 	state = State.ROLL
 	_timer = CombatConfig.ROLL.duration
@@ -104,14 +120,48 @@ func roll(dir: Vector3) -> bool:
 
 
 func set_guard(on: bool) -> void:
+	var was := guarding
 	guarding = on and is_alive() and not is_busy()
+	if guarding and not was:
+		# la ventana de parry solo se abre si no se apretó hace un momento (no vale machacar)
+		_guard_t = 0.0 if _since_guard_drop >= float(CombatConfig.PARRY.cooldown) else INF
+	elif was and not guarding:
+		_since_guard_drop = 0.0
+
+
+## ¿Está en la ventana de parry?
+func in_parry_window() -> bool:
+	return guarding and _guard_t <= float(CombatConfig.PARRY.window)
+
+
+## Aturdido por un parry: suelta lo que hacía y queda expuesto.
+func parried(seconds: float) -> void:
+	if not is_alive():
+		return
+	state = State.HIT
+	phase = ""
+	_queued = false
+	_timer = seconds
+	riposte = true
+	_fire("parried", {"lock": seconds})
 
 
 ## Recibe un golpe: { damage, blocked, staggered, dead } o {} si no entró (muerto o invulnerable).
-func take_hit(damage: float, poise: float, zone := "body") -> Dictionary:
+func take_hit(damage: float, poise: float, zone := "body", attacker: Combatant = null) -> Dictionary:
 	if not is_alive() or _invulnerable > 0.0:
 		return {}
+	# parry: guardia recién levantada contra un golpe de frente → sin daño, el atacante queda aturdido
+	if attacker and in_parry_window():
+		var pc: Dictionary = CombatConfig.PARRY
+		attacker.parried(float(pc.stagger))
+		stamina = minf(float(stats.stamina), stamina + float(pc.stamina_back))
+		_guard_t = INF
+		_fire("parry", {})
+		return {"damage": 0.0, "blocked": true, "parried": true, "staggered": false, "dead": false}
 	var mult: float = CombatConfig.HIT_MULTIPLIER.get(zone, 1.0)
+	if riposte: # contraataque tras un parry
+		mult *= float(CombatConfig.PARRY.riposte)
+		riposte = false
 	var dmg := damage * mult
 	var blocked := false
 	if guarding:
@@ -133,7 +183,21 @@ func take_hit(damage: float, poise: float, zone := "body") -> Dictionary:
 	if staggered:
 		state = State.HIT
 		_timer = 0.5
-		_fire("hit", {})
+		phase = ""
+		_queued = false
+		_fire("hit", {"zone": zone})
+	elif blocked:
+		_fire("blocked", {"zone": zone})
+	elif state == State.ATTACK:
+		_fire("flinch", {"zone": zone}) # atacando aguanta: solo se sacude
+	else:
+		# fuera de un ataque, el golpe se siente: clip de recibir y un instante sin poder actuar
+		state = State.HIT
+		_timer = float(CombatConfig.HITSTUN.time)
+		phase = ""
+		_queued = false
+		guarding = false
+		_fire("hit", {"zone": zone, "light": true, "lock": float(CombatConfig.HITSTUN.time) + 0.2})
 	return {"damage": dmg, "blocked": blocked, "staggered": staggered, "dead": false}
 
 
@@ -157,6 +221,11 @@ func roll_step(dt: float) -> Vector3:
 
 func update(dt: float) -> void:
 	_invulnerable = maxf(0.0, _invulnerable - dt)
+	_guard_t += dt
+	if not guarding:
+		_since_guard_drop += dt
+	if state != State.HIT:
+		riposte = riposte and state != State.IDLE
 	if state != State.ATTACK:
 		_since_swing += dt
 	_regen(dt)

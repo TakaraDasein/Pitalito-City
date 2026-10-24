@@ -136,10 +136,35 @@ func _ready() -> void:
 func _combat_shots() -> void:
 	if _main.state != _main.State.PLAYING:
 		_main._start_playing()
+	seed(1234) # el azar de la IA (esquivas, pausas) igual en cada corrida
 	var player: Player = _main.player
 	var sp: Dictionary = WorldData.spawn()
 	player.place(sp.x, sp.z, sp.heading)
 	await get_tree().create_timer(1.0).timeout
+	# agarre de cada arma: de cerca, de lado, en la guardia quieta
+	var cam := Camera3D.new()
+	cam.fov = 40
+	add_child(cam)
+	for i in CombatConfig.ARSENAL.size():
+		if i == 0:
+			continue
+		player._weapon_index = i
+		player.set_armed(true)
+		await get_tree().create_timer(0.5).timeout
+		var side := player.global_basis.x
+		cam.global_position = player.global_position + side * 1.6 - player.global_basis.z * 0.9 + Vector3.UP * 1.3
+		cam.look_at(player.global_position + Vector3.UP * 1.0)
+		cam.make_current()
+		await _shot("agarre_" + CombatConfig.ARSENAL[i])
+		var slot: Node3D = player._weapon_slot
+		if slot and slot.get_child_count() > 0:
+			var wb: Basis = (slot.get_child(0) as Node3D).global_basis
+			var fwd := -player.global_basis.z
+			print("agarre %s: hoja (+Y) arriba=%.2f adelante=%.2f · filo (+X) arriba=%.2f adelante=%.2f" % [CombatConfig.ARSENAL[i],
+				wb.y.normalized().y, wb.y.normalized().dot(fwd), wb.x.normalized().y, wb.x.normalized().dot(fwd)])
+	cam.queue_free()
+	_main.camera_rig.camera.make_current()
+	player._weapon_index = 1
 	player.set_armed(true)
 	var fwd := -player.global_basis.z
 	var at := player.global_position + fwd * 6.0
@@ -181,16 +206,82 @@ func _combat_shots() -> void:
 			await get_tree().physics_frame
 		if not enemy.self_c.is_alive():
 			break
+		while player.combat.stamina < float(player.combat.weapon.stamina):
+			await get_tree().physics_frame
 		var to := enemy.global_position - player.global_position
 		to.y = 0.0
 		if to.length() > 1.6: # se apartó (rodando o empujado): acercarse a distancia de golpe
 			player.global_position = enemy.global_position - to.normalized() * 1.4
 		player.rotation.y = atan2(-to.x, -to.z)
-		player.combat.attack()
+		var ok := player.combat.attack()
+		print("  golpe %d: pudo=%s dist=%.2f estado_enemigo=%d vida=%.0f resistencia=%.0f" % [i, ok, to.length(), enemy.self_c.state, enemy.self_c.health, player.combat.stamina])
 		await get_tree().physics_frame
 	await get_tree().create_timer(1.5).timeout
 	print("combate: centinela vivo = %s, vida %.0f" % [enemy.self_c.is_alive(), enemy.self_c.health])
 	await _shot("combate_caido")
+	# manada: tres a la vez; solo dos deben ir a pegar, el otro rodea
+	player.combat.revive()
+	var pack := []
+	for k in 3:
+		var a := player.rotation.y + (k - 1) * 0.8
+		var q := player.global_position + Vector3(-sin(a), 0, -cos(a)) * 9.0
+		pack.push_back(_main.factions.spawn(["centinela", "machetero", "cabo"][k], q))
+	_main.camera_rig.pitch = -0.45
+	var f1 := Engine.get_physics_frames()
+	var most := 0
+	while Engine.get_physics_frames() - f1 < 300:
+		await get_tree().physics_frame
+		var near := pack.filter(func(e): return e.dist < 2.3).size()
+		most = maxi(most, near)
+	print("combate: manada — a la vez cerca del jugador como mucho %d de 3; turnos ocupados %d" % [most, _main.combat._attackers.size()])
+	await _shot("combate_manada")
+	for e in pack:
+		e.queue_free()
+	await get_tree().physics_frame
+	# parry: un machetero delante; guardia justo antes de que llegue su golpe
+	player.combat.revive()
+	await get_tree().create_timer(2.2).timeout # revive deja 2 s de invulnerabilidad
+	var m: Enemy = _main.factions.spawn("machetero", player.global_position - player.global_basis.z * 2.5)
+	m.ai = m.ai.duplicate()
+	m.ai.block = 0.0
+	var fp := Engine.get_physics_frames()
+	while Engine.get_physics_frames() - fp < 600 and not (m.self_c.state == Combatant.State.ATTACK and m.self_c.phase == "windup"):
+		await get_tree().physics_frame
+	# su preparación dura windup s: levantar la guardia 0,1 s antes del golpe
+	var wait := float(m.self_c.weapon.windup) - 0.1
+	var fw := Engine.get_physics_frames()
+	while (Engine.get_physics_frames() - fw) / 60.0 < wait:
+		await get_tree().physics_frame
+	var hp := player.combat.health
+	print("combate: parry — el machetero empieza su golpe a %.2f m (alcance %.1f), jugador ocupado=%s" % [m.dist, m.self_c.weapon.reach, player.combat.is_busy()])
+	player.combat.set_guard(true)
+	print("combate: parry — guardia=%s ventana=%s" % [player.combat.guarding, player.combat.in_parry_window()])
+	fw = Engine.get_physics_frames()
+	while Engine.get_physics_frames() - fw < 20:
+		await get_tree().physics_frame
+	await _shot("combate_parry")
+	print("combate: parry — vida del jugador %.0f → %.0f, machetero aturdido = %s" % [hp, player.combat.health, m.self_c.state == Combatant.State.HIT])
+	player.combat.set_guard(false)
+	var mh := m.self_c.health
+	var to2 := m.global_position - player.global_position
+	player.rotation.y = atan2(-to2.x, -to2.z)
+	player.combat.attack()
+	while player.combat.is_busy():
+		await get_tree().physics_frame
+	print("combate: contraataque — vida del machetero %.0f → %.0f (sin parry el machete quita 26)" % [mh, m.self_c.health])
+	# recibir: sin cubrirse, que le pegue; cuánto retrocede
+	var p0 := player.global_position
+	hp = player.combat.health
+	fw = Engine.get_physics_frames()
+	while Engine.get_physics_frames() - fw < 400 and player.combat.health >= hp:
+		await get_tree().physics_frame
+	fw = Engine.get_physics_frames()
+	while Engine.get_physics_frames() - fw < 8:
+		await get_tree().physics_frame
+	await _shot("combate_recibe")
+	while Engine.get_physics_frames() - fw < 30:
+		await get_tree().physics_frame
+	print("combate: recibe — vida %.0f → %.0f, retrocede %.2f m, estado %d" % [hp, player.combat.health, Vector2(player.global_position.x - p0.x, player.global_position.z - p0.z).length(), player.combat.state])
 
 
 ## Ambiente: busca un sitio con árboles cerca del parque y lo retrata de noche (luciérnagas), de día (hojas,
