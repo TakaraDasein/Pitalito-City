@@ -307,6 +307,19 @@ func _seat_in_vehicle() -> void:
 	EventBus.vehicle_entered.emit(vehicle)
 
 
+## Tomar un vehículo del tráfico (como PlayerSystem.takeTraffic de la web): sale del tráfico y el del jugador pasa a
+## ser uno igual en el mismo sitio; luego se sube con la coreografía de siempre.
+func _take_traffic(car: Dictionary) -> void:
+	var t := traffic.take_car(car)
+	set_vehicle(t.type)
+	var xf: Transform3D = t.xf
+	vehicle.global_transform = Transform3D(xf.basis, xf.origin + Vector3.UP * 0.3)
+	vehicle.linear_velocity = Vector3.ZERO
+	vehicle.angular_velocity = Vector3.ZERO
+	hud.toast("Tomaste un %s del tráfico" % String(vehicle.spec.name).to_lower())
+	_enter_vehicle()
+
+
 ## Bajar: detenido, el jugador sale del asiento con el clip de levantarse; en marcha (> 8 km/h) sale de una vez.
 func _exit_vehicle() -> void:
 	_driving = false
@@ -375,6 +388,10 @@ func _interaction() -> Array:
 	var to_car := here.distance_to(vehicle.global_position)
 	if to_car < ENTER_DISTANCE:
 		options.push_back([to_car, "Subir al " + vehicle.spec.name, func(): _enter_vehicle()])
+	else:
+		var tc := traffic.car_near(here)
+		if not tc.is_empty():
+			options.push_back([here.distance_to(tc.body.global_position), "Tomar el " + String(VehiclesConfig.spec(tc.type).name).to_lower(), func(): _take_traffic(tc)])
 	var door := landmarks.door_near(here)
 	if not door.is_empty():
 		options.push_back([Vector2(door.pos.x - here.x, door.pos.z - here.z).length(),

@@ -1,7 +1,7 @@
 extends Node
 ## Herramienta: capturas de la carga y los menús (screenshots/menu_*.png). Uso: godot res://tools/menu_shots.tscn
 ## Para no recorrer todo, se nombran las secciones que interesan: `godot res://tools/menu_shots.tscn -- personaje`
-## (garaje, personaje, menus, juego, pies, banca, subir, faros; varias separadas por espacio). Carga y portada se capturan siempre.
+## (garaje, personaje, menus, juego, pies, banca, subir, faros, tomar; varias separadas por espacio). Carga y portada se capturan siempre.
 
 var _main: Node
 var _only := OS.get_cmdline_user_args()
@@ -122,6 +122,8 @@ func _ready() -> void:
 		await _mount_shots()
 	if _want("faros"):
 		await _lights_shots()
+	if _want("tomar"):
+		await _take_shots()
 	get_tree().quit()
 
 
@@ -245,6 +247,36 @@ func _lights_shots() -> void:
 	print("faros: noche %.2f, energía %.1f" % [_main.sky.night, _main.vehicle._lamp.light_energy if _main.vehicle._lamp else -1.0])
 	await _shot("faros_noche")
 	_main.sky.set_hour(10.0)
+
+
+## Tomar un vehículo del tráfico: junto a uno, la interacción ofrece tomarlo y se sube con la coreografía.
+func _take_shots() -> void:
+	if _main.state != _main.State.PLAYING:
+		_main._start_playing()
+	_main.skip_mount = false
+	var tr: TrafficSystem = _main.traffic
+	while tr.count() < 4:
+		await get_tree().process_frame
+	var car: Dictionary = tr._cars[0]
+	var body: Node3D = car.body
+	var side := body.global_basis.x * 2.4
+	_main.player.place(body.global_position.x + side.x, body.global_position.z + side.z)
+	_main.vehicle.place(body.global_position.x + 40.0, body.global_position.z + 40.0) # el propio, lejos
+	await get_tree().physics_frame
+	var it: Array = _main._interaction()
+	print("tomar: opción = ", it[1] if not it.is_empty() else "ninguna")
+	if it.is_empty():
+		_main.skip_mount = true
+		return
+	(it[2] as Callable).call()
+	await get_tree().create_timer(1.2).timeout
+	await _shot("tomar_subiendo")
+	while _main.player.is_mounting():
+		await get_tree().process_frame
+	print("tomar: manejando un %s = %s (tráfico: %d)" % [_main.vehicle.spec.type, _main._driving, tr.count()])
+	await get_tree().create_timer(0.5).timeout
+	await _shot("tomar_manejando")
+	_main.skip_mount = true
 
 
 func _shot(name: String) -> void:

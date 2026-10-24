@@ -28,6 +28,28 @@ func count() -> int:
 	return _cars.size()
 
 
+## Carro del tráfico a menos de su media eslora + `reach` de `p` (el más cercano), o {}.
+func car_near(p: Vector3, reach := 2.2) -> Dictionary:
+	var best := {}
+	var bd := INF
+	for car in _cars:
+		var d: float = car.body.global_position.distance_to(p)
+		if d < float(car.half_len) + reach and d < bd:
+			bd = d
+			best = car
+	return best
+
+
+## Lo saca del tráfico (vuelve al pool) y devuelve dónde estaba: el jugador se queda con uno igual ahí mismo.
+func take_car(car: Dictionary) -> Dictionary:
+	var out := {"type": car.type, "xf": (car.body as Node3D).global_transform}
+	var i := _cars.find(car)
+	if i >= 0:
+		_release(car)
+		_cars.remove_at(i)
+	return out
+
+
 func _physics_process(delta: float) -> void:
 	if focus == null or _net == null:
 		return
