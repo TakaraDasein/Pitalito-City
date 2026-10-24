@@ -1,7 +1,7 @@
 extends Node
 ## Herramienta: capturas de la carga y los menús (screenshots/menu_*.png). Uso: godot res://tools/menu_shots.tscn
 ## Para no recorrer todo, se nombran las secciones que interesan: `godot res://tools/menu_shots.tscn -- personaje`
-## (garaje, personaje, menus, juego, pies, banca, subir, faros, tomar, ambiente, combate, botin, disparos, criaturas; varias separadas por espacio). Carga y portada se capturan siempre.
+## (garaje, personaje, menus, juego, pies, banca, subir, faros, tomar, ambiente, combate, botin, disparos, criaturas, monte; varias separadas por espacio). Carga y portada se capturan siempre.
 
 var _main: Node
 var _only := OS.get_cmdline_user_args()
@@ -134,6 +134,8 @@ func _ready() -> void:
 		await _gun_shots()
 	if _want("criaturas"):
 		await _creature_shots()
+	if _want("monte"):
+		await _monte_shots()
 	get_tree().quit()
 
 
@@ -296,6 +298,68 @@ func _combat_shots() -> void:
 	while Engine.get_physics_frames() - fw < 30:
 		await get_tree().physics_frame
 	print("combate: recibe — vida %.0f → %.0f, retrocede %.2f m, estado %d" % [hp, player.combat.health, Vector2(player.global_position.x - p0.x, player.global_position.z - p0.z).length(), player.combat.state])
+
+
+## Comportamiento del monte y de las bases: la jauría ataca, el Hojarasquín solo mira si el arma va guardada y
+## ataca si va en la mano, el saqueador dispara, la jefa muestra su barra. Y los créditos de los modelos.
+func _monte_shots() -> void:
+	if _main.state != _main.State.PLAYING:
+		_main._start_playing()
+	seed(9)
+	var player: Player = _main.player
+	var cs: CreatureSystem = _main.creatures
+	cs.set_process(false)   # sin apariciones al azar durante la prueba
+	var sp: Dictionary = WorldData.spawn()
+	player.place(sp.x, sp.z, sp.heading)
+	await get_tree().create_timer(1.0).timeout
+	var fwd := -player.global_basis.z
+	var wait := func(frames: int) -> void:
+		var f0 := Engine.get_physics_frames()
+		while Engine.get_physics_frames() - f0 < frames:
+			await get_tree().physics_frame
+	# jauría
+	var h0 := player.combat.health
+	var pack := []
+	for i in 3:
+		pack.push_back(cs.spawn("lobo", player.global_position + fwd * 10.0 + player.global_basis.x * (i - 1) * 1.5))
+	await wait.call(360)
+	print("monte: jauría — vida del jugador %.0f → %.0f" % [h0, player.combat.health])
+	_main.camera_rig.yaw = player.rotation.y
+	await _shot("monte_jauria")
+	for w in pack:
+		w.queue_free()
+	player.combat.revive()
+	await get_tree().create_timer(2.2).timeout
+	# Hojarasquín: sin arma, luego con arma
+	var hj: Creature = cs.spawn("hojarasquin", player.global_position + fwd * 6.0)
+	player.set_armed(false)
+	h0 = player.combat.health
+	await wait.call(240)
+	print("monte: Hojarasquín con el arma guardada — vida %.0f → %.0f, distancia %.1f m" % [h0, player.combat.health, hj.dist])
+	await _shot("monte_hojarasquin_mira")
+	player.set_armed(true)
+	await wait.call(360)
+	print("monte: Hojarasquín con el arma en la mano — vida %.0f → %.0f" % [h0, player.combat.health])
+	hj.queue_free()
+	player.combat.revive()
+	await get_tree().create_timer(2.2).timeout
+	# saqueador
+	var sq: Creature = cs.spawn("saqueador", player.global_position + fwd * 14.0)
+	h0 = player.combat.health
+	await wait.call(420)
+	print("monte: saqueador — vida del jugador %.0f → %.0f" % [h0, player.combat.health])
+	await _shot("monte_saqueador")
+	sq.queue_free()
+	# jefa
+	var boss: Creature = cs.spawn("jefa-agris", player.global_position + fwd * 12.0)
+	await wait.call(90)
+	print("monte: barra de jefe visible = %s (%s)" % [_main.hud._boss_box.visible, _main.hud._boss_name.text])
+	await _shot("monte_jefa")
+	boss.queue_free()
+	cs.set_process(true)
+	_main._menus.open("creditos")
+	await get_tree().create_timer(0.6).timeout
+	await _shot("monte_creditos")
 
 
 ## Criaturas externas (CreaturesConfig) en fila, caminando: para ver escala, orientación y que el retarget de los

@@ -8,6 +8,8 @@ var focus: Node3D
 var _alive: Dictionary = {}     # id de zona → Array[Enemy]
 var _cooldown: Dictionary = {}  # id de zona → segundos hasta poder volver a poblar
 var _t := 0.0
+var _bosses := {}               # id de zona → Creature (su jefe, CreaturesConfig.BOSSES)
+var _raiders := {}              # id de zona → [Creature] saqueadores
 
 
 func _process(delta: float) -> void:
@@ -36,6 +38,7 @@ func _process(delta: float) -> void:
 				e.queue_free()
 				active -= 1
 		_alive[z.id] = list
+		_extras(z, p, d)
 		if d > CombatConfig.SPAWN.spawn_radius or _cooldown.get(z.id, 0.0) > 0.0:
 			continue
 		while list.size() < int(z.enemies) and active < int(CombatConfig.SPAWN.max_active):
@@ -44,6 +47,38 @@ func _process(delta: float) -> void:
 				break
 			list.push_back(spawn(_pick(), at, z.id))
 			active += 1
+
+
+## El jefe de la base en su centro y unos saqueadores entre los Restos (CreatureSystem: modelos externos). Se
+## retiran al alejarse; un jefe abatido no vuelve en esta partida.
+func _extras(z: Dictionary, p: Vector3, d: float) -> void:
+	var cs := CreatureSystem.instance
+	if cs == null:
+		return
+	var near := d <= float(CombatConfig.SPAWN.spawn_radius)
+	var far := d > float(CombatConfig.SPAWN.despawn_radius)
+	var boss_kind: String = CreaturesConfig.BOSSES.get(z.id, "")
+	var b: Creature = _bosses.get(z.id)
+	if b and is_instance_valid(b):
+		if far and b.self_c.is_alive():
+			b.queue_free()
+			_bosses.erase(z.id)
+	elif near and boss_kind != "" and not _bosses.has(z.id):
+		_bosses[z.id] = cs.spawn(boss_kind, Vector3(z.x, 0, z.z))
+	var list: Array = _raiders.get(z.id, [])
+	list = list.filter(func(c): return is_instance_valid(c))
+	if far:
+		for c in list:
+			c.queue_free()
+		list = []
+	elif near and list.is_empty():
+		for i in CreaturesConfig.RAIDERS_PER_ZONE:
+			var at := _spot(z, p)
+			if at != Vector3.INF:
+				var c := cs.spawn("saqueador", at)
+				if c:
+					list.push_back(c)
+	_raiders[z.id] = list
 
 
 ## Pone un enemigo en `at` (también lo usan las pruebas).

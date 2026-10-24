@@ -24,6 +24,16 @@ interfaz de `models/index.js`. Se usan 7 de 45: automóvil, campero, van, camion
 Quaternius (Low Poly Cars, Car Pack) se descartó: FBX con varios materiales por carro, más draw calls. **Ningún
 paquete CC0 revisado trae motos**: las motos y el motocarro siguen modelados a mano.
 
+**Modelos externos CC BY y CC BY-NC (desde el 24-10-2026, decisión del usuario).** Criaturas, mitos, jefes y
+saqueadores de Sketchfab (ver [assets/models/CREDITS_EXTERNOS.md](../assets/models/CREDITS_EXTERNOS.md)). Reglas:
+- Entran con `pnpm models:import -- <carpeta>` (`scripts/import-modelos.mjs`), que registra autor, licencia y
+  fuente (comprobadas en la API de Sketchfab) y **no los versiona** (`public/models/externos/`, en .gitignore).
+- **CC BY obliga a atribuir en pantalla:** el juego muestra los créditos (`creditos.json` que genera el script).
+- **CC BY-NC (lobo, venado del monte, caballo): el juego es no comercial** mientras los use. Si alguna vez se vende,
+  hay que reemplazarlos antes.
+- Un modelo con dueño (fan art de un personaje de otra obra) se nombra en la columna de créditos; entra solo por
+  decisión explícita del usuario y para uso no comercial.
+
 **CC0 = dominio público.** Se puede versionar en el repositorio, modificar y publicar sin atribuir (igual la
 registramos en `assets/models/CREDITS.md` por cortesía y trazabilidad). Es la única familia de licencias que no
 choca con la regla de no versionar material de terceros con restricciones.

@@ -47,6 +47,7 @@ var factions: FactionSystem
 var inventory: InventorySystem
 var loot: LootSystem
 var firearms: FirearmSystem
+var creatures: CreatureSystem
 var inventory_panel: InventoryPanel
 var _prompt_t := 0.0
 
@@ -69,6 +70,10 @@ func _ready() -> void:
 	$UI.add_child(inventory_panel)
 	firearms = FirearmSystem.new()
 	add_child(firearms)
+	creatures = CreatureSystem.new()
+	creatures.name = "Criaturas"
+	creatures.focus = player
+	add_child(creatures)
 	factions = FactionSystem.new()
 	factions.name = "Restos"
 	factions.focus = player
@@ -114,6 +119,8 @@ func _boot() -> void:
 	_ambience = AmbienceSystem.new()
 	_ambience.sky = sky
 	_ambience.world = streamer
+	creatures.world = streamer
+	creatures.sky = sky
 	_ambience.player = player
 	add_child(_ambience)
 	hud.sky = sky

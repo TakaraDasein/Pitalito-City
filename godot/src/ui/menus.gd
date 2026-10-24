@@ -740,10 +740,21 @@ func _build_credits() -> void:
 		"· Personajes y animaciones: Quaternius",
 		"· Vehículos del tráfico, piezas de edificios y muebles: Kenney",
 		"· Vehículos típicos, hitos y texturas propias: hechos para el proyecto", "",
+		b % [crema, "MODELOS 3D EXTERNOS (SKETCHFAB, CON ATRIBUCIÓN)"]]
+	# los CC BY obligan a atribuir en pantalla; los CC BY-NC además a que el juego sea no comercial
+	var cred := "res://assets/models/externos/creditos.json"
+	if FileAccess.file_exists(cred):
+		for c: Dictionary in JSON.parse_string(FileAccess.get_file_as_string(cred)):
+			lines.push_back("· «%s» de %s — %s · %s%s" % [c.titulo, c.autor, c.licencia, c.uso, (" · " + String(c.ip)) if c.get("ip") else ""])
+		lines.push_back("[i]Con modelos CC BY-NC: el juego es gratuito y no comercial.[/i]")
+	else:
+		lines.push_back("· (no importados en esta copia)")
+	lines += ["",
 		b % [crema, "TEXTURAS Y TIPOGRAFÍA"],
 		"· ambientCG y Poly Haven (CC0) · Anton e Inter (SIL OFL 1.1)", "",
 		b % [crema, "MOTOR"], "· Godot Engine 4.7 (MIT) · física Jolt (MIT)", "",
-		"[i]Los grupos armados del juego son ficción: no representan a ningún grupo real.[/i]"]
+		"[i]Los grupos armados del juego son ficción: no representan a ningún grupo real.[/i]",
+		"[i]Los seres del monte son leyendas de la tradición oral del Huila y el Tolima; lo que no tiene fuente es ficción del juego.[/i]"]
 	text.text = "\n".join(lines)
 	text.add_theme_color_override("default_color", Color(GuaduaTheme.TEXT, 0.85))
 	col.add_child(text)

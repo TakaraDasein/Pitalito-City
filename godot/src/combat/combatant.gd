@@ -76,6 +76,12 @@ func set_weapon(id: String) -> void:
 			"damage": 0.0, "stamina": 0.0, "reach": 0.0, "arc": 0.0, "windup": 0.05, "active": 0.01, "recover": 0.05, "poise": 0.0}
 
 
+## Ataque propio (criaturas: mordisco, embestida): un diccionario como los de CombatConfig.WEAPONS.
+func set_custom_weapon(id: String, spec: Dictionary) -> void:
+	weapon_id = id
+	weapon = spec.merged({"name": id, "model": "", "combo": [id]}, false)
+
+
 ## Intenta atacar. Durante el golpe (ya soltado o recuperándose) el clic se guarda y encadena el siguiente.
 func attack() -> bool:
 	if not is_alive():

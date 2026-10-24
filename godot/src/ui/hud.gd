@@ -26,6 +26,10 @@ var _fracture: ColorRect    # vidrio quebrado al recibir (shader); amount se apa
 var _fracture_a := 0.0
 var _crosshair: Label        # mira (con arma de fuego en la mano) y munición: cargador / mochila
 var _ammo: Label
+var _boss_box: VBoxContainer   # barra de jefe arriba (Creature.is_boss a menos de BOSS_RANGE)
+var _boss_name: Label
+var _boss_bar: ProgressBar
+const BOSS_RANGE := 40.0
 var _slash: ColorRect       # tajo verde del parry, en la dirección del golpe desviado
 var _slash_a := 0.0
 
@@ -416,6 +420,21 @@ func _build_combat() -> void:
 	_ammo.add_theme_color_override("font_outline_color", GuaduaTheme.CAFE_DARK)
 	_bars.add_child(_ammo)
 	_ammo.visible = false
+	_boss_box = VBoxContainer.new()
+	_boss_box.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_boss_box.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_boss_box.position.y += 64
+	_boss_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	_boss_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_boss_box)
+	_boss_name = Label.new()
+	_boss_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_boss_name.theme_type_variation = "Title"
+	_boss_name.add_theme_constant_override("outline_size", 6)
+	_boss_name.add_theme_color_override("font_outline_color", GuaduaTheme.CAFE_DARK)
+	_boss_box.add_child(_boss_name)
+	_boss_bar = _bar(_boss_box, GuaduaTheme.SALUD, Vector2(520, 14))
+	_boss_box.visible = false
 	EventBus.combat_hit.connect(_on_combat_hit)
 
 
@@ -493,6 +512,20 @@ func _update_combat() -> void:
 	var hurt := combat.health < float(combat.stats.health) or combat.stamina < float(combat.stats.stamina) - 0.5
 	var player: Node = combat.body
 	_bars.visible = player.visible and (player.get("armed") or hurt)
+	# jefe cerca: barra grande arriba
+	var boss: Creature = null
+	if CreatureSystem.instance:
+		var bd := BOSS_RANGE
+		for c in CreatureSystem.instance._alive:
+			if is_instance_valid(c) and c.is_boss() and c.self_c.is_alive():
+				var d: float = c.global_position.distance_to(player.global_position)
+				if d < bd:
+					bd = d
+					boss = c
+	_boss_box.visible = boss != null and player.visible
+	if boss:
+		_boss_name.text = boss.spec.name
+		_boss_bar.value = boss.self_c.health / float(boss.self_c.stats.health)
 	var gun_id: String = player.firearm() if player.has_method("firearm") else ""
 	_crosshair.visible = gun_id != "" and player.visible
 	_ammo.visible = gun_id != ""

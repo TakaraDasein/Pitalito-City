@@ -361,7 +361,14 @@ edificios armados con piezas y recorribles por dentro.
    con la munición de la mochila (R). Capa de pose de pistola sobre la locomoción (BlendTree filtrado del pecho
    arriba, apuntar arriba/abajo con la cámara). El arma se sostiene por la línea de tiro, no por el giro de la
    muñeca; las largas con la culata al hombro y las dos manos por cinemática inversa (CharacterRig).
-   Falta: fauna, supervivencia (hambre, sed e infección ya se guardan),
+   Criaturas con modelo externo (Sketchfab CC BY / CC BY-NC, no versionados: `pnpm models:import` en la web +
+   `tools/import/externos_retarget.py`): `CreatureModel` (escala por el esqueleto, retarget humanoide de CC_Base,
+   Bip001 y ValveBiped, biblioteca sin la posición de la cadera), `Creature` (Combatant + pacífico / hostil /
+   guardián; los saqueadores disparan), `CreatureSystem` (aparición por monte, hora y distancia al Parque). Fauna:
+   caballo. Mitos (web/docs/HISTORIA.md § Mitos y leyendas, con fuentes): el Hojarasquín (ataca solo si se entra
+   armado), la Madremonte y su jauría, el venado del monte. Bases: saqueadores y un jefe por zona (la Señora de
+   la base, el Coloso, el Pantalla) con barra arriba. Créditos de los modelos en pantalla (CC BY).
+   Falta: fauna real del bosque (borugo, guatín, aves: la web las tiene), supervivencia (hambre, sed e infección ya se guardan),
    historia y misiones, construcción por bloques.
 6. Oclusores por tile, LOD de toda la ciudad (`CityLOD`), y exportación (filtro de `data/world/*.json` y `*.bin`).
 7. Tamaño de los hitos: cada GLB lleva sus texturas incrustadas (60 MB entre los 8); compartirlas con un

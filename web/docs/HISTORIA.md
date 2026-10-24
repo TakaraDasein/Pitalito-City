@@ -89,8 +89,50 @@ ríos, toca la campana de 1785. El dato queda porque el lugar queda.
 4. Todo lugar de misión debe existir en los datos del mundo. Si no está, el hito espera — no se inventa el sitio.
 5. El contenido del siglo XX y del conflicto se trata según la regla de [PLAN_JUEGO.md § 2](PLAN_JUEGO.md).
 
+## Mitos y leyendas del monte
+
+Los seres del monte son **leyenda, no historia**: el juego los presenta como lo que la gente cuenta, nunca como
+hechos. Se apoyan en la tradición oral del Huila y del Tolima y, como trasfondo, en la cosmovisión del pueblo
+**Yanakuna** del Macizo Colombiano, vecino del valle por San Agustín. Lo que no tiene fuente es **ficción
+declarada** y se marca así aquí y en `godot/src/config/creatures_config.gd`. Modelos y licencias:
+[assets/models/CREDITS_EXTERNOS.md](../assets/models/CREDITS_EXTERNOS.md).
+
+| Ser | Qué cuenta la tradición | En el juego | Fuente |
+|---|---|---|---|
+| **El Hojarasquín del monte** | Guardián del bosque: unos lo imaginan con aspecto de árbol, otros como ser demoníaco o como la conciencia de la naturaleza; castiga a quien daña el monte y hace perder al que entra | Aparece de noche en el monte cerrado. Ataca a quien entra con el arma en la mano; con ella guardada, se deja ver y se va | [colombia.com — El Hojarasquín del monte](https://www.colombia.com/colombia-info/folclor-y-tradiciones/leyendas/el-hojarasquin-del-monte/) (la fuente no lo ata a una región: queda como leyenda colombiana, sin decir que es solo del Huila) |
+| **La Madremonte** | Personificación de la selva y de la fuerza de la naturaleza; castiga a quien invade el bosque, tala o maltrata a los animales. Figura emblemática del Tolima y del Huila | Guardiana del monte más hondo, la acompaña su jauría. **Su aspecto es ficción del juego** (el modelo no reproduce ninguna descripción tradicional) | [Canal Trece — Mitos y leyendas colombianas](https://canaltrece.com.co/noticias/mitos-y-leyendas-colombianas-que-siguen-vigentes-cada-halloween/) · [Radio Nacional — El río Magdalena entre mitos y leyendas](https://www.radionacional.co/noticia/el-rio-magdalena-entre-mitos-y-leyendas) |
+| **La jauría de la Madremonte** | — | **Ficción declarada.** En el Huila no hay lobos: son los perros del monte de la Madremonte, de noche | — |
+| **El venado del monte** | — | **Ficción declarada.** El animal que cuidan el Hojarasquín y la Madremonte; no es el venado colorado real (*Mazama americana*, que es pequeño). Cazarlo los llama | — |
+| **El brote del monte** | — | **Ficción declarada.** Hongos que crecen donde pasó el Hojarasquín (decorado) | — |
+| **El Mohán** | Guardián de ríos y quebradas, famoso en el Tolima y el Huila: piel cobriza, pelo largo y enredado, ojos brillantes; los pescadores le temen porque decide si hay o no peces | **Pendiente de modelo.** Irá en el Guarapas y el Guachicos | [Radio Nacional](https://www.radionacional.co/noticia/el-rio-magdalena-entre-mitos-y-leyendas) · [El Tiempo — Patasola, Mohán y criaturas mitológicas](https://www.eltiempo.com/cultura/gente/patasola-mohan-y-criaturas-mitologicas-de-colombia-y-el-mundo-567685) |
+| **La Patasola** | Mujer de belleza inicial deslumbrante con una sola pierna terminada en pezuña; viva en las veredas del Cauca, el Huila y el Meta | **Pendiente de modelo** | [El Tiempo](https://www.eltiempo.com/cultura/gente/patasola-mohan-y-criaturas-mitologicas-de-colombia-y-el-mundo-567685) |
+
+**Los Yanakuna, como trasfondo y no como monstruos.** Su tradición habla de la Madre Tierra (Pachamama), el agua
+(Mama Yaku), las montañas (Urkus) y los espíritus, y de las piedras ancestrales como *rumi runa* (gente-piedra);
+sus mayores cantan al Padre Sol y al Padre Kuichi
+([Latin American Literature Today](https://latinamericanliteraturetoday.org/es/2023/12/madre-tierra-utero-del-origen-y-lengua-en-el-mundo-quechua-yanakuna)).
+Regla: **no se convierte a ningún ser de su cosmovisión en enemigo**, y no se les atribuye ninguno de los mitos de
+arriba (la búsqueda no encontró al duende, al trueno ni al arco iris en fuentes yanakuna: no se inventan). En el
+juego aparecen como lo que dicen los mayores en las fichas del Macizo, cuando haya fuente escrita para cada texto.
+
+### Jefes de las bases (ficción declarada)
+
+Las tres zonas de los Restos tienen un jefe. **Son ficción**, como toda la facción; no representan a ningún grupo
+armado real. Los modelos son de Sketchfab (CC BY); uno es fan art de un personaje con dueño, decisión del usuario
+para un juego no comercial.
+
+| Zona | Jefe | Modelo |
+|---|---|---|
+| El filo del norte | La Señora de la base | Agris (Vasian-Digital3D) |
+| La quebrada honda | El Coloso | African Elephant Bull (animalanimator) |
+| El camino viejo | El Pantalla | Large Tvman 1.1 (Skibidi_boom6; personaje de «Skibidi Toilet») |
+
+Los **saqueadores** (modelo Soldier Full Tactical Gear, sin insignias) guardan las bases junto a los Restos.
+
 ## Por confirmar
 
+- Modelos para el Mohán y la Patasola (licencia libre).
+- Fuente escrita yanakuna para cada texto del Macizo antes de mostrarlo.
 - Ubicación exacta del caserío de La Chapa (la fuente dice «cercano a San Agustín», sin coordenada).
 - Dónde estaba la hacienda de San Juan de Laboyos.
 - Fecha del nombre «Pitalito» a secas (la fuente la registra sin fecha).
