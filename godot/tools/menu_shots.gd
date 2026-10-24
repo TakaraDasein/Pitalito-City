@@ -1,7 +1,7 @@
 extends Node
 ## Herramienta: capturas de la carga y los menús (screenshots/menu_*.png). Uso: godot res://tools/menu_shots.tscn
 ## Para no recorrer todo, se nombran las secciones que interesan: `godot res://tools/menu_shots.tscn -- personaje`
-## (garaje, personaje, menus, juego, pies, banca, subir, faros, tomar, ambiente, combate; varias separadas por espacio). Carga y portada se capturan siempre.
+## (garaje, personaje, menus, juego, pies, banca, subir, faros, tomar, ambiente, combate, botin; varias separadas por espacio). Carga y portada se capturan siempre.
 
 var _main: Node
 var _only := OS.get_cmdline_user_args()
@@ -128,6 +128,8 @@ func _ready() -> void:
 		await _ambience_shots()
 	if _want("combate"):
 		await _combat_shots()
+	if _want("botin"):
+		await _loot_shots()
 	get_tree().quit()
 
 
@@ -148,7 +150,8 @@ func _combat_shots() -> void:
 	for i in CombatConfig.ARSENAL.size():
 		if i == 0:
 			continue
-		player._weapon_index = i
+		InventorySystem.instance.add(CombatConfig.ARSENAL[i], 1) # las que no son de serie hay que tenerlas
+		player._weapon = CombatConfig.ARSENAL[i]
 		player.set_armed(true)
 		await get_tree().create_timer(0.5).timeout
 		var side := player.global_basis.x
@@ -164,7 +167,7 @@ func _combat_shots() -> void:
 				wb.y.normalized().y, wb.y.normalized().dot(fwd), wb.x.normalized().y, wb.x.normalized().dot(fwd)])
 	cam.queue_free()
 	_main.camera_rig.camera.make_current()
-	player._weapon_index = 1
+	player._weapon = "machete"
 	player.set_armed(true)
 	var fwd := -player.global_basis.z
 	var at := player.global_position + fwd * 6.0
@@ -289,6 +292,57 @@ func _combat_shots() -> void:
 	while Engine.get_physics_frames() - fw < 30:
 		await get_tree().physics_frame
 	print("combate: recibe — vida %.0f → %.0f, retrocede %.2f m, estado %d" % [hp, player.combat.health, Vector2(player.global_position.x - p0.x, player.global_position.z - p0.z).length(), player.combat.state])
+
+
+## Botín: el contenedor más cercano al Parque (de un lugar real), registrarlo, la mochila abierta, y lo que suelta
+## un centinela al caer (su peinilla, que entra al arsenal).
+func _loot_shots() -> void:
+	if _main.state != _main.State.PLAYING:
+		_main._start_playing()
+	seed(77)
+	var player: Player = _main.player
+	var loot: LootSystem = _main.loot
+	var sp: Dictionary = WorldData.spawn()
+	var best := {}
+	var bd := INF
+	for c: Dictionary in loot.containers:
+		var d := Vector2(c.x0 - sp.x, c.z0 - sp.z).length()
+		if d < bd:
+			bd = d
+			best = c
+	print("botín: %d contenedores en el mapa; el más cercano: %s (%s) a %.0f m" % [loot.containers.size(), best.spec.name, best.place, bd])
+	await _main.teleport(best.x0 + 2.5, best.z0)
+	await get_tree().create_timer(3.0).timeout
+	loot._t = 0.0
+	await get_tree().create_timer(0.8).timeout
+	var c: Dictionary = best
+	player.place(c.get("x", c.x0) + 1.2, c.get("z", c.z0))
+	var to := Vector3(c.get("x", c.x0), 0, c.get("z", c.z0)) - player.global_position
+	player.rotation.y = atan2(-to.x, -to.z)
+	_main.camera_rig.yaw = player.rotation.y + 0.6
+	await get_tree().create_timer(1.0).timeout
+	var it: Array = _main._interaction()
+	print("botín: interacción = %s" % (it[1] if not it.is_empty() else "ninguna"))
+	await _shot("botin_contenedor")
+	if not it.is_empty():
+		it[2].call()
+	await get_tree().create_timer(0.5).timeout
+	print("botín: mochila %s, %.1f kg" % [InventorySystem.instance.items, InventorySystem.instance.weight()])
+	# centinela: derribarlo y registrar lo que suelta
+	var e: Enemy = _main.factions.spawn("centinela", player.global_position - player.global_basis.z * 3.0)
+	await get_tree().physics_frame
+	e.self_c.take_hit(999.0, 0.0)
+	await get_tree().create_timer(1.0).timeout
+	var drop: Dictionary = loot.nearest(e.global_position)
+	print("botín: soltó %s" % [drop.items if not drop.is_empty() else "nada"])
+	if not drop.is_empty():
+		player.place(drop.x + 1.0, drop.z)
+		loot.search(drop)
+	print("botín: arsenal = %s" % [InventorySystem.instance.arsenal()])
+	_main.inventory_panel.toggle(1)
+	await get_tree().create_timer(0.5).timeout
+	await _shot("botin_mochila")
+	_main.inventory_panel.toggle(0)
 
 
 ## Ambiente: busca un sitio con árboles cerca del parque y lo retrata de noche (luciérnagas), de día (hojas,

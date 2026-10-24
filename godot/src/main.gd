@@ -44,6 +44,9 @@ var _audio: AudioSystem
 var _ambience: AmbienceSystem
 var combat: CombatSystem
 var factions: FactionSystem
+var inventory: InventorySystem
+var loot: LootSystem
+var inventory_panel: InventoryPanel
 var _prompt_t := 0.0
 
 
@@ -54,6 +57,15 @@ func _ready() -> void:
 	add_child(combat)
 	combat.add(player.combat, true)
 	combat.camera_rig = camera_rig
+	inventory = InventorySystem.new()
+	inventory.player = player
+	add_child(inventory)
+	loot = LootSystem.new()
+	loot.name = "Botin"
+	loot.focus = player
+	add_child(loot)
+	inventory_panel = InventoryPanel.new()
+	$UI.add_child(inventory_panel)
 	factions = FactionSystem.new()
 	factions.name = "Restos"
 	factions.focus = player
@@ -167,6 +179,7 @@ func _to_menu() -> void:
 	state = State.MENU
 	_audio.active = false
 	map_screen.allowed = false
+	inventory_panel.allowed = false
 	get_tree().paused = false
 	hud.visible = false
 	camera_rig.input_enabled = false
@@ -178,6 +191,7 @@ func _start_playing() -> void:
 	state = State.PLAYING
 	_audio.active = true
 	map_screen.allowed = true
+	inventory_panel.allowed = true
 	_menus.hide_all()
 	get_tree().paused = false
 	hud.visible = true
@@ -192,6 +206,7 @@ func _pause() -> void:
 	state = State.PAUSED
 	_audio.active = false
 	map_screen.allowed = false
+	inventory_panel.allowed = false
 	get_tree().paused = true
 	camera_rig.input_enabled = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -272,7 +287,7 @@ func _measure_quality(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if state == State.PLAYING and event.is_action_pressed("toggle_mouse") and not map_screen.is_open:
+	if state == State.PLAYING and event.is_action_pressed("toggle_mouse") and not map_screen.is_open and not inventory_panel.is_open:
 		_pause()
 		get_viewport().set_input_as_handled()
 		return
@@ -422,6 +437,9 @@ func _interaction() -> Array:
 	if not house_door.is_empty():
 		options.push_back([Vector2(house_door.pos.x - here.x, house_door.pos.z - here.z).length() - 0.5,
 			("Cerrar" if house_door.open else "Abrir") + " la puerta", func(): detail.toggle(house_door)])
+	var box := loot.nearest(here)
+	if not box.is_empty():
+		options.push_back([Vector2(box.x - here.x, box.z - here.z).length() - 0.2, "Registrar: " + loot.label(box), func(): loot.search(box)])
 	if options.is_empty():
 		return []
 	options.sort_custom(func(a, b): return a[0] < b[0])

@@ -26,7 +26,7 @@ var _mount := {}
 ## (construir, interactuar) y arma en mano (pelear); X cambia entre los dos, como en la web.
 var combat: Combatant
 var armed := false
-var _weapon_index := 1   # machete
+var _weapon := "machete"  # el arma que se saca con X (de las que se tienen: InventorySystem.arsenal())
 var _weapon_slot: BoneAttachment3D
 var _dead_t := 0.0
 var _push := Vector3.ZERO
@@ -83,7 +83,7 @@ func apply_look() -> void:
 	_rig = CharacterRig.attach(_model.find_child(CharacterModel.SKELETON, true, false))
 	_weapon_slot = null
 	if armed:
-		_show_weapon(CombatConfig.ARSENAL[_weapon_index])
+		_show_weapon(combat.weapon_id)
 	if _rig:
 		_rig.exclude = [get_rid()]
 
@@ -246,7 +246,9 @@ func _physics_process(delta: float) -> void:
 
 	if _tree and combat.state == Combatant.State.IDLE and not combat.guarding:
 		var sm: AnimationNodeStateMachinePlayback = _tree.get("parameters/playback")
-		sm.travel("move" if is_on_floor() else "air")
+		# el gesto de tomar algo termina solo (vuelve a "move" al acabar), salvo que se eche a andar
+		if sm.get_current_node() != "pickup" or dir.length() > 0.1:
+			sm.travel("move" if is_on_floor() else "air")
 		_tree.set("parameters/move/blend_position", Vector2(velocity.x, velocity.z).length())
 
 
@@ -636,6 +638,15 @@ func _attack() -> void:
 		_lunge_t = 0.18 if dist > float(CombatConfig.FEEL.lunge_min) else 0.0
 
 
+## Registrar o recoger algo: se vuelve hacia ello y hace el gesto de tomar (PickUp_Table, como "pickUp" en la web).
+func pick_up(at: Vector3) -> void:
+	var to := at - global_position
+	if Vector2(to.x, to.z).length() > 0.05:
+		rotation.y = atan2(-to.x, -to.z)
+	if _tree and combat.state == Combatant.State.IDLE and is_on_floor():
+		_playback().travel("pickup")
+
+
 ## Guarda el arma sin aviso (al subir a un vehículo o sentarse: con las manos ocupadas no se pelea).
 func _holster() -> void:
 	if armed:
@@ -657,17 +668,26 @@ func set_armed(on: bool) -> void:
 		combat.set_weapon("manos")
 		_show_weapon("")
 	else:
-		var id: String = CombatConfig.ARSENAL[_weapon_index]
+		var owned := _arsenal()
+		if not _weapon in owned:
+			_weapon = "machete" if "machete" in owned else String(owned[0])
+		var id := _weapon
 		combat.set_weapon(id)
 		_show_weapon(id)
 	if HUD.instance:
 		HUD.instance.toast(("En la mano: " + combat.weapon.name) if on else "Arma guardada", 1.4)
 
 
+## Las armas que se tienen (de serie y las que van en la mochila).
+func _arsenal() -> Array:
+	return InventorySystem.instance.arsenal() if InventorySystem.instance else CombatConfig.ARSENAL
+
+
 func cycle_weapon(step: int) -> void:
 	if combat.is_busy():
 		return
-	_weapon_index = (_weapon_index + step + CombatConfig.ARSENAL.size()) % CombatConfig.ARSENAL.size()
+	var owned := _arsenal()
+	_weapon = owned[(owned.find(_weapon) + step + owned.size()) % owned.size()]
 	set_armed(true)
 
 

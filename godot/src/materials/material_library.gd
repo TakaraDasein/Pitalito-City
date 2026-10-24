@@ -188,6 +188,17 @@ static func _make(key: String) -> Material:
 	return StandardMaterial3D.new()
 
 
+## Material liso de un color (piezas simples: contenedores del botín). Cacheado por color.
+static func plain(color: Color, roughness := 0.75) -> StandardMaterial3D:
+	var key := "plain:" + color.to_html() + ":%.2f" % roughness
+	if not _cache.has(key):
+		var m := StandardMaterial3D.new()
+		m.albedo_color = color
+		m.roughness = roughness
+		_cache[key] = m
+	return _cache[key]
+
+
 ## 0 = día, 1 = noche: enciende las ventanas de las fachadas.
 static func set_night(f: float) -> void:
 	(get_material("facade_upper") as StandardMaterial3D).emission_energy_multiplier = f * 0.6

@@ -109,6 +109,8 @@ func _on_combat(evt: String, data: Dictionary) -> void:
 		AudioSystem.instance.swing(0.7)
 	if evt == "death" and CombatSystem.instance:
 		CombatSystem.instance.release_turn(self_c)
+	if evt == "death":
+		_drop_loot()
 
 
 # ───────────── Percepción y decisión ─────────────
@@ -204,6 +206,25 @@ func _physics_process(delta: float) -> void:
 			want = CharacterModel.clip("Jog_Fwd" if running else "Walk")
 		if _anim.current_animation != want:
 			_anim.play(want, 0.2)
+
+
+## Al caer suelta lo que llevaba (LootConfig.DROPS por arquetipo): su arma y, a veces, algo más.
+func _drop_loot() -> void:
+	if LootSystem.instance == null:
+		return
+	var items := []
+	for e: Array in LootConfig.DROPS.get(spec_kind(), []):
+		if randf() < float(e[1]):
+			items.push_back({"id": e[0], "n": int(e[2])})
+	var front := -global_basis.z
+	LootSystem.instance.drop(global_position + Vector3(front.x, 0, front.z) * 0.6, items, "Lo que llevaba el " + String(spec.name).to_lower())
+
+
+func spec_kind() -> String:
+	for k: String in CombatConfig.ENEMIES:
+		if CombatConfig.ENEMIES[k] == spec:
+			return k
+	return "centinela"
 
 
 ## Ver venir el golpe del jugador: con probabilidad `block` se cubre, tras una reacción al azar (si llega justo,

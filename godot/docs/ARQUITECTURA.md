@@ -347,8 +347,15 @@ edificios armados con piezas y recorribles por dentro.
    morir. Agarre de armas medido sobre la mano (`CharacterModel.attach_weapon`): mango a lo largo de la palma,
    hoja por el lado del pulgar y filo hacia los nudillos (comprobado en la guardia: filo abajo-adelante). El arma
    se guarda sola al subir a un vehículo o sentarse, y no se ve nadando.
-   Falta: armas de fuego, sangre en el suelo, fauna, supervivencia, botín e inventario, historia y misiones,
-   construcción por bloques.
+   Sangre en el suelo: Decal sobre relieve, calzada y andén (`AmbienceSystem`, ParticlesConfig.BLOOD).
+   Botín e inventario (`LootConfig`, espejo de loot.config.js; FICCIÓN DECLARADA lo de adentro): 136 contenedores
+   alrededor de los POI reales de OSM (hospitales, CAI, iglesias, tiendas, mercados, bombas, bomberos), sorteo
+   determinista por id, saqueado guardado en `user://botin.cfg`, sólidos y apartados de los muros; los Restos
+   sueltan lo que llevan al caer (DROPS). Mochila con tope de 25 kg (`InventorySystem`) y pantalla con I
+   (`InventoryPanel`). De Godot: botín siempre activo (la web lo tiene solo en supervivencia) y las armas cuerpo a
+   cuerpo son objetos: machete de serie, las demás hay que encontrarlas o quitárselas a los Restos.
+   Falta: armas de fuego (los objetos ya se cargan), fauna, supervivencia (hambre, sed e infección ya se guardan),
+   historia y misiones, construcción por bloques.
 6. Oclusores por tile, LOD de toda la ciudad (`CityLOD`), y exportación (filtro de `data/world/*.json` y `*.bin`).
 7. Tamaño de los hitos: cada GLB lleva sus texturas incrustadas (60 MB entre los 8); compartirlas con un
    `.res` de materiales o exportarlas aparte.
