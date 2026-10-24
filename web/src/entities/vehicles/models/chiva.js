@@ -98,6 +98,10 @@ export function buildChiva({ materials, color = '#3fae49', detail = 'high', driv
   // Escalera trasera
   for (const sx of [0.45, 0.95]) box(body, 0.05, 2.3, 0.05, matte('#7a2e1d', 0.5), sx, 2.3, 4.24);
   for (let i = 0; i < 7; i++) box(body, 0.55, 0.04, 0.05, matte('#7a2e1d', 0.5), 0.7, 1.3 + i * 0.33, 4.24);
+  // Estribo del conductor: tabla de madera colgada del chasís, al lado de la cabina. ESTIMADO (las fotos no lo
+  // muestran de cerca); su alto es VEHICLES.chiva.step, por donde sube el personaje en Godot.
+  box(body, 0.32, 0.05, 0.6, wood, -1.39, 0.355, -2.05);
+  for (const z of [-2.28, -1.82]) box(body, 0.04, 0.34, 0.04, matte('#2b2b2b', 0.6), -1.27, 0.5, z);
   if (hi) steeringWheel(body, -0.55, 1.9, -2.3, 1.1);
   if (driver) person(body, -0.55, 1.2, -2.05, '#f4f1ea', { arms: 'wheel' });
   plateMesh(body, licensePlate('SCH 512', 'PITALITO', '#f4f4f4'), -0.6, 1.0, 4.24, true);

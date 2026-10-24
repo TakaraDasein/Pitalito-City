@@ -283,11 +283,19 @@ func seat_world() -> Vector3:
 
 ## Junto a la puerta del conductor, a la altura del asiento a lo largo del vehículo, en el suelo.
 func door_world() -> Vector3:
-	var s: Array = spec.get("seat", [0.0, 0.5, 0.0])
+	# Car Kit (sin asiento medido): puerta del conductor a la izquierda, algo adelante del centro
+	var s: Array = spec.get("seat", [-0.4, 0.5, -float(spec.length) * 0.08])
 	var local := _model_xf * Vector3(s[0], 0, s[2])
 	local.x = signf(local.x if local.x != 0.0 else 1.0) * (float(spec.width) * 0.5 + 0.6)
 	var p := global_transform * local
 	return Vector3(p.x, WorldData.height(p.x, p.z), p.z)
+
+
+## Sobre el estribo (vehículos altos como la chiva): entre la puerta y el asiento, a `step` del suelo.
+func step_world() -> Vector3:
+	var d := door_world()
+	var p := d.lerp(seat_world(), 0.35)
+	return Vector3(p.x, d.y + float(spec.step), p.z)
 
 
 func exit_point() -> Vector3:

@@ -55,6 +55,8 @@ export const VEHICLES = {
     // Dónde se sienta el conductor, en el espacio del vehículo. El personaje real se cuelga ahí (ver
     // PlayerSystem.#enter); los vehículos del tráfico siguen usando el muñeco de cajas, que es mucho más barato.
     seat: [-0.55, 0.75, -2.05],
+    // Estribo de la cabina (alto sobre el suelo, m): ESTIMADO, el modelo no lo trae. Godot sube por él.
+    step: 0.38,
     description: 'Bus escalera de madera pintada. Lenta, enorme y llena de gente.',
     maxSpeed: 85, reverseSpeed: 18,
     accel: 5.5, brake: 10, drag: 0.004, rolling: 0.45,

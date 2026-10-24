@@ -218,11 +218,28 @@ func mount(v: Vehicle, done: Callable) -> void:
 		_mount = {"steps": steps, "i": -1, "t": 0.0, "done": done, "vehicle": v}
 		_next_step()
 		return
+	if not v.spec.has("seat"):
+		# Car Kit: una sola pieza, sin puerta que abrir ni asiento: el gesto de abrir junto a la carrocería y
+		# desaparece al "entrar" (el conductor no se ve tras los vidrios oscuros); así no atraviesa la lata
+		var face := atan2(out.x, out.z)
+		steps.push_back({"phase": "open", "dur": 0.8, "from": door, "to": door,
+			"rot0": atan2(-to_door.x, -to_door.z) if to_door.length() > 0.2 else rotation.y, "rot1": face})
+		var near := door.lerp(Vector3(v.global_position.x, door.y, v.global_position.z), 0.12)
+		steps.push_back({"phase": "ocultar", "dur": 0.25, "from": door, "to": near, "rot0": face, "rot1": face})
+		_mount = {"steps": steps, "i": -1, "t": 0.0, "done": done, "vehicle": v}
+		_next_step()
+		return
 	if v.has_door_leaf():
 		steps.push_back({"phase": "open", "dur": 0.9, "from": door, "to": door, "rot0": atan2(-to_door.x, -to_door.z) if to_door.length() > 0.2 else rotation.y,
 			"rot1": atan2(out.x, out.z)}) # de frente a la puerta (hacia el vehículo)
+	var from := door
+	if v.spec.has("step"):
+		# vehículo alto: primero pisa el estribo, de frente a la cabina
+		from = v.step_world()
+		steps.push_back({"phase": "subir", "dur": 0.6, "from": door, "to": from,
+			"rot0": atan2(-to_door.x, -to_door.z) if to_door.length() > 0.2 else rotation.y, "rot1": atan2(out.x, out.z)})
 	# de espaldas al asiento, baja y entra; termina mirando al frente del vehículo
-	steps.push_back({"phase": "enter", "dur": 1.0, "from": door, "to": v.seat_world(), "rot0": atan2(-out.x, -out.z), "rot1": atan2(-fwd.x, -fwd.z)})
+	steps.push_back({"phase": "enter", "dur": 1.0, "from": from, "to": v.seat_world(), "rot0": atan2(-out.x, -out.z), "rot1": atan2(-fwd.x, -fwd.z)})
 	_mount = {"steps": steps, "i": -1, "t": 0.0, "done": done, "vehicle": v}
 	_next_step()
 
@@ -244,11 +261,25 @@ func dismount(v: Vehicle, done: Callable) -> void:
 		_mount = {"steps": steps, "i": -1, "t": 0.0, "done": done, "vehicle": v}
 		_next_step()
 		return
+	if not v.spec.has("seat"):
+		# Car Kit: aparece pegado a la carrocería y se aparta un paso
+		var near := door.lerp(Vector3(v.global_position.x, door.y, v.global_position.z), 0.12)
+		global_position = near
+		rotation.y = atan2(-out.x, -out.z)
+		_mount = {"steps": [{"phase": "exit", "dur": 0.45, "from": near, "to": door, "rot0": rotation.y, "rot1": rotation.y}],
+			"i": -1, "t": 0.0, "done": done, "vehicle": v}
+		_next_step()
+		return
 	global_position = v.seat_world()
 	rotation.y = atan2(-fwd.x, -fwd.z)
 	if _tree:
 		_playback().start("sit")
-	_mount = {"steps": [{"phase": "exit", "dur": 1.1, "from": v.seat_world(), "to": door, "rot0": rotation.y, "rot1": atan2(-out.x, -out.z)}],
+	var steps: Array = [{"phase": "exit", "dur": 1.1, "from": v.seat_world(), "to": door, "rot0": rotation.y, "rot1": atan2(-out.x, -out.z)}]
+	if v.spec.has("step"):
+		# se levanta sobre el estribo y de ahí baja al suelo
+		steps[0].to = v.step_world()
+		steps.push_back({"phase": "bajar", "dur": 0.5, "from": steps[0].to, "to": door, "rot0": steps[0].rot1, "rot1": steps[0].rot1})
+	_mount = {"steps": steps,
 		"i": -1, "t": 0.0, "done": done, "vehicle": v}
 	v.set_door(true, 0.3)
 	_next_step()
@@ -321,7 +352,7 @@ func _next_step() -> void:
 		_mount = {}
 		if is_instance_valid(v):
 			v.set_door(false) # cierra al quedar sentado, o al salir y quedar de pie
-		if last.phase == "exit" or (last.phase == "pierna" and last.reverse):
+		if last.phase in ["exit", "bajar"] or (last.phase == "pierna" and last.reverse):
 			collision_layer = 2
 			collision_mask = 1 | 4 | 16
 		done.call()
@@ -339,6 +370,11 @@ func _next_step() -> void:
 			(_mount.vehicle as Vehicle).lift_up(1.0)
 		"exit":
 			_playback().travel("move")
+		"ocultar":
+			visible = false
+		"subir", "bajar":
+			_playback().travel("move")
+			_tree.set("parameters/move/blend_position", WALK * 0.6)
 
 
 func _mounting(delta: float) -> void:

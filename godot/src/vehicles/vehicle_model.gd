@@ -93,7 +93,8 @@ static func add_doors(visual: Node3D, spec: Dictionary) -> Dictionary:
 		if not box.intersects(AABB(lo, size)):
 			continue
 		var to_box := frame.affine_inverse() * rel
-		_door_materials(mi, to_box, size, false)
+		# la hoja primero: copia los materiales originales (después de recortar la carrocería serían los recortados
+		# al revés, y la hoja abierta mostraba la carrocería entera girada en la bisagra)
 		if hinge:
 			var leaf := MeshInstance3D.new()
 			leaf.mesh = mi.mesh
@@ -103,6 +104,7 @@ static func add_doors(visual: Node3D, spec: Dictionary) -> Dictionary:
 			for i in mi.mesh.get_surface_count():
 				leaf.set_surface_override_material(i, mi.get_active_material(i))
 			_door_materials(leaf, to_box, size, true, mi)
+		_door_materials(mi, to_box, size, false)
 	return {"hinge": hinge, "open": side * DOOR_OPEN, "side": side}
 
 

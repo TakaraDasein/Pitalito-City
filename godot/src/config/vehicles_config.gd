@@ -10,13 +10,14 @@ class_name VehiclesConfig
 ## door: puerta del conductor en el espacio del modelo de la web (z, alto; panel = hoja con bisagra, si no vano).
 ## seat: dónde se sienta el conductor, en el espacio del modelo de la web (medido allá sobre cada modelo); los del
 ## Car Kit no tienen: el conductor no se ve (vidrios oscuros), como en la web.
+## step: alto del estribo de la cabina (m, ESTIMADO: el modelo no lo trae); si está, se sube en dos tiempos.
 ## engine (N) y brake son de la física de Godot (VehicleBody3D), calibrados a ojo: no hay dato.
 
 const VEHICLES := {
 	"willys": {"name": "Jeep Willys", "source": "baked", "seat": [-0.34, 0.47, 0.12], "door": {"z": [-0.5, 0.45], "y": [0.62, 1.8], "panel": false}, "engine_hz": [38, 150], "colors": ["#b3261e", "#1d4e89", "#4b5d3a", "#eeeeea", "#e8b20c", "#d9661f", "#1f1f1f"], "length": 3.9, "width": 1.6, "mass": 1250.0, "max_speed": 120.0, "max_steer": 0.6},
 	"taxi": {"name": "Taxi", "source": "baked", "seat": [-0.35, 0.11, 0.02], "door": {"z": [-0.72, 0.36], "y": [0.36, 1.47], "panel": true}, "engine_hz": [55, 220], "length": 3.7, "width": 1.62, "mass": 900.0, "max_speed": 140.0, "max_steer": 0.55},
 	"pickup": {"name": "Camioneta de platón", "source": "baked", "seat": [-0.4, 0.37, -0.18], "door": {"z": [-0.9, 0.17], "y": [0.5, 1.79], "panel": true}, "engine_hz": [42, 170], "colors": ["#e9ecef", "#9aa0a6", "#1f1f1f", "#7d1f1f", "#1d3557", "#5a5a3c"], "length": 5.3, "width": 1.86, "mass": 2000.0, "max_speed": 150.0, "max_steer": 0.52},
-	"chiva": {"name": "Chiva", "source": "baked", "seat": [-0.55, 0.75, -2.05], "engine_hz": [28, 95], "colors": ["#3fae49", "#1d4e89", "#d62828", "#f2c230"], "length": 8.5, "width": 2.6, "mass": 7000.0, "max_speed": 85.0, "max_steer": 0.5},
+	"chiva": {"name": "Chiva", "source": "baked", "seat": [-0.55, 0.75, -2.05], "step": 0.38, "engine_hz": [28, 95], "colors": ["#3fae49", "#1d4e89", "#d62828", "#f2c230"], "length": 8.5, "width": 2.6, "mass": 7000.0, "max_speed": 85.0, "max_steer": 0.5},
 	"motocarro": {"name": "Motocarro", "source": "baked", "seat": [0, 0.21, -0.25], "engine_hz": [80, 240], "colors": ["#2e7d32", "#f2c230", "#1d4e89", "#c62828"], "length": 2.6, "width": 1.3, "mass": 400.0, "max_speed": 70.0, "max_steer": 0.65},
 	"moto": {"name": "Moto", "source": "baked", "seat": [0, 0.4, -0.2], "engine_hz": [70, 260], "colors": ["#1d4e89", "#c62828", "#1f1f1f", "#e9ecef", "#2e7d32"], "length": 2.0, "width": 0.7, "mass": 120.0, "max_speed": 110.0, "max_steer": 0.7},
 	"sedan": {"name": "Automóvil", "source": "kenney", "colors": ["#ffffff", "#a0a8c9", "#4f5260", "#cf534f", "#6794d9"], "length": 4.3, "width": 1.7, "height": 1.3, "mass": 1300.0, "max_speed": 120.0, "max_steer": 0.55},
