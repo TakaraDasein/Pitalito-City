@@ -32,6 +32,9 @@ const BURSTS := {
 		"color": [Color("#fff3c4"), Color("#ff7a1a")], "alpha": [1.0, 0.0], "glow": true, "speed": 3.4, "spread": 0.9},
 	"hueso": {"max": 14, "n": 14, "life": 0.9, "size": [0.07, 0.3], "gravity": -2.5, "drag": 2.0,
 		"color": [Color("#e8e2d0"), Color("#b9b2a0")], "alpha": [0.75, 0.0], "speed": 2.4, "spread": 1.0},
+	# parry: chispas verdes, más y más rápidas que un bloqueo (el choque de las armas)
+	"parry": {"max": 34, "n": 34, "life": 0.6, "size": [0.07, 0.015], "gravity": -6.0, "drag": 2.0,
+		"color": [Color("#e6ffd6"), Color("#4fd640")], "alpha": [1.0, 0.0], "glow": true, "speed": 5.0, "spread": 1.0},
 	"carne": {"max": 16, "n": 16, "life": 0.7, "size": [0.05, 0.03], "gravity": -9.5, "drag": 1.4,
 		"color": [Color("#7a0d0d"), Color("#3d0505")], "alpha": [0.95, 0.6], "speed": 2.6, "spread": 1.1},
 }

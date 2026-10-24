@@ -1,12 +1,15 @@
 shader_type canvas_item;
 // Pantalla quebrada al recibir un golpe fuerte: grietas de vidrio que salen del punto del impacto (bordes de una
 // teselación de Voronoi más densa cerca del centro, más unos rayos), y cada fragmento desplaza un poco lo que se
-// ve detrás. `amount` 0..1 lo pone el HUD y se desvanece solo.
+// ve detrás. Las grietas van en tonos rojos y del impacto salpican gotas de sangre que escurren un poco hacia
+// abajo. `amount` 0..1 lo pone el HUD y se desvanece solo.
 uniform sampler2D screen : hint_screen_texture, filter_linear;
 uniform float amount = 0.0;
 uniform vec2 center = vec2(0.5, 0.5);
 uniform float seed = 0.0;
-uniform vec4 crack_color : source_color = vec4(0.95, 0.93, 0.88, 1.0);
+uniform vec4 crack_color : source_color = vec4(0.86, 0.16, 0.12, 1.0);
+uniform vec4 crack_dark : source_color = vec4(0.32, 0.02, 0.02, 1.0);
+uniform vec4 blood_color : source_color = vec4(0.55, 0.03, 0.03, 1.0);
 
 vec2 hash2(vec2 p) {
 	p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
@@ -55,10 +58,27 @@ void fragment() {
 	// cada fragmento corre lo de detrás en su propia dirección (refracción del vidrio quebrado)
 	vec2 shift = (v.yz - 0.5) * 0.018 * amount * fall;
 	vec3 col = texture(screen, SCREEN_UV + shift).rgb;
-	// en la grieta: brillo claro con un borde oscuro, y el centro del impacto algo blanqueado
-	col = mix(col, crack_color.rgb, crack * 0.85);
-	col *= 1.0 - 0.25 * smoothstep(0.5, 1.0, edge) * fall * amount;
-	col = mix(col, vec3(1.0), (1.0 - smoothstep(0.0, 0.04, r)) * amount * 0.35);
+	// en la grieta: rojo vivo con el borde oscuro (sangre en el vidrio), y el centro del impacto más oscuro
+	col = mix(col, mix(crack_dark.rgb, crack_color.rgb, edge), crack * 0.9);
+	col = mix(col, col * vec3(1.0, 0.55, 0.5), fall * amount * 0.35);
+	col = mix(col, crack_dark.rgb, (1.0 - smoothstep(0.0, 0.05, r)) * amount * 0.6);
+	// gotas: manchas redondas alrededor del impacto (más grandes cerca), cada una con su chorro hacia abajo
+	float drops = 0.0;
+	for (int i = 0; i < 14; i++) {
+		vec2 h = hash2(vec2(float(i), seed));
+		float a = h.x * 6.2832;
+		float dist = mix(0.03, 0.38, h.y * h.y) * mix(0.6, 1.0, amount);
+		vec2 c = vec2(cos(a), sin(a)) * dist;
+		float rad = mix(0.022, 0.006, h.y) * (0.7 + 0.5 * fract(h.x * 7.3));
+		vec2 q = d - c;
+		float drop = 1.0 - smoothstep(rad * 0.75, rad, length(q));
+		// chorro: escurre hacia abajo de la pantalla (+y) más cuanto más pasa el golpe
+		float run = (1.0 - amount) * 0.12 * fract(h.y * 13.1);
+		float trail = (1.0 - smoothstep(rad * 0.25, rad * 0.45, abs(q.x))) * step(0.0, q.y) * (1.0 - smoothstep(0.0, run + 0.001, q.y));
+		drops = max(drops, max(drop, trail * 0.9));
+	}
+	drops *= smoothstep(0.0, 0.2, amount);
+	col = mix(col, blood_color.rgb * (0.8 + 0.2 * fall), drops * 0.92);
 	// opaco en la grieta; fuera de ella solo lo justo para que se note la refracción (sin velo blanco)
-	COLOR = vec4(col, clamp(max(crack, fall * amount * 0.35), 0.0, 1.0));
+	COLOR = vec4(col, clamp(max(max(crack, drops * 0.92), fall * amount * 0.35), 0.0, 1.0));
 }

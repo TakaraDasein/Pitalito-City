@@ -168,7 +168,7 @@ func _strike(c: Combatant) -> void:
 			# parry: el arma rebota con chispas, el atacante sale hacia atrás y el tiempo se detiene más
 			if c.body.has_method("push"):
 				c.body.push(-to.normalized() * 0.9) # poco: tiene que quedar a tiro del contraataque
-			EventBus.combat_impact.emit(o.body.global_position + Vector3.UP * 1.3 + to.normalized() * -0.5, "metal", 1.4)
+			EventBus.combat_impact.emit(o.body.global_position + Vector3.UP * 1.3 + to.normalized() * -0.5, "parry", 1.0)
 			if c == player or o == player:
 				res.attacker = c.team
 				res.attacker_body = c.body

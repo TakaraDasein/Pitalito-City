@@ -24,6 +24,8 @@ var _hurt_a := 0.0
 var _stamina_flash := 0.0
 var _fracture: ColorRect    # vidrio quebrado al recibir (shader); amount se apaga solo
 var _fracture_a := 0.0
+var _slash: ColorRect       # tajo verde del parry, en la dirección del golpe desviado
+var _slash_a := 0.0
 
 const BLUE := Color("#005b8c")    # placas de nomenclatura de Pitalito
 const ZONE_BANNER_TIME := 3.0
@@ -384,12 +386,48 @@ func _build_combat() -> void:
 	_fracture.visible = false
 	_root.add_child(_fracture)
 	_root.move_child(_fracture, 0)
+	_slash = ColorRect.new()
+	_slash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_slash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sm := ShaderMaterial.new()
+	sm.shader = preload("res://src/ui/shaders/parry_slash.gdshader")
+	_slash.material = sm
+	_slash.visible = false
+	_root.add_child(_slash)
+	_root.move_child(_slash, 1)
 	EventBus.combat_hit.connect(_on_combat_hit)
+
+
+## Parry: el tajo verde cruza la pantalla en la dirección del golpe del enemigo (de él hacia el jugador), por
+## donde se chocaron las armas.
+func _parry_slash(from: Node3D) -> void:
+	var vp := get_viewport().get_visible_rect().size
+	var center := Vector2(0.5, 0.45)
+	var dir := Vector2(1, -0.35)
+	if from and camera and combat:
+		var a := camera.unproject_position(from.global_position + Vector3.UP * 1.4)
+		var b := camera.unproject_position(combat.body.global_position + Vector3.UP * 1.2)
+		var mid := (a + b) * 0.5
+		center = (mid / vp).clamp(Vector2(0.2, 0.2), Vector2(0.8, 0.8))
+		var d := b - a
+		# un tajo va en diagonal: la línea del golpe se inclina 35° (si no, con el enemigo delante queda vertical)
+		if d.length() > 4.0:
+			dir = d.normalized().rotated(deg_to_rad(35.0) * signf(d.x if absf(d.x) > 1.0 else 1.0))
+		if camera.is_position_behind(from.global_position):
+			center = Vector2(0.5, 0.45)
+	var m := _slash.material as ShaderMaterial
+	m.set_shader_parameter("center", center)
+	m.set_shader_parameter("dir", dir)
+	m.set_shader_parameter("seed", randf() * 100.0)
+	_slash_a = 1.0
 
 
 ## Golpe que recibe el jugador: la pantalla se quiebra desde el lado de donde vino, más cuanto más daño.
 func _on_combat_hit(res: Dictionary) -> void:
-	if combat == null or res.get("target") != combat or res.get("parried", false):
+	if combat == null or res.get("target") != combat:
+		return
+	if res.get("parried", false):
+		_parry_slash(res.get("attacker_body"))
 		return
 	var f: Dictionary = CombatConfig.FRACTURE
 	var k: float = float(f.blocked) if res.blocked else clampf(float(res.damage) / float(f.full_damage), float(f.min), 1.0)
@@ -444,6 +482,10 @@ func _update_combat() -> void:
 	_stamina_flash = maxf(0.0, _stamina_flash - dt)
 	_fracture_a = maxf(0.0, _fracture_a - dt / float(CombatConfig.FRACTURE.fade))
 	_fracture.visible = _fracture_a > 0.001
+	_slash_a = maxf(0.0, _slash_a - dt / float(CombatConfig.PARRY_SLASH.fade))
+	_slash.visible = _slash_a > 0.001
+	if _slash.visible:
+		(_slash.material as ShaderMaterial).set_shader_parameter("amount", _slash_a)
 	if _fracture.visible:
 		(_fracture.material as ShaderMaterial).set_shader_parameter("amount", _fracture_a * _fracture_a * (3.0 - 2.0 * _fracture_a))
 	_stamina.modulate = Color(1, 1, 1, 0.35 if fmod(_stamina_flash * 10.0, 2.0) > 1.0 else 1.0)

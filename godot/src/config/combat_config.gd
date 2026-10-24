@@ -25,6 +25,8 @@ const PARRY := {"window": 0.2, "stagger": 1.1, "riposte": 1.6, "cooldown": 0.6, 
 const HITSTUN := {"time": 0.32, "knockback": 1.5}
 ## Pantalla quebrada al recibir (src/ui/shaders/fracture.gdshader): daño que la rompe del todo, cuánto dura, y lo
 ## poco que la raja un golpe bloqueado.
+## Tajo verde del parry (src/ui/shaders/parry_slash.gdshader): cuánto dura en pantalla.
+const PARRY_SLASH := {"fade": 0.55}
 const FRACTURE := {"full_damage": 30.0, "fade": 0.9, "blocked": 0.15, "min": 0.25}
 ## Combo: un golpe que empieza antes de `window` s tras el anterior sigue la cadena; el último (remate) tarda más.
 const COMBO := {"window": 0.55, "finisher_time": 1.3, "finisher_damage": 1.45}

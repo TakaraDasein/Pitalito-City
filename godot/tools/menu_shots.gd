@@ -244,23 +244,30 @@ func _combat_shots() -> void:
 	var m: Enemy = _main.factions.spawn("machetero", player.global_position - player.global_basis.z * 2.5)
 	m.ai = m.ai.duplicate()
 	m.ai.block = 0.0
-	var fp := Engine.get_physics_frames()
-	while Engine.get_physics_frames() - fp < 600 and not (m.self_c.state == Combatant.State.ATTACK and m.self_c.phase == "windup"):
-		await get_tree().physics_frame
+	await get_tree().create_timer(1.0).timeout
+	# de frente a 1,6 m, y que lance el golpe ya (sin depender de dónde lo dejó la IA)
+	var front := -player.global_basis.z
+	m.global_position = player.global_position + front * 1.6
+	m.rotation.y = atan2(front.x, front.z)
+	m._next_swing = 1e9
+	await get_tree().physics_frame
+	m.self_c.attack()
 	# su preparación dura windup s: levantar la guardia 0,1 s antes del golpe
-	var wait := float(m.self_c.weapon.windup) - 0.1
+	# (se mira lo que le falta al golpe, no cuadros: durante el hitstop el tiempo del juego va más lento)
 	var fw := Engine.get_physics_frames()
-	while (Engine.get_physics_frames() - fw) / 60.0 < wait:
+	while m.self_c.phase == "windup" and m.self_c._timer > 0.1:
 		await get_tree().physics_frame
 	var hp := player.combat.health
 	print("combate: parry — el machetero empieza su golpe a %.2f m (alcance %.1f), jugador ocupado=%s" % [m.dist, m.self_c.weapon.reach, player.combat.is_busy()])
 	player.combat.set_guard(true)
 	print("combate: parry — guardia=%s ventana=%s" % [player.combat.guarding, player.combat.in_parry_window()])
 	fw = Engine.get_physics_frames()
-	while Engine.get_physics_frames() - fw < 20:
+	while Engine.get_physics_frames() - fw < 40 and m.self_c.state != Combatant.State.HIT:
 		await get_tree().physics_frame
+	var stunned := m.self_c.state == Combatant.State.HIT
+	await get_tree().process_frame
 	await _shot("combate_parry")
-	print("combate: parry — vida del jugador %.0f → %.0f, machetero aturdido = %s" % [hp, player.combat.health, m.self_c.state == Combatant.State.HIT])
+	print("combate: parry — vida del jugador %.0f → %.0f, machetero aturdido = %s" % [hp, player.combat.health, stunned])
 	player.combat.set_guard(false)
 	var mh := m.self_c.health
 	var to2 := m.global_position - player.global_position

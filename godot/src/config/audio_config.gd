@@ -21,6 +21,7 @@ const STEPS := {"level": 0.05, "dirt_hz": 520.0, "paved_hz": 1100.0}
 const HITS := {
 	"metal": {"hz": 3500.0, "dur": 0.32, "level": 0.07, "tone": 2350.0},
 	"hueso": {"hz": 2200.0, "dur": 0.08, "level": 0.09, "tone": 0.0},
+	"parry": {"hz": 5000.0, "dur": 0.55, "level": 0.09, "tone": 3100.0},
 	"carne": {"hz": 320.0, "dur": 0.14, "level": 0.12, "tone": 0.0},
 }
 ## Tajo del arma al aire (ESTIMADO).
