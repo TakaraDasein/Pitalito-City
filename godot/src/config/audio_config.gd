@@ -24,6 +24,9 @@ const HITS := {
 	"parry": {"hz": 5000.0, "dur": 0.55, "level": 0.09, "tone": 3100.0},
 	"carne": {"hz": 320.0, "dur": 0.14, "level": 0.12, "tone": 0.0},
 }
+## Disparo (ESTIMADO, de oído): chasquido (paso bajo, duración, nivel), retumbe (ídem) y a cuántos metros baja a la
+## mitad. Se multiplica por el ruido del arma (FirearmsConfig: noise / 100).
+const GUNSHOT := {"crack_hz": 5200.0, "crack_dur": 0.07, "crack": 0.22, "boom_hz": 170.0, "boom_dur": 0.5, "boom": 0.3, "falloff": 40.0}
 ## Tajo del arma al aire (ESTIMADO).
 const SWING := {"hz": 900.0, "dur": 0.2, "level": 0.035}
 ## Interfaz: clic corto al enfocar y al aceptar.

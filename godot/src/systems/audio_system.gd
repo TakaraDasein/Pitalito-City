@@ -27,9 +27,9 @@ var _rng := RandomNumberGenerator.new()
 # pasos: [t, dur, a (coef. del paso bajo), amp]; un filtro compartido basta (no se pisan)
 var _steps: Array = []
 var _step_lp := 0.0
-# golpes y tajos: [t, dur, a (paso bajo del ruido), amp, f (tono, 0 = sin tono), barrido]; filtro compartido
+# golpes, tajos y disparos: [t, dur, a (paso bajo del ruido), amp, f (tono, 0 = sin tono), barrido, filtro];
+# suenan todos a la vez, cada uno con su filtro (una ráfaga de fusil no se pone en fila)
 var _hits: Array = []
-var _hit_lp := 0.0
 # música: cada nota se sintetiza una vez a un AudioStreamWAV (caché por nota y lado) y suena en una voz libre
 # del bus «Música», que lleva el eco y la reverberación. Sumarlas muestra a muestra en GDScript costaba demasiado.
 var _music_step := 0
@@ -143,7 +143,7 @@ func impact(kind: String, strength: float) -> void:
 		return
 	var h: Dictionary = AudioConfig.HITS.get(kind, AudioConfig.HITS.carne)
 	var a := 1.0 - exp(-TAU * float(h.hz) / AudioConfig.MIX_RATE)
-	_hits.push_back([0.0, float(h.dur), a, float(h.level) * clampf(strength, 0.4, 1.4), float(h.tone), 0.0])
+	_hits.push_back([0.0, float(h.dur), a, float(h.level) * clampf(strength, 0.4, 1.4), float(h.tone), 0.0, 0.0])
 
 
 ## El tajo del arma al aire: ruido que se abre y se cierra, más grave con armas pesadas.
@@ -151,7 +151,19 @@ func swing(weight: float) -> void:
 	if not active:
 		return
 	var s: Dictionary = AudioConfig.SWING
-	_hits.push_back([0.0, float(s.dur), 1.0 - exp(-TAU * float(s.hz) / AudioConfig.MIX_RATE), float(s.level) * clampf(weight, 0.5, 1.5), 0.0, 1.0])
+	_hits.push_back([0.0, float(s.dur), 1.0 - exp(-TAU * float(s.hz) / AudioConfig.MIX_RATE), float(s.level) * clampf(weight, 0.5, 1.5), 0.0, 1.0, 0.0])
+
+
+## Un disparo: chasquido seco (ruido claro y corto) más el retumbe grave que rueda por el valle. Más fuerte cuanto
+## más ruidosa el arma; baja con la distancia y de lejos se oye solo el retumbe.
+func gunshot(loudness: float, distance: float) -> void:
+	if not active:
+		return
+	var g: Dictionary = AudioConfig.GUNSHOT
+	var far := 1.0 / (1.0 + distance / float(g.falloff))
+	var rate := AudioConfig.MIX_RATE
+	_hits.push_back([0.0, float(g.crack_dur), 1.0 - exp(-TAU * float(g.crack_hz) / rate), float(g.crack) * loudness * far * far, 0.0, 0.0, 0.0])
+	_hits.push_back([0.0, float(g.boom_dur) * (1.0 + distance / 200.0), 1.0 - exp(-TAU * float(g.boom_hz) / rate), float(g.boom) * loudness * far, 0.0, 0.0, 0.0])
 
 
 ## Toca las campanitas que caen dentro de este cuadro (Musica.update de la web). El ánimo cambia al empezar la vuelta.
@@ -281,18 +293,17 @@ func _fill_world() -> void:
 				_chirp[0] += dt
 				s += sin(TAU * lerpf(_chirp[2], _chirp[3], k) * _chirp[0]) * sin(PI * k) * bird_amp
 		# golpes y tajos: ruido filtrado (y tono en el metal); el tajo sube y baja en vez de caer
-		if not _hits.is_empty():
-			var hs: Array = _hits[0]
+		for hs: Array in _hits:
 			var hk: float = hs[0] / hs[1]
-			_hit_lp += (noise - _hit_lp) * hs[2]
+			if hk >= 1.0:
+				continue
+			hs[6] += (noise - hs[6]) * hs[2]
 			var env := sin(PI * hk) if hs[5] > 0.0 else (1.0 - hk) * (1.0 - hk) * (1.0 - hk)
-			var v: float = _hit_lp * 3.0
+			var v: float = hs[6] * 3.0
 			if hs[4] > 0.0:
 				v = v * 0.4 + sin(TAU * hs[4] * hs[0]) * 0.6 + sin(TAU * hs[4] * 1.37 * hs[0]) * 0.3
 			s += v * env * hs[3]
 			hs[0] += dt
-			if hk >= 1.0:
-				_hits.pop_front()
 		# pasos: ruido con caída rápida por un paso bajo
 		if not _steps.is_empty():
 			var st: Array = _steps[0]
@@ -306,6 +317,8 @@ func _fill_world() -> void:
 		buf[i] = Vector2(s, s)
 	_world.push_buffer(buf)
 	_insect_t = fmod(_insect_t, 1000.0)
+	if not _hits.is_empty():
+		_hits = _hits.filter(func(h): return h[0] < h[1])
 
 	_chirp_t -= n * dt
 	if _chirp_t <= 0.0 and _chirp.is_empty() and active:

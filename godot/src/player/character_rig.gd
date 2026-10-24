@@ -21,6 +21,14 @@ var exclude: Array[RID] = []
 ## Objetivo fijado a mano para cada pie (posición del mundo), o null: lo usa la coreografía de subir a la moto.
 ## Con objetivo fijo no se lanzan rayos ni se baja la cadera.
 var foot_override: Array = [null, null]
+## Manos: si hay objetivo, el brazo lo alcanza con cinemática inversa (izquierda al guardamanos de un arma larga,
+## derecha a su empuñadura); null la suelta (suave).
+var left_hand_target: Node3D
+var right_hand_target: Node3D
+var _arm_iks: Array[TwoBoneIK3D] = []    # [izquierda, derecha]
+var _arm_markers: Array[Marker3D] = []
+var _elbows: Array[Marker3D] = []
+var _arm_w := [0.0, 0.0]
 
 var _ik: TwoBoneIK3D
 var _looks: Array[LookAtModifier3D] = []
@@ -69,6 +77,27 @@ func _build(skel: Skeleton3D) -> void:
 		_ik.set_end_bone_name(i, side + "Foot")
 		_ik.set_target_node(i, _ik.get_path_to(t))
 		_ik.set_pole_node(i, _ik.get_path_to(pole))
+	# brazos (se agregan después de la mirada: ver el final de _build). Polo: el codo afuera, abajo y atrás
+	for side in ["Left", "Right"]:
+		if skel.find_bone(side + "Hand") < 0:
+			continue
+		var ik := TwoBoneIK3D.new()
+		ik.name = "Brazo%sIK" % ("Izq" if side == "Left" else "Der")
+		ik.set_setting_count(1)
+		ik.influence = 0.0
+		ik.set_root_bone_name(0, side + "UpperArm")
+		ik.set_middle_bone_name(0, side + "LowerArm")
+		ik.set_end_bone_name(0, side + "Hand")
+		var m := Marker3D.new()
+		m.top_level = true
+		add_child(m)
+		var elbow := Marker3D.new()
+		var sh := skel.get_bone_global_rest(skel.find_bone(side + "UpperArm")).origin
+		elbow.position = sh + Vector3(signf(sh.x) * 0.5, -0.55, -0.45)
+		model.add_child(elbow)
+		_arm_iks.push_back(ik)
+		_arm_markers.push_back(m)
+		_elbows.push_back(elbow)
 	_look_target = Marker3D.new()
 	_look_target.top_level = true
 	add_child(_look_target)
@@ -92,6 +121,12 @@ func _build(skel: Skeleton3D) -> void:
 		skel.add_child(la)
 		la.target_node = la.get_path_to(_look_target)
 		_looks.push_back(la)
+	for i in _arm_iks.size():
+		var ik := _arm_iks[i]
+		skel.add_child(ik)
+		# las rutas se ponen con el nodo ya en el árbol
+		ik.set_target_node(0, ik.get_path_to(_arm_markers[i]))
+		ik.set_pole_node(0, ik.get_path_to(_elbows[i]))
 
 
 func _process_modification() -> void:
@@ -99,6 +134,13 @@ func _process_modification() -> void:
 	if skel == null:
 		return
 	var dt := get_process_delta_time()
+	for i in _arm_iks.size():
+		var t: Node3D = left_hand_target if i == 0 else right_hand_target
+		var ok := t != null and is_instance_valid(t)
+		_arm_w[i] = move_toward(_arm_w[i], 1.0 if ok else 0.0, dt * 6.0)
+		_arm_iks[i].influence = _arm_w[i]
+		if ok:
+			_arm_markers[i].global_transform = t.global_transform
 	var model := skel.owner as Node3D
 	var xf := skel.global_transform
 	var ground := model.global_position.y

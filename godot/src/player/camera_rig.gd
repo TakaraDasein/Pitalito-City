@@ -12,6 +12,12 @@ var yaw := 0.0
 var pitch := -0.25
 ## Blanco fijado del combate: la cámara gira sola hasta encuadrarlo (como en Dark Souls).
 var lock_target: Node3D
+## Apuntar con un arma de fuego (0 o 1, lo pone el jugador): brazo corto sobre el hombro derecho y menos campo de
+## visión (FirearmsConfig.AIM_CAMERA). Se mezcla suave.
+var aim := 0.0
+var _aim_k := 0.0
+var _base_length := 2.4
+var _base_fov := 65.0
 ## Temblor (modelo de "trauma"): sube con cada golpe y baja solo; el desplazamiento es trauma² para que los
 ## golpes leves apenas se noten y los fuertes sí.
 var _trauma := 0.0
@@ -35,6 +41,7 @@ func _ready() -> void:
 ## Distancia y altura del brazo según lo que se sigue (a pie o en carro).
 func follow(node: Node3D, distance: float, height: float) -> void:
 	target = node
+	_base_length = distance
 	_arm.spring_length = distance
 	_arm.position.y = height
 	_arm.clear_excluded_objects()
@@ -58,6 +65,16 @@ func _process(delta: float) -> void:
 		var to := lock_target.global_position - target.global_position
 		yaw = lerp_angle(yaw, atan2(-to.x, -to.z), minf(1.0, 6.0 * delta))
 	rotation = Vector3(pitch, yaw, 0.0)
+	var ac: Dictionary = FirearmsConfig.AIM_CAMERA
+	var real_dt := delta / maxf(Engine.time_scale, 0.01)
+	_aim_k = move_toward(_aim_k, aim, real_dt * float(ac.speed) * 0.5)
+	if camera and (_aim_k > 0.0 or aim > 0.0):
+		var k := smoothstep(0.0, 1.0, _aim_k)
+		_arm.spring_length = lerpf(_base_length, float(ac.distance), k)
+		_arm.position.x = float(ac.shoulder) * k
+		camera.fov = lerpf(_base_fov, float(ac.fov), k)
+		if _aim_k == 0.0:
+			_arm.position.x = 0.0
 	if _trauma > 0.0 and camera:
 		# tiempo real: el temblor sigue durante el hitstop
 		var real := delta / maxf(Engine.time_scale, 0.01)

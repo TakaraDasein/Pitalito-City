@@ -1,7 +1,7 @@
 extends Node
 ## Herramienta: capturas de la carga y los menús (screenshots/menu_*.png). Uso: godot res://tools/menu_shots.tscn
 ## Para no recorrer todo, se nombran las secciones que interesan: `godot res://tools/menu_shots.tscn -- personaje`
-## (garaje, personaje, menus, juego, pies, banca, subir, faros, tomar, ambiente, combate, botin; varias separadas por espacio). Carga y portada se capturan siempre.
+## (garaje, personaje, menus, juego, pies, banca, subir, faros, tomar, ambiente, combate, botin, disparos; varias separadas por espacio). Carga y portada se capturan siempre.
 
 var _main: Node
 var _only := OS.get_cmdline_user_args()
@@ -130,6 +130,8 @@ func _ready() -> void:
 		await _combat_shots()
 	if _want("botin"):
 		await _loot_shots()
+	if _want("disparos"):
+		await _gun_shots()
 	get_tree().quit()
 
 
@@ -292,6 +294,83 @@ func _combat_shots() -> void:
 	while Engine.get_physics_frames() - fw < 30:
 		await get_tree().physics_frame
 	print("combate: recibe — vida %.0f → %.0f, retrocede %.2f m, estado %d" % [hp, player.combat.health, Vector2(player.global_position.x - p0.x, player.global_position.z - p0.z).length(), player.combat.state])
+
+
+## Disparos: pistola, escopeta y fusil con su munición contra un centinela a 10 m; hacia dónde apunta el cañón,
+## si la mano izquierda llega al guardamanos, y la vida que le quita cada uno.
+func _gun_shots() -> void:
+	if _main.state != _main.State.PLAYING:
+		_main._start_playing()
+	seed(5)
+	var player: Player = _main.player
+	var inv := InventorySystem.instance
+	var sp: Dictionary = WorldData.spawn()
+	player.place(sp.x, sp.z, sp.heading)
+	await get_tree().create_timer(1.0).timeout
+	for id in ["pistola", "escopeta", "fusil"]:
+		var f: Dictionary = FirearmsConfig.FIREARMS[id]
+		inv.add(id, 1)
+		inv.add(f.ammo, int(f.magazine) * 2)
+		player._weapon = id
+		player.set_armed(true)
+		player.reload()
+		while player._reload_t > 0.0:
+			await get_tree().physics_frame
+		var front := -player.global_basis.z
+		var e: Enemy = _main.factions.spawn("cabo", player.global_position + front * 10.0)
+		e.ai = e.ai.duplicate()
+		e.ai.sight = 0.0
+		e.ai.hearing = 0.0
+		e.ai.block = 0.0
+		_main.camera_rig.yaw = player.rotation.y
+		_main.camera_rig.pitch = -0.08
+		player.aiming = true
+		await get_tree().create_timer(0.9).timeout
+		# pose de apuntar, de cerca y de lado
+		var cam := Camera3D.new()
+		cam.fov = 40
+		add_child(cam)
+		# armas largas: desde la izquierda, para ver la mano en el guardamanos
+		var side := player.global_basis.x * (-1.0 if FirearmsConfig.FIREARMS[id].get("long", false) else 1.0)
+		cam.global_position = player.global_position + side * 2.0 - player.global_basis.z * 0.6 + Vector3.UP * 1.5
+		cam.look_at(player.global_position + Vector3.UP * 1.3 - player.global_basis.z * 0.3)
+		cam.make_current()
+		await get_tree().process_frame
+		var muzzle: Vector3 = player._gun.muzzle.global_position
+		var grip: Vector3 = player._gun.slot.global_position
+		var barrel := (muzzle - grip).normalized()
+		var fwd := -player.global_basis.z
+		print("disparos %s: cañón adelante=%.2f arriba=%.2f · cargador %s" % [id, barrel.dot(fwd), barrel.y, player.ammo()])
+		await _shot("disparos_pose_" + id)
+		if player._rig:
+			var r: CharacterRig = player._rig
+			print("  rig: manos con objetivo izq=%s der=%s" % [r.left_hand_target != null, r.right_hand_target != null])
+		cam.queue_free()
+		_main.camera_rig.camera.make_current()
+		# con el blanco fijado el tiro va a su pecho
+		_main.combat.toggle_lock(player.combat, player.rotation.y)
+		var h0 := e.self_c.health
+		for k in 3:
+			player._shot_queued = true
+			player._trigger = true
+			var f0 := Engine.get_physics_frames()
+			while Engine.get_physics_frames() - f0 < 4:
+				await get_tree().physics_frame
+			if k == 0:
+				await _shot("disparos_" + id)
+			player._trigger = false
+			while player._cooldown > 0.0:
+				await get_tree().physics_frame
+		if player.combat.lock_target:
+			_main.combat.toggle_lock(player.combat, 0.0)
+		if player._gun.get("handguard"):
+			var lh: Vector3 = player._model.find_child(CharacterModel.SKELETON, true, false).get_bone_global_pose(player._model.find_child(CharacterModel.SKELETON, true, false).find_bone("LeftHand")).origin
+			var skel: Skeleton3D = player._model.find_child(CharacterModel.SKELETON, true, false)
+			print("disparos %s: mano izquierda a %.2f m del guardamanos" % [id, (skel.global_transform * lh).distance_to(player._gun.handguard.global_position)])
+		print("disparos %s: vida del cabo %.0f → %.0f, cargador %s" % [id, h0, e.self_c.health, player.ammo()])
+		player.aiming = false
+		e.queue_free()
+		await get_tree().create_timer(0.5).timeout
 
 
 ## Botín: el contenedor más cercano al Parque (de un lugar real), registrarlo, la mochila abierta, y lo que suelta

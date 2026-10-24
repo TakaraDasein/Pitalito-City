@@ -24,6 +24,8 @@ var _hurt_a := 0.0
 var _stamina_flash := 0.0
 var _fracture: ColorRect    # vidrio quebrado al recibir (shader); amount se apaga solo
 var _fracture_a := 0.0
+var _crosshair: Label        # mira (con arma de fuego en la mano) y munición: cargador / mochila
+var _ammo: Label
 var _slash: ColorRect       # tajo verde del parry, en la dirección del golpe desviado
 var _slash_a := 0.0
 
@@ -396,6 +398,24 @@ func _build_combat() -> void:
 	_slash.visible = false
 	_root.add_child(_slash)
 	_root.move_child(_slash, 1)
+	_crosshair = Label.new()
+	_crosshair.text = "+"
+	_crosshair.add_theme_font_size_override("font_size", 26)
+	_crosshair.add_theme_color_override("font_color", GuaduaTheme.CREMA)
+	_crosshair.add_theme_constant_override("outline_size", 4)
+	_crosshair.add_theme_color_override("font_outline_color", GuaduaTheme.CAFE_DARK)
+	_crosshair.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	_crosshair.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_crosshair.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_crosshair.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_crosshair.visible = false
+	_root.add_child(_crosshair)
+	_ammo = Label.new()
+	_ammo.add_theme_color_override("font_color", GuaduaTheme.CREMA)
+	_ammo.add_theme_constant_override("outline_size", 4)
+	_ammo.add_theme_color_override("font_outline_color", GuaduaTheme.CAFE_DARK)
+	_bars.add_child(_ammo)
+	_ammo.visible = false
 	EventBus.combat_hit.connect(_on_combat_hit)
 
 
@@ -473,6 +493,13 @@ func _update_combat() -> void:
 	var hurt := combat.health < float(combat.stats.health) or combat.stamina < float(combat.stats.stamina) - 0.5
 	var player: Node = combat.body
 	_bars.visible = player.visible and (player.get("armed") or hurt)
+	var gun_id: String = player.firearm() if player.has_method("firearm") else ""
+	_crosshair.visible = gun_id != "" and player.visible
+	_ammo.visible = gun_id != ""
+	if gun_id != "":
+		var a: Vector2i = player.ammo()
+		_ammo.text = "%s   %d / %d" % [FirearmsConfig.FIREARMS[gun_id].name, a.x, a.y]
+		_crosshair.modulate.a = 1.0 if player.aiming else 0.55
 	_health.value = combat.health / float(combat.stats.health)
 	_stamina.value = combat.stamina / float(combat.stats.stamina)
 	var dt := get_process_delta_time() / maxf(Engine.time_scale, 0.01)

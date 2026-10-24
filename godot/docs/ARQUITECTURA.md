@@ -354,7 +354,14 @@ edificios armados con piezas y recorribles por dentro.
    sueltan lo que llevan al caer (DROPS). Mochila con tope de 25 kg (`InventorySystem`) y pantalla con I
    (`InventoryPanel`). De Godot: botín siempre activo (la web lo tiene solo en supervivencia) y las armas cuerpo a
    cuerpo son objetos: machete de serie, las demás hay que encontrarlas o quitárselas a los Restos.
-   Falta: armas de fuego (los objetos ya se cargan), fauna, supervivencia (hambre, sed e infección ya se guardan),
+   Armas de fuego (`FirearmsConfig`, espejo de firearms.config.js; `FirearmSystem`): pistola, revólver, escopeta,
+   recortada, fusil y rifle (modelos CC0 de Styloo y Quaternius). Tiro por rayo desde la cámara a la mira (o al
+   pecho del blanco fijado), perdigones, el mundo corta el rayo, daño que cae con la distancia; fogonazo, sonido
+   (chasquido + retumbe por distancia), casquillos y cargadores físicos que caen y rebotan, seguro (B), recarga
+   con la munición de la mochila (R). Capa de pose de pistola sobre la locomoción (BlendTree filtrado del pecho
+   arriba, apuntar arriba/abajo con la cámara). El arma se sostiene por la línea de tiro, no por el giro de la
+   muñeca; las largas con la culata al hombro y las dos manos por cinemática inversa (CharacterRig).
+   Falta: fauna, supervivencia (hambre, sed e infección ya se guardan),
    historia y misiones, construcción por bloques.
 6. Oclusores por tile, LOD de toda la ciudad (`CityLOD`), y exportación (filtro de `data/world/*.json` y `*.bin`).
 7. Tamaño de los hitos: cada GLB lleva sus texturas incrustadas (60 MB entre los 8); compartirlas con un

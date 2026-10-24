@@ -69,6 +69,11 @@ func set_weapon(id: String) -> void:
 	if CombatConfig.WEAPONS.has(id):
 		weapon_id = id
 		weapon = CombatConfig.WEAPONS[id]
+	elif FirearmsConfig.FIREARMS.has(id):
+		# arma de fuego: el tiro lo resuelve FirearmSystem, no el golpe (alcance y daño de golpe en 0, como la web)
+		weapon_id = id
+		weapon = {"name": FirearmsConfig.FIREARMS[id].name, "model": "", "firearm": true, "combo": ["Punch_Jab"],
+			"damage": 0.0, "stamina": 0.0, "reach": 0.0, "arc": 0.0, "windup": 0.05, "active": 0.01, "recover": 0.05, "poise": 0.0}
 
 
 ## Intenta atacar. Durante el golpe (ya soltado o recuperándose) el clic se guarda y encadena el siguiente.

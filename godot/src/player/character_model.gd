@@ -122,6 +122,80 @@ static func attach_weapon(model: Node3D, id: String) -> BoneAttachment3D:
 	return slot
 
 
+## Arma de fuego en la mano derecha (FirearmsConfig). El GLB se normaliza: a escala real (`length`), con la
+## empuñadura en el origen y el cañón hacia +X; después se empuña igual que las de mano (GRIP_BASIS): el cañón
+## sigue los dedos y el lomo queda del lado del pulgar. Devuelve {slot, hold, palm, kick, muzzle, handguard, port,
+## mag} o {}: hold = lo que sostiene el arma (el jugador lo orienta por la línea de tiro), palm = la palma en el
+## espacio de la mano, kick = retroceso (gira en el eje del arma), muzzle = boca (fogonazo), handguard = mano
+## izquierda o null, port = ventana de expulsión (casquillos), mag = de donde sale el cargador o null.
+static func attach_firearm(model: Node3D, id: String) -> Dictionary:
+	var f: Dictionary = FirearmsConfig.FIREARMS.get(id, {})
+	var skel: Skeleton3D = model.find_child(SKELETON, true, false) if model else null
+	var path: String = FirearmsConfig.DIR + String(f.get("file", ""))
+	if f.is_empty() or skel == null or skel.find_bone("RightHand") < 0 or not ResourceLoader.exists(path):
+		return {}
+	var gun: Node3D = load(path).instantiate()
+	# caja del modelo en su propio espacio
+	var box := AABB()
+	var first := true
+	for mi: MeshInstance3D in gun.find_children("*", "MeshInstance3D", true, false):
+		var rel := Transform3D()
+		var n: Node = mi
+		while n and n != gun:
+			rel = (n as Node3D).transform * rel
+			n = n.get_parent()
+		var b := rel * mi.get_aabb()
+		box = b if first else box.merge(b)
+		first = false
+	var dir := float(f.get("barrel", 1))
+	var size := box.size
+	var s := float(f.length) / maxf(size.x, 0.001)
+	var along := func(frac: float, height: float) -> Vector3:
+		var x := box.position.x + frac * size.x if dir > 0 else box.end.x - frac * size.x
+		return Vector3(x, box.position.y + height * size.y, box.get_center().z)
+	var grip: Vector3 = along.call(f.grip[0], f.grip[1]) if f.has("grip") else Vector3.ZERO
+	# archivo → arma: escala, cañón a +X, empuñadura al origen
+	var basis := Basis(Vector3.UP, 0.0 if dir > 0 else PI).scaled(Vector3.ONE * s)
+	var to_gun := Transform3D(basis, -(basis * grip))
+	var palm := Vector3(0.0, 0.1 * CombatConfig.GRIP_ALONG, CombatConfig.GRIP_PALM)
+	if skel.find_bone("RightMiddleProximal") >= 0:
+		var hand := skel.get_bone_global_rest(skel.find_bone("RightHand"))
+		var knuckle := hand.affine_inverse() * skel.get_bone_global_rest(skel.find_bone("RightMiddleProximal")).origin
+		palm = Vector3(0.0, knuckle.y * CombatConfig.GRIP_ALONG, CombatConfig.GRIP_PALM)
+	var slot := BoneAttachment3D.new()
+	slot.name = "arma"
+	slot.bone_name = "RightHand"
+	skel.add_child(slot)
+	# el que sostiene el arma va suelto (top_level): el jugador lo pone cada cuadro con la empuñadura en la palma y
+	# el cañón por la línea de tiro (FirearmsConfig.HOLD); hasta entonces, como un arma de mano
+	var hold := Node3D.new()
+	hold.transform = Transform3D(CombatConfig.GRIP_BASIS, palm)
+	slot.add_child(hold)
+	hold.top_level = true
+	var kick := Node3D.new()
+	hold.add_child(kick)
+	gun.transform = to_gun
+	kick.add_child(gun)
+	var muzzle := Marker3D.new()
+	muzzle.position = to_gun * along.call(1.0, 0.7)
+	kick.add_child(muzzle)
+	var port := Marker3D.new()   # ventana de expulsión: por donde sale el casquillo (a la derecha del arma)
+	var g0: float = f.grip[0] if f.has("grip") else 0.3
+	port.position = to_gun * along.call(minf(0.95, g0 + 0.12), 0.85)
+	kick.add_child(port)
+	var mag: Marker3D = null
+	if f.has("mag_at"):
+		mag = Marker3D.new()
+		mag.position = to_gun * along.call(f.mag_at[0], f.mag_at[1])
+		kick.add_child(mag)
+	var guard: Marker3D = null
+	if f.has("handguard"):
+		guard = Marker3D.new()
+		guard.position = to_gun * along.call(f.handguard[0], f.handguard[1])
+		kick.add_child(guard)
+	return {"slot": slot, "hold": hold, "palm": palm, "kick": kick, "muzzle": muzzle, "handguard": guard, "port": port, "mag": mag}
+
+
 ## Viste un cuerpo cualquiera con estas piezas (mismo armazón), teñidas de un color: el uniforme de los Restos.
 static func dress_parts(model: Node3D, parts: Array, sex: String, color: Color) -> void:
 	var skel: Skeleton3D = model.find_child(SKELETON, true, false)

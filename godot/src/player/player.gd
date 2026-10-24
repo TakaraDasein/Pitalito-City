@@ -31,6 +31,18 @@ var _weapon_slot: BoneAttachment3D
 var _dead_t := 0.0
 var _push := Vector3.ZERO
 var _push_applied := Vector3.ZERO  # lo que se sumó del empujón el cuadro anterior (se quita antes de acelerar)
+# arma de fuego en la mano: {slot, kick, muzzle, handguard} (CharacterModel.attach_firearm), balas en el cargador
+# de cada una, tiempo hasta el próximo tiro, recarga en curso, apuntar y gatillo
+var _gun := {}
+var _mag := {}
+var _cooldown := 0.0
+var _reload_t := 0.0
+var aiming := false
+var _trigger := false
+var _shot_queued := false
+var _kick := 0.0
+var safety: bool = FirearmsConfig.SAFETY.start_on   # seguro puesto: el gatillo hace clic y no dispara
+var _hold_basis := Basis()
 var _recoil := 0.0       # sacudida del cuerpo al recibir sin aturdirse (rad, vuelve sola)
 var _lunge_t := 0.0      # medio paso adelante del golpe en curso
 
@@ -159,8 +171,59 @@ func _setup_tree(player: AnimationPlayer) -> void:
 				tr.xfade_time = 0.1
 				sm.add_transition(a, b, tr)
 
+	# Capa del arma de fuego: torso, brazos y cabeza toman la pose de pistola encima de la locomoción (las piernas
+	# siguen caminando). Reposo, apuntar (mezcla arriba / al frente / abajo según la cámara), disparar y recargar.
+	var gun := AnimationNodeStateMachine.new()
+	var g_idle := AnimationNodeAnimation.new()
+	g_idle.animation = CharacterModel.clip("Pistol_Idle")
+	gun.add_node("idle", g_idle)
+	var aim := AnimationNodeBlendSpace1D.new()
+	for p: Array in [["Pistol_Aim_Down", -1.0], ["Pistol_Aim_Neutral", 0.0], ["Pistol_Aim_Up", 1.0]]:
+		var a := AnimationNodeAnimation.new()
+		a.animation = CharacterModel.clip(p[0])
+		aim.add_blend_point(a, p[1], -1, p[0])
+	aim.min_space = -1.0
+	aim.max_space = 1.0
+	gun.add_node("aim", aim)
+	for p: Array in [["shoot", "Pistol_Shoot"], ["reload", "Pistol_Reload"]]:
+		var a := AnimationNodeAnimation.new()
+		a.animation = CharacterModel.clip(p[1])
+		a.use_custom_timeline = true
+		a.timeline_length = player.get_animation(CharacterModel.clip(p[1])).length if player.has_animation(CharacterModel.clip(p[1])) else 1.0
+		a.stretch_time_scale = true
+		a.loop_mode = Animation.LOOP_NONE
+		gun.add_node(p[0], a)
+	for a: String in ["idle", "aim", "shoot", "reload"]:
+		for b: String in ["idle", "aim", "shoot", "reload"]:
+			if a != b:
+				var tr := AnimationNodeStateMachineTransition.new()
+				tr.xfade_time = 0.12
+				# disparar vuelve a apuntar y recargar a reposo solos, al terminar el clip
+				if (a == "shoot" and b == "aim") or (a == "reload" and b == "idle"):
+					tr.switch_mode = AnimationNodeStateMachineTransition.SWITCH_MODE_AT_END
+					tr.advance_mode = AnimationNodeStateMachineTransition.ADVANCE_MODE_AUTO
+				gun.add_transition(a, b, tr)
+	var start := AnimationNodeStateMachineTransition.new()
+	gun.add_transition("Start", "idle", start)
+	var upper := AnimationNodeBlend2.new()
+	upper.filter_enabled = true
+	var skel: Skeleton3D = _model.find_child(CharacterModel.SKELETON, true, false)
+	if skel:
+		for i in skel.get_bone_count():
+			var bn := skel.get_bone_name(i)
+			# de la columna hacia arriba (no la cadera ni las piernas)
+			if bn in ["Spine", "Chest", "UpperChest", "Neck", "Head"] or bn.begins_with("Left") and not ("Leg" in bn or "Foot" in bn or "Toe" in bn) or bn.begins_with("Right") and not ("Leg" in bn or "Foot" in bn or "Toe" in bn):
+				upper.set_filter_path(NodePath("%" + CharacterModel.SKELETON + ":" + bn), true)
+	var root := AnimationNodeBlendTree.new()
+	root.add_node("sm", sm)
+	root.add_node("gun", gun)
+	root.add_node("upper", upper)
+	root.connect_node("upper", 0, "sm")
+	root.connect_node("upper", 1, "gun")
+	root.connect_node("output", 0, "upper")
+
 	_tree = AnimationTree.new()
-	_tree.tree_root = sm
+	_tree.tree_root = root
 	_model.add_child(_tree)
 	_tree.anim_player = _tree.get_path_to(player)
 	_tree.active = true
@@ -183,9 +246,10 @@ func _physics_process(delta: float) -> void:
 	var rolling := combat.state == Combatant.State.ROLL
 	if combat.state in [Combatant.State.ATTACK, Combatant.State.HIT, Combatant.State.DEAD]:
 		dir = Vector3.ZERO
-	elif combat.guarding:
+	elif combat.guarding or (aiming and firearm() != ""):
 		speed = minf(speed, JOG) * 0.45
 	_combat_tick(delta)
+	_firearm_tick(delta)
 
 
 	var water: Dictionary = WaterSystem.instance.sample(global_position.x, global_position.z) if WaterSystem.instance else {}
@@ -230,7 +294,11 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 	var lock := combat.lock_target
-	if lock and lock.is_alive() and not rolling:
+	var gun_up := firearm() != "" and (aiming or _trigger or _cooldown > 0.0) and camera_rig != null
+	if gun_up and not (lock and lock.is_alive()) and not rolling:
+		# apuntando o disparando, el cuerpo encara hacia donde mira la cámara (la mira)
+		rotation.y = lerp_angle(rotation.y, camera_rig.yaw, minf(1.0, TURN * 1.5 * delta))
+	elif lock and lock.is_alive() and not rolling:
 		# con blanco fijado el personaje encara al enemigo aunque camine de lado
 		var to := lock.body.global_position - global_position
 		rotation.y = lerp_angle(rotation.y, atan2(-to.x, -to.z), minf(1.0, TURN * delta))
@@ -245,11 +313,11 @@ func _physics_process(delta: float) -> void:
 		velocity.y = 0.0
 
 	if _tree and combat.state == Combatant.State.IDLE and not combat.guarding:
-		var sm: AnimationNodeStateMachinePlayback = _tree.get("parameters/playback")
+		var sm: AnimationNodeStateMachinePlayback = _tree.get("parameters/sm/playback")
 		# el gesto de tomar algo termina solo (vuelve a "move" al acabar), salvo que se eche a andar
 		if sm.get_current_node() != "pickup" or dir.length() > 0.1:
 			sm.travel("move" if is_on_floor() else "air")
-		_tree.set("parameters/move/blend_position", Vector2(velocity.x, velocity.z).length())
+		_tree.set("parameters/sm/move/blend_position", Vector2(velocity.x, velocity.z).length())
 
 
 ## Subir al vehículo, sin cortes: camina hasta la puerta del conductor, la abre (no en la moto), y se sienta
@@ -448,7 +516,7 @@ func _next_step() -> void:
 			visible = false
 		"subir", "bajar":
 			_playback().travel("move")
-			_tree.set("parameters/move/blend_position", WALK * 0.6)
+			_tree.set("parameters/sm/move/blend_position", WALK * 0.6)
 
 
 func _mounting(delta: float) -> void:
@@ -464,7 +532,7 @@ func _mounting(delta: float) -> void:
 	rotation.y = lerp_angle(st.rot0, st.rot1, kr)
 	if _tree and st.phase == "walk":
 		_playback().travel("move")
-		_tree.set("parameters/move/blend_position", WALK)
+		_tree.set("parameters/sm/move/blend_position", WALK)
 	if st.phase == "pierna":
 		var kk := minf(_mount.t, 1.0)
 		var kp: float = (1.0 - kk) if st.reverse else kk
@@ -473,7 +541,7 @@ func _mounting(delta: float) -> void:
 		_moto_feet(st, kp)
 		if _tree:
 			_playback().travel("move")
-			_tree.set("parameters/move/blend_position", 0.0)
+			_tree.set("parameters/sm/move/blend_position", 0.0)
 	if _rig:
 		_rig.feet_enabled = st.phase in ["walk", "pierna"]
 		if st.phase != "pierna":
@@ -525,7 +593,7 @@ func _seated(delta: float) -> void:
 
 
 func _playback() -> AnimationNodeStateMachinePlayback:
-	return _tree.get("parameters/playback")
+	return _tree.get("parameters/sm/playback")
 
 
 ## Pies al suelo y mirada hacia donde apunta la cámara (un punto lejano en su eje, no la cámara misma).
@@ -554,9 +622,9 @@ func _swim(dir: Vector3, water: Dictionary, delta: float) -> void:
 	if dir.length() > 0.05:
 		rotation.y = lerp_angle(rotation.y, atan2(-dir.x, -dir.z), minf(1.0, TURN * 0.5 * delta))
 	if _tree:
-		var sm: AnimationNodeStateMachinePlayback = _tree.get("parameters/playback")
+		var sm: AnimationNodeStateMachinePlayback = _tree.get("parameters/sm/playback")
 		sm.travel("swim")
-		_tree.set("parameters/swim/blend_position", Vector2(velocity.x, velocity.z).length())
+		_tree.set("parameters/sm/swim/blend_position", Vector2(velocity.x, velocity.z).length())
 
 
 ## Subir escalones: CharacterBody3D se detiene ante cualquier cara vertical, aunque sea un peldaño de 18 cm.
@@ -604,6 +672,32 @@ func _unhandled_input(event: InputEvent) -> void:
 		set_armed(not armed)
 	elif not armed:
 		return
+	elif firearm() != "":
+		if event.is_action_pressed("combat_attack"):
+			_shot_queued = true
+			_trigger = true
+		elif event.is_action_released("combat_attack"):
+			_trigger = false
+		elif event.is_action_pressed("combat_guard"):
+			aiming = true
+		elif event.is_action_released("combat_guard"):
+			aiming = false
+		elif event.is_action_pressed("combat_reload"):
+			reload()
+		elif event.is_action_pressed("combat_safety"):
+			safety = not safety
+			if AudioSystem.instance:
+				AudioSystem.instance.impact("metal", 0.25)
+			if HUD.instance:
+				HUD.instance.toast("Seguro puesto" if safety else "Seguro quitado", 1.2)
+		elif event.is_action_pressed("combat_roll"):
+			_roll()
+		elif event.is_action_pressed("combat_lock") and CombatSystem.instance:
+			CombatSystem.instance.toggle_lock(combat, camera_rig.yaw if camera_rig else rotation.y)
+		elif event.is_action_pressed("combat_cycle"):
+			cycle_weapon(1)
+		elif event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+			cycle_weapon(1 if event.button_index == MOUSE_BUTTON_WHEEL_DOWN else -1)
 	elif event.is_action_pressed("combat_attack"):
 		_attack()
 	elif event.is_action_pressed("combat_guard"):
@@ -649,6 +743,8 @@ func pick_up(at: Vector3) -> void:
 
 ## Guarda el arma sin aviso (al subir a un vehículo o sentarse: con las manos ocupadas no se pelea).
 func _holster() -> void:
+	aiming = false
+	_trigger = false
 	if armed:
 		armed = false
 		combat.set_guard(false)
@@ -696,6 +792,22 @@ func _show_weapon(id: String) -> void:
 	if _weapon_slot:
 		_weapon_slot.queue_free()
 		_weapon_slot = null
+	_gun = {}
+	if _rig:
+		_rig.left_hand_target = null
+		_rig.right_hand_target = null
+	if FirearmsConfig.FIREARMS.has(id) and _model:
+		_gun = CharacterModel.attach_firearm(_model, id)
+		_weapon_slot = _gun.get("slot")
+		# armas largas: la mano izquierda al guardamanos (cinemática inversa en CharacterRig)
+		if _rig and _gun.get("handguard"):
+			_rig.left_hand_target = _gun.handguard
+		# armas largas: la culata al hombro, y la mano derecha va a la empuñadura (no al revés)
+		if _rig and FirearmsConfig.FIREARMS[id].get("long", false):
+			_rig.right_hand_target = _gun.hold
+		if not _mag.has(id):
+			_mag[id] = 0
+		return
 	_weapon_slot = CharacterModel.attach_weapon(_model, id) if _model else null
 
 
@@ -718,7 +830,7 @@ func push(v: Vector3) -> void:
 func _on_combat(evt: String, data: Dictionary) -> void:
 	if _tree == null:
 		return
-	var sm: AnimationNodeStateMachine = _tree.tree_root
+	var sm: AnimationNodeStateMachine = (_tree.tree_root as AnimationNodeBlendTree).get_node("sm")
 	var node := ""
 	match evt:
 		"attack":
@@ -794,3 +906,170 @@ func _combat_tick(delta: float) -> void:
 			pb.travel("move")
 	if camera_rig:
 		camera_rig.lock_target = combat.lock_target.body if combat.lock_target and combat.lock_target.is_alive() else null
+
+
+# ───────────── Armas de fuego ─────────────
+
+## Id del arma de fuego en la mano, o "".
+func firearm() -> String:
+	return combat.weapon_id if armed and FirearmsConfig.FIREARMS.has(combat.weapon_id) else ""
+
+
+## Balas en el cargador del arma en la mano, y las que quedan en la mochila (para el HUD).
+func ammo() -> Vector2i:
+	var id := firearm()
+	if id == "":
+		return Vector2i(-1, -1)
+	var spare := InventorySystem.instance.count(FirearmsConfig.FIREARMS[id].ammo) if InventorySystem.instance else 0
+	return Vector2i(int(_mag.get(id, 0)), spare)
+
+
+## Recargar: llena el cargador con lo que haya en la mochila (el clip de recarga dura lo que la del arma).
+func reload() -> void:
+	var id := firearm()
+	if id == "" or _reload_t > 0.0 or combat.is_busy():
+		return
+	var f: Dictionary = FirearmsConfig.FIREARMS[id]
+	var need := int(f.magazine) - int(_mag.get(id, 0))
+	var infinite: bool = FirearmsConfig.TESTING.infinite_ammo
+	var have := need if infinite else mini(need, InventorySystem.instance.count(f.ammo) if InventorySystem.instance else 0)
+	if need <= 0:
+		return
+	if have <= 0:
+		if HUD.instance:
+			HUD.instance.toast("Sin " + String(LootConfig.ITEMS[f.ammo].name).to_lower(), 1.6)
+		return
+	if not infinite:
+		InventorySystem.instance.remove(f.ammo, have)
+	# lo que sale al recargar: el cargador vacío cae; la escopeta y el revólver sueltan cartuchos o vainas
+	var spent := int(f.magazine) - need
+	if FirearmSystem.instance:
+		match String(f.get("eject", "")):
+			"mag":
+				if _gun.get("mag"):
+					FirearmSystem.instance.drop_magazine((_gun.mag as Node3D).global_transform, f.mag_size)
+			"casings", "shells":
+				var at: Vector3 = (_gun.port as Node3D).global_position if _gun.get("port") else global_position + Vector3.UP
+				for i in mini(need, 6):
+					FirearmSystem.instance.eject_casing(at, Vector3(randf_range(-0.3, 0.3), -0.2, randf_range(-0.3, 0.3)), f.ammo == "cartuchos")
+	spent = spent
+	_mag[id] = int(_mag.get(id, 0)) + have
+	_reload_t = float(f.reload)
+	aiming = false
+	if _tree:
+		var gun: AnimationNodeStateMachine = (_tree.tree_root as AnimationNodeBlendTree).get_node("gun")
+		(gun.get_node("reload") as AnimationNodeAnimation).timeline_length = float(f.reload)
+		(_tree.get("parameters/gun/playback") as AnimationNodeStateMachinePlayback).start("reload")
+
+
+## Por cuadro: capa del arma (pose de pistola sobre la locomoción), cámara al hombro, gatillo, retroceso.
+func _firearm_tick(delta: float) -> void:
+	var id := firearm()
+	if _tree:
+		var w: float = _tree.get("parameters/upper/blend_amount")
+		_tree.set("parameters/upper/blend_amount", move_toward(w, 1.0 if id != "" and combat.state != Combatant.State.ROLL and combat.is_alive() else 0.0, delta * 6.0))
+	if camera_rig:
+		camera_rig.aim = 1.0 if id != "" and aiming else 0.0
+	_cooldown -= delta
+	_kick = maxf(0.0, _kick - delta * 2.4)
+	if _gun.get("kick"):
+		var k: Node3D = _gun.kick
+		k.rotation.z = _kick * 0.9   # el cañón sube (gira sobre el eje del arma) y vuelve
+		k.position.x = -_kick * 0.12
+	if id == "":
+		_shot_queued = false
+		return
+	var pb: AnimationNodeStateMachinePlayback = _tree.get("parameters/gun/playback") if _tree else null
+	if pb and camera_rig:
+		_tree.set("parameters/gun/aim/blend_position", clampf(-camera_rig.pitch * 1.6 - 0.25, -1.0, 1.0))
+	if _reload_t > 0.0:
+		_reload_t -= delta
+		_shot_queued = false
+		return
+	var f: Dictionary = FirearmsConfig.FIREARMS[id]
+	if pb and not pb.get_current_node() in ["shoot", "reload"]:
+		pb.travel("aim" if aiming or _trigger or _cooldown > -0.4 else "idle")
+	var wants := _trigger if f.get("automatic", false) else _shot_queued
+	_shot_queued = false
+	if not wants or _cooldown > 0.0 or combat.state != Combatant.State.IDLE:
+		return
+	if safety:
+		# con el seguro puesto: clic en seco
+		_cooldown = 0.3
+		if AudioSystem.instance:
+			AudioSystem.instance.impact("hueso", 0.35)
+		if HUD.instance:
+			HUD.instance.toast("Tiene el seguro puesto (B)", 1.2)
+		return
+	if int(_mag.get(id, 0)) <= 0:
+		reload()
+		return
+	_cooldown = float(f.rate)
+	_mag[id] = int(_mag[id]) - 1
+	_fire(id, f, pb)
+
+
+func _fire(id: String, f: Dictionary, pb: AnimationNodeStateMachinePlayback) -> void:
+	var cam := camera_rig.camera if camera_rig else get_viewport().get_camera_3d()
+	if cam == null or FirearmSystem.instance == null:
+		return
+	# el tiro sale de la cámara hacia el centro de la pantalla (la mira); con blanco fijado, a su pecho
+	var from := cam.global_position
+	var dir := -cam.global_basis.z
+	var t := combat.lock_target
+	if t and t.is_alive():
+		dir = (t.body.global_position + Vector3.UP * 1.2 - from).normalized()
+		var to := t.body.global_position - global_position
+		rotation.y = atan2(-to.x, -to.z)
+	else:
+		rotation.y = camera_rig.yaw if camera_rig else rotation.y
+	# que el rayo no arranque detrás del personaje: desde el punto de la cámara más cercano a él
+	from += dir * maxf(0.0, (global_position + Vector3.UP * 1.4 - from).dot(dir))
+	var muzzle: Vector3 = (_gun.muzzle as Node3D).global_position if _gun.get("muzzle") else global_position + Vector3.UP * 1.4
+	var prec: float = FirearmsConfig.PRECISION.aim if aiming else FirearmsConfig.PRECISION.hip
+	FirearmSystem.instance.shoot(combat, from, dir, id, muzzle, prec)
+	# casquillo: sale por la ventana de expulsión hacia la derecha y arriba (el de la escopeta, al bombear)
+	if _gun.get("port"):
+		var port: Node3D = _gun.port
+		var right := global_basis.x
+		FirearmSystem.instance.eject_casing(port.global_position, right * 1.0 + Vector3.UP * 0.7 - dir * 0.2, f.ammo == "cartuchos")
+	_kick = float(f.recoil) * 5.0
+	if camera_rig:
+		camera_rig.pitch = minf(0.5, camera_rig.pitch + float(f.recoil) * 0.6)
+		camera_rig.shake(0.08 + float(f.recoil) * 1.5)
+	if pb:
+		var gun: AnimationNodeStateMachine = (_tree.tree_root as AnimationNodeBlendTree).get_node("gun")
+		(gun.get_node("shoot") as AnimationNodeAnimation).timeline_length = clampf(float(f.rate), 0.18, 0.6)
+		pb.start("shoot")
+
+
+## El arma por la línea de tiro: la empuñadura en la palma (la sigue la mano animada) y el cañón hacia la mira
+## apuntando, o al frente y algo abajo en reposo. Así no hereda el giro de muñeca del clip.
+func _process(delta: float) -> void:
+	if _gun.is_empty() or not _gun.get("hold") or not is_instance_valid(_gun.hold):
+		return
+	var slot: Node3D = _gun.slot
+	var hold: Node3D = _gun.hold
+	hold.visible = slot.is_visible_in_tree()
+	var palm: Vector3 = slot.global_transform * (_gun.palm as Vector3)
+	var f: Dictionary = FirearmsConfig.FIREARMS[combat.weapon_id] if FirearmsConfig.FIREARMS.has(combat.weapon_id) else {}
+	var dir := -global_basis.z
+	var up_shot := (aiming or _trigger or _cooldown > -0.4) and _reload_t <= 0.0
+	if up_shot and camera_rig:
+		var t := combat.lock_target
+		var cam := camera_rig.camera
+		var aim_at := (t.body.global_position + Vector3.UP * 1.2) if t and t.is_alive() else cam.global_position - cam.global_basis.z * 40.0
+		dir = (aim_at - palm).normalized()
+	else:
+		dir = (dir * cos(float(FirearmsConfig.HOLD.low_ready)) + Vector3.DOWN * sin(float(FirearmsConfig.HOLD.low_ready))).normalized()
+	var y := (Vector3.UP - dir * dir.dot(Vector3.UP)).normalized()
+	var want := Basis(dir, y, dir.cross(y)).orthonormalized()
+	if f.get("long", false):
+		# culata contra el hombro derecho: la empuñadura queda a grip × largo de la culata, por la línea de tiro
+		var skel: Skeleton3D = _model.find_child(CharacterModel.SKELETON, true, false)
+		var bone := skel.find_bone("RightShoulder") if skel.find_bone("RightShoulder") >= 0 else skel.find_bone("RightUpperArm")
+		var sh := skel.global_transform * skel.get_bone_global_pose(bone).origin
+		var from_butt := float(f.grip[0] if f.has("grip") else 0.3) * float(f.length)
+		palm = sh + dir * from_butt + Vector3.DOWN * float(FirearmsConfig.HOLD.shoulder_drop) - global_basis.x * float(FirearmsConfig.HOLD.shoulder_in)
+	_hold_basis = want if _hold_basis == Basis() else _hold_basis.slerp(want, minf(1.0, delta * float(FirearmsConfig.HOLD.follow)))
+	hold.global_transform = Transform3D(_hold_basis, palm)

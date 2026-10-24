@@ -22,6 +22,8 @@ export const AUDIO = {
     carne: { hz: 320, dur: 0.14, nivel: 0.12, tono: 0 },
   },
   tajo: { hz: 900, dur: 0.2, nivel: 0.035 },
+  // Disparo en Godot (la web tiene el suyo en AudioSystem.disparo): chasquido + retumbe, a la mitad a `caida` m.
+  disparo: { chasquidoHz: 5200, chasquidoDur: 0.07, chasquido: 0.22, retumbeHz: 170, retumbeDur: 0.5, retumbe: 0.3, caida: 40 },
 
   // Ambiente: un viento apenas audible (más alto se oía como siseo); pájaros de día; insectos al anochecer.
   ambiente: { viento: 0.012, pajaros: 0.04, insectos: 0.02 },

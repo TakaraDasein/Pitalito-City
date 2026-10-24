@@ -47,7 +47,9 @@ func list() -> Array:
 
 ## Armas del arsenal que se tienen: las de serie y las cuerpo a cuerpo que se cargan, en el orden de ARSENAL.
 func arsenal() -> Array:
-	return CombatConfig.ARSENAL.filter(func(id): return id in LootConfig.STARTING_WEAPONS or count(id) > 0)
+	var all_guns: bool = FirearmsConfig.TESTING.all_weapons
+	return CombatConfig.ARSENAL.filter(func(id): return id in LootConfig.STARTING_WEAPONS or count(id) > 0) \
+		+ FirearmsConfig.FIREARMS.keys().filter(func(id): return all_guns or count(id) > 0)
 
 
 ## Mete hasta n unidades sin pasarse del peso. Devuelve cuántas entraron.

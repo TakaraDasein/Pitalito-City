@@ -84,10 +84,10 @@ const GRIP_BASIS := Basis(Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, -1))
 const GRIP_ALONG := 0.78
 const GRIP_PALM := 0.03
 ## Teclas (las mismas de la web): X sacar/guardar, clic izq. golpear, clic der. cubrirse, Ctrl rodar, Q fijar,
-## Z o rueda cambiar de arma. physical_keycode o botón del ratón (negativo).
+## Z o rueda cambiar de arma; con un arma de fuego: clic disparar, clic der. apuntar, R recargar. physical_keycode o botón del ratón (negativo).
 const KEYS := {
 	"combat_toggle": KEY_X, "combat_attack": -MOUSE_BUTTON_LEFT, "combat_guard": -MOUSE_BUTTON_RIGHT,
-	"combat_roll": KEY_CTRL, "combat_lock": KEY_Q, "combat_cycle": KEY_Z,
+	"combat_roll": KEY_CTRL, "combat_lock": KEY_Q, "combat_cycle": KEY_Z, "combat_reload": KEY_R, "combat_safety": KEY_B,
 }
 
 ## Arquetipos de los Restos: mismo combatiente, otras cifras (ENEMIGOS de factions.config.js). `block`: probabilidad

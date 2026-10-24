@@ -46,6 +46,7 @@ var combat: CombatSystem
 var factions: FactionSystem
 var inventory: InventorySystem
 var loot: LootSystem
+var firearms: FirearmSystem
 var inventory_panel: InventoryPanel
 var _prompt_t := 0.0
 
@@ -66,6 +67,8 @@ func _ready() -> void:
 	add_child(loot)
 	inventory_panel = InventoryPanel.new()
 	$UI.add_child(inventory_panel)
+	firearms = FirearmSystem.new()
+	add_child(firearms)
 	factions = FactionSystem.new()
 	factions.name = "Restos"
 	factions.focus = player
