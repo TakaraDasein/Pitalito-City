@@ -24,6 +24,8 @@ var auto_quality := true
 var sensitivity := 1.0
 var invert_y := false
 var fullscreen := false
+## Clima: 0 automático (aguaceros ocasionales), 1 despejado, 2 lluvia (SkySystem.Weather).
+var weather := 0
 ## Por qué se eligió la calidad (para mostrarlo en opciones): "equipo", "fps" o "manual".
 var quality_reason := "equipo"
 var gpu_name := ""
@@ -40,6 +42,7 @@ func _ready() -> void:
 		sensitivity = cfg.get_value("controles", "sensibilidad", 1.0)
 		invert_y = cfg.get_value("controles", "invertir_y", false)
 		fullscreen = cfg.get_value("pantalla", "completa", false)
+		weather = cfg.get_value("mundo", "clima", 0)
 		quality_reason = "manual" if not auto_quality else cfg.get_value("grafica", "motivo", "equipo")
 	if auto_quality and quality_reason == "equipo":
 		quality = detect()
@@ -126,4 +129,5 @@ func save() -> void:
 	cfg.set_value("controles", "sensibilidad", sensitivity)
 	cfg.set_value("controles", "invertir_y", invert_y)
 	cfg.set_value("pantalla", "completa", fullscreen)
+	cfg.set_value("mundo", "clima", weather)
 	cfg.save(PATH)

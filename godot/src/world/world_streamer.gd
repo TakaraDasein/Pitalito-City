@@ -77,6 +77,7 @@ func _build(key: Vector2i) -> Dictionary:
 		return {}
 	var spots := SignalBuilder.spots(tile)
 	return {
+		"tile": tile,
 		"buildings": BuildingBuilder.build(tile, WorldData),
 		"roads": RoadBuilder.build(tile, WorldData),
 		"trees": TreeBuilder.build(tile, WorldData),
@@ -92,6 +93,7 @@ func _instantiate(key: Vector2i, r: Dictionary) -> void:
 	root.name = "tile_%d_%d" % [key.x, key.y]
 	add_child(root)
 	_tiles[key] = root
+	root.set_meta("data", r.get("tile", {})) # el tile leído: lo consulta la ficha de edificios (E)
 	if r.is_empty():
 		return
 
@@ -170,6 +172,29 @@ func _multimesh(root: Node3D, mesh: Mesh, items: Array, mat: String, shadows: bo
 	mmi.visibility_range_end = float(Settings.preset().tile_vis)
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(mmi)
+
+
+## Edificio real que contiene (x, z) o está a menos de 1,5 m: el dato del tile (n, h, f, s, rc) y su huella.
+func building_at(x: float, z: float) -> Dictionary:
+	var node: Node3D = _tiles.get(WorldData.tile_key(x, z))
+	if node == null:
+		return {}
+	var p := Vector2(x, z)
+	var best := {}
+	var bd := 1.5
+	for b: Dictionary in node.get_meta("data", {}).get("buildings", []):
+		var poly := PackedVector2Array()
+		var pts: Array = b.p
+		for i in range(0, pts.size() - 1, 2):
+			poly.push_back(Vector2(pts[i], pts[i + 1]))
+		if Geometry2D.is_point_in_polygon(p, poly):
+			return b
+		for i in poly.size():
+			var d := Geometry2D.get_closest_point_to_segment(p, poly[i], poly[(i + 1) % poly.size()]).distance_to(p)
+			if d < bd:
+				bd = d
+				best = b
+	return best
 
 
 func tile_node(key: Vector2i) -> Node3D:

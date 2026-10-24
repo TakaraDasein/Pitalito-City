@@ -25,7 +25,33 @@ func _ready() -> void:
 	await get_tree().create_timer(0.5).timeout
 	await _shot("opciones")
 	_main._start_playing()
-	await get_tree().create_timer(2.0).timeout
+	# a pie junto al carro: el aviso "F · Subir al …"
+	var car: Vehicle = _main.vehicle
+	_main.player.place(car.global_position.x - car.global_basis.x.x * 2.5, car.global_position.z - car.global_basis.x.z * 2.5)
+	await get_tree().create_timer(1.5).timeout
+	await _shot("hud_a_pie")
+	# ficha de lo que se mira
+	_main.camera_rig.yaw += PI * 0.5
+	await get_tree().create_timer(0.3).timeout
+	_main._show_info()
+	await get_tree().create_timer(0.5).timeout
+	await _shot("info")
+	_main.hud.toggle_help()
+	await get_tree().create_timer(0.3).timeout
+	await _shot("ayuda")
+	_main.hud.toggle_help()
+	# manejando, con el velocímetro
+	_main._enter_vehicle()
+	Input.action_press("move_forward")
+	await get_tree().create_timer(3.0).timeout
+	await _shot("manejando")
+	Input.action_release("move_forward")
+	_main._cam_mode = 2
+	_main._follow_camera()
+	await get_tree().create_timer(1.5).timeout
+	await _shot("aerea")
+	_main._cam_mode = 0
+	_main._follow_camera()
 	_main._pause()
 	await get_tree().create_timer(0.5).timeout
 	await _shot("pausa")

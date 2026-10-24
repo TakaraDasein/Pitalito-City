@@ -13,6 +13,8 @@ var roads: RoadNetwork
 var pois: Array = []
 ## Los mismos, por tile (Vector2i → Array): los edificios buscan su negocio real sin recorrer la lista entera.
 var pois_by_tile: Dictionary = {}
+## Barrios y conjuntos con nombre (map.json zones: { n, p }), con su caja para descartar rápido.
+var zones: Array = []
 ## Ríos y quebradas completos (map.json): el Guarapas, la Cálamo y los demás cauces de OSM.
 var water: Array = []
 
@@ -53,6 +55,15 @@ func _load_names() -> void:
 	roads = RoadNetwork.new(map)
 	pois = map.get("pois", [])
 	water = map.get("water", [])
+	for z: Dictionary in map.get("zones", []):
+		var poly := PackedVector2Array()
+		var p: Array = z.p
+		for i in range(0, p.size() - 1, 2):
+			poly.push_back(Vector2(p[i], p[i + 1]))
+		var box := Rect2(poly[0], Vector2.ZERO)
+		for q in poly:
+			box = box.expand(q)
+		zones.push_back({"n": z.n, "poly": poly, "box": box})
 	for poi: Dictionary in pois:
 		var k := tile_key(poi.x, poi.z)
 		if not pois_by_tile.has(k):
@@ -85,6 +96,25 @@ func height(x: float, z: float) -> float:
 func grid_height(i: int, j: int) -> float:
 	var n := terrain_size
 	return _heights[clampi(j, 0, n - 1) * n + clampi(i, 0, n - 1)]
+
+
+## Barrio o sector en (x, z), como la placa de la web: Parque Principal, el barrio de OSM, Centro (550 m del
+## parque) o Pitalito.
+func zone_at(x: float, z: float) -> String:
+	var p := Vector2(x, z)
+	var park: Dictionary = manifest.get("landmarks", {}).get("parquePrincipal", {})
+	if not park.is_empty():
+		var poly := PackedVector2Array()
+		for i in range(0, park.p.size() - 1, 2):
+			poly.push_back(Vector2(park.p[i], park.p[i + 1]))
+		if Geometry2D.is_point_in_polygon(p, poly):
+			return "Parque Principal"
+	for zn: Dictionary in zones:
+		if zn.box.has_point(p) and Geometry2D.is_point_in_polygon(p, zn.poly):
+			return zn.n
+	if not park.is_empty() and p.distance_to(Vector2(park.c[0], park.c[1])) < 550.0:
+		return "Centro"
+	return "Pitalito"
 
 
 func tile_key(x: float, z: float) -> Vector2i:

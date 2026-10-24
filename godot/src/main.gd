@@ -31,6 +31,14 @@ var _orbit := 0.0
 var _fps_samples: Array[float] = []
 var _play_time := 0.0
 var _measured := false
+## Modos de cámara (C): distancia y altura del brazo a pie y manejando; la aérea mira casi hacia abajo.
+const CAMERA_MODES := [
+	{"name": "cerca", "foot": [2.4, 1.6], "car": [6.5, 2.2], "pitch": null},
+	{"name": "lejos", "foot": [5.5, 2.4], "car": [11.0, 3.0], "pitch": null},
+	{"name": "aérea", "foot": [45.0, 2.0], "car": [60.0, 2.0], "pitch": -1.25},
+]
+var _cam_mode := 0
+var _prompt_t := 0.0
 
 
 func _ready() -> void:
@@ -42,6 +50,8 @@ func _ready() -> void:
 	_menus.resume_requested.connect(_resume)
 	_menus.main_menu_requested.connect(_to_menu)
 	_menus.vehicle_chosen.connect(set_vehicle)
+	_menus.weather_changed.connect(func(m): sky.set_weather(m))
+	_menus.map_requested.connect(func(): _resume(); map_screen.toggle(1))
 	Settings.changed.connect(_apply_quality)
 	_apply_quality()
 	hud.visible = false
@@ -65,6 +75,7 @@ func _boot() -> void:
 	camera_rig.global_position = player.global_position
 	traffic.lights = traffic_lights
 	sky.camera = camera_rig.camera
+	sky.set_weather(Settings.weather)
 	hud.sky = sky
 	hud.gps = gps
 	gps.message.connect(hud.toast)
@@ -144,7 +155,7 @@ func _start_playing() -> void:
 	get_tree().paused = false
 	hud.visible = true
 	camera_rig.input_enabled = true
-	camera_rig.follow(vehicle if _driving else player, 6.5 if _driving else 2.4, 2.2 if _driving else 1.6)
+	_follow_camera()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	_play_time = 0.0
 	_fps_samples.clear()
@@ -173,6 +184,7 @@ func set_vehicle(type: String) -> void:
 		vehicle.queue_free()
 	vehicle = Vehicle.create(type)
 	add_child(vehicle)
+	hud.set_vehicle(vehicle.spec.name, vehicle.spec.max_speed)
 	if had:
 		vehicle.global_transform = Transform3D(Basis(Vector3.UP, xf.basis.get_euler().y), xf.origin + Vector3.UP * 0.5)
 		vehicle.driven = _driving
@@ -197,6 +209,11 @@ func _process(delta: float) -> void:
 			camera_rig.follow(null, 70.0, 22.0)
 		State.PLAYING:
 			_measure_quality(delta)
+			_prompt_t -= delta
+			if _prompt_t <= 0.0:
+				_prompt_t = 0.1 # a 10 Hz, como la web
+				var it := _interaction()
+				hud.set_prompt("F" if not it.is_empty() else "", it[1] if not it.is_empty() else "")
 
 
 ## Calidad automática: tras 3 s de juego se miden 5 s de fps; si no llega a 40 baja un nivel, si pasa de 110 sube.
@@ -224,27 +241,29 @@ func _unhandled_input(event: InputEvent) -> void:
 		_pause()
 		get_viewport().set_input_as_handled()
 		return
-	if state != State.PLAYING or not event.is_action_pressed("interact"):
+	if state != State.PLAYING:
 		return
-	if _driving:
-		_exit_vehicle()
+	if event.is_action_pressed("camera"):
+		_cam_mode = (_cam_mode + 1) % CAMERA_MODES.size()
+		_follow_camera()
+		hud.toast("Cámara: " + CAMERA_MODES[_cam_mode].name, 1.5)
+	elif event.is_action_pressed("time_skip"):
+		sky.set_hour(sky.hour + 3.0)
+		hud.toast("Son las " + sky.clock(), 1.5)
+	elif event.is_action_pressed("help"):
+		hud.toggle_help()
+	elif event.is_action_pressed("debug"):
+		hud.toggle_debug()
+	elif event.is_action_pressed("garage"):
+		_pause()
+		_menus.open("garaje")
+	elif event.is_action_pressed("info") and not _driving:
+		_show_info()
+	if not event.is_action_pressed("interact"):
 		return
-	# Prioridad como en la web: lo más cercano entre el carro, las puertas de los hitos y las de las casas
-	var here := player.global_position
-	var options := []
-	var to_car := here.distance_to(vehicle.global_position)
-	if to_car < ENTER_DISTANCE:
-		options.push_back([to_car, func(): _enter_vehicle()])
-	var door := landmarks.door_near(here)
-	if not door.is_empty():
-		options.push_back([Vector2(door.pos.x - here.x, door.pos.z - here.z).length(), func(): landmarks.toggle(door)])
-	var house_door := detail.door_near(here)
-	if not house_door.is_empty():
-		options.push_back([Vector2(house_door.pos.x - here.x, house_door.pos.z - here.z).length() - 0.5, func(): detail.toggle(house_door)])
-	if options.is_empty():
-		return
-	options.sort_custom(func(a, b): return a[0] < b[0])
-	options[0][1].call()
+	var it := _interaction()
+	if not it.is_empty():
+		it[2].call()
 
 
 func _enter_vehicle() -> void:
@@ -254,6 +273,7 @@ func _enter_vehicle() -> void:
 	player.process_mode = Node.PROCESS_MODE_DISABLED
 	player.global_position = vehicle.global_position + Vector3.UP * 50.0 # fuera del camino de la física
 	_set_focus(vehicle, 6.5, 2.2)
+	_follow_camera()
 	hud.set_on_foot(false)
 	EventBus.vehicle_entered.emit(vehicle)
 
@@ -266,6 +286,7 @@ func _exit_vehicle() -> void:
 	player.visible = true
 	player.place(p.x, p.z, vehicle.rotation.y)
 	_set_focus(player, 2.4, 1.6)
+	_follow_camera()
 	hud.set_on_foot(true)
 	EventBus.vehicle_exited.emit(vehicle)
 
@@ -291,6 +312,73 @@ func teleport(x: float, z: float) -> void:
 	camera_rig.global_position = target
 	camera_rig.yaw = heading
 	hud.toast("Viaje rápido")
+
+
+## Cámara según el modo (C) y si se va a pie o manejando.
+func _follow_camera() -> void:
+	var m: Dictionary = CAMERA_MODES[_cam_mode]
+	var arm: Array = m.car if _driving else m.foot
+	camera_rig.follow(vehicle if _driving else player, arm[0], arm[1])
+	if m.pitch != null:
+		camera_rig.pitch = m.pitch
+
+
+## Lo que F haría ahora: [distancia, texto, acción]. Lo usan el aviso en pantalla y la tecla.
+func _interaction() -> Array:
+	if _driving:
+		return [0.0, "Bajarse", func(): _exit_vehicle()]
+	var here := player.global_position
+	var options := []
+	var to_car := here.distance_to(vehicle.global_position)
+	if to_car < ENTER_DISTANCE:
+		options.push_back([to_car, "Subir al " + vehicle.spec.name, func(): _enter_vehicle()])
+	var door := landmarks.door_near(here)
+	if not door.is_empty():
+		options.push_back([Vector2(door.pos.x - here.x, door.pos.z - here.z).length(),
+			("Cerrar" if door.open else "Abrir") + " la puerta", func(): landmarks.toggle(door)])
+	var house_door := detail.door_near(here)
+	if not house_door.is_empty():
+		options.push_back([Vector2(house_door.pos.x - here.x, house_door.pos.z - here.z).length() - 0.5,
+			("Cerrar" if house_door.open else "Abrir") + " la puerta", func(): detail.toggle(house_door)])
+	if options.is_empty():
+		return []
+	options.sort_custom(func(a, b): return a[0] < b[0])
+	return options[0]
+
+
+## Ficha (E) de lo que se mira: hito, negocio real de OSM o edificio (dato del tile: altura, pisos, fuente).
+func _show_info() -> void:
+	var cam := camera_rig.camera
+	var from := cam.global_position
+	var to := from - cam.global_basis.z * 60.0
+	var q := PhysicsRayQueryParameters3D.create(from, to, 1, [player.get_rid()])
+	var hit := get_world_3d().direct_space_state.intersect_ray(q)
+	var p: Vector3 = hit.position if not hit.is_empty() else player.global_position - player.global_basis.z * 4.0
+	# hito
+	var cur := hit.get("collider") as Node
+	while cur:
+		if cur.get_parent() == landmarks:
+			var lm: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(LandmarkSystem.DIR + "/landmarks.json")).get(String(cur.name), {})
+			hud.info(lm.get("name", String(cur.name)), ["Hito modelado a mano con fotos y Street View", WorldData.zone_at(p.x, p.z)])
+			return
+		cur = cur.get_parent()
+	var b := streamer.building_at(p.x, p.z)
+	if b.is_empty():
+		var st := WorldData.roads.street_at(Vector2(p.x, p.z))
+		hud.info(st.get("name", "") if st.get("name", "") != "" else "Pitalito", ["Barrio: " + WorldData.zone_at(p.x, p.z)])
+		return
+	var src := {"osm": "OpenStreetMap", "google": "Google Open Buildings", "ms": "Microsoft Building Footprints", "overture": "Overture Maps"}
+	var lines := ["%d %s · %.1f m de alto" % [int(b.get("f", 1)), "piso" if int(b.get("f", 1)) == 1 else "pisos", float(b.get("h", 0.0))],
+		"Huella: " + src.get(b.get("s", ""), String(b.get("s", "dato"))),
+		"Barrio: " + WorldData.zone_at(p.x, p.z)]
+	var poi := ModularBuilder.poi_of(BuildingBuilder._ccw(PackedFloat32Array(b.p)))
+	var title: String = b.get("n", "")
+	if not poi.is_empty():
+		title = poi.n
+		lines.push_front("Negocio registrado en OpenStreetMap")
+	if ModularBuilder.is_enterable(b):
+		lines.push_back("Se puede entrar")
+	hud.info(title if title != "" else "Edificio", lines)
 
 
 func _set_focus(node: Node3D, distance: float, height: float) -> void:

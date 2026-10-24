@@ -8,6 +8,8 @@ signal play_requested
 signal resume_requested
 signal main_menu_requested
 signal vehicle_chosen(type: String)
+signal map_requested
+signal weather_changed(mode: int)
 
 var current_vehicle := "willys"
 
@@ -21,6 +23,8 @@ var _garage_model: Node3D
 var _garage_types: Array[String] = []
 var _quality: OptionButton
 var _quality_note: Label
+var _dim: ColorRect
+var _hero: Control
 
 
 func _ready() -> void:
@@ -31,6 +35,12 @@ func _ready() -> void:
 	_root.theme = GuaduaTheme.get_theme()
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
+	# velo café detrás de los menús: el mundo sigue visible, atenuado (como .screen.dim en la web)
+	_dim = ColorRect.new()
+	_dim.color = Color(GuaduaTheme.CAFE_DARK, 0.45)
+	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_dim)
 	_build_main()
 	_build_pause()
 	_build_options()
@@ -69,23 +79,52 @@ func _button(parent: Container, text: String, action: Callable) -> Button:
 	return b
 
 
+## Portada: PITALITO en grande y centrado, el valle debajo, y los botones en un panel al centro.
 func _build_main() -> void:
-	var col := _panel("principal", "PITALITO · HUILA")
+	_hero = VBoxContainer.new()
+	_hero.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	_hero.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_hero.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_hero.add_theme_constant_override("separation", 6)
+	_root.add_child(_hero)
+	var title := Label.new()
+	title.text = "PITALITO"
+	title.theme_type_variation = "Hero"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hero.add_child(title)
 	var sub := Label.new()
-	sub.text = "El Valle de Laboyos, con datos reales"
-	sub.theme_type_variation = "Small"
-	col.add_child(sub)
+	sub.text = "Valle de Laboyos · Huila"
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.add_theme_color_override("font_color", Color(GuaduaTheme.TEXT, 0.85))
+	_hero.add_child(sub)
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 22)
+	_hero.add_child(spacer)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(340, 0)
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_hero.add_child(panel)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 10)
+	panel.add_child(col)
+	_panels["principal"] = _hero
 	_button(col, "Jugar", func(): play_requested.emit())
 	_button(col, "Garaje", func(): open("garaje"))
 	_button(col, "Opciones", func(): open("opciones"))
 	_button(col, "Créditos", func(): open("creditos"))
 	if OS.get_name() != "Web":
 		_button(col, "Salir", func(): get_tree().quit())
+	var note := Label.new()
+	note.text = "Datos reales de OpenStreetMap, Copernicus, Meta/WRI y Esri · Esc vuelve"
+	note.theme_type_variation = "Small"
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hero.add_child(note)
 
 
 func _build_pause() -> void:
 	var col := _panel("pausa", "PAUSA")
 	_button(col, "Continuar", func(): resume_requested.emit())
+	_button(col, "Mapa", func(): map_requested.emit())
 	_button(col, "Garaje", func(): open("garaje"))
 	_button(col, "Opciones", func(): open("opciones"))
 	_button(col, "Menú principal", func(): main_menu_requested.emit())
@@ -111,6 +150,15 @@ func _build_options() -> void:
 			Settings.set_quality(Settings.LEVELS[i - 1])
 		_refresh_options())
 	grid.add_child(_quality)
+	var lw := Label.new()
+	lw.text = "Clima"
+	grid.add_child(lw)
+	var weather := OptionButton.new()
+	for item in ["Automático (aguaceros)", "Despejado", "Lluvia"]:
+		weather.add_item(item)
+	weather.select(Settings.weather)
+	weather.item_selected.connect(func(i): Settings.weather = i; Settings.save(); weather_changed.emit(i))
+	grid.add_child(weather)
 	var l2 := Label.new()
 	l2.text = "Sensibilidad"
 	grid.add_child(l2)
@@ -249,6 +297,7 @@ func open(name: String, reset := false) -> void:
 	for p: Control in _panels.values():
 		p.visible = false
 	_panels[name].visible = true
+	_dim.visible = true
 	if _stack.is_empty() or _stack[-1] != name:
 		_stack.push_back(name)
 	if name == "opciones":
@@ -270,6 +319,7 @@ func back() -> void:
 
 
 func hide_all() -> void:
+	_dim.visible = false
 	for p: Control in _panels.values():
 		p.visible = false
 	_stack.clear()
