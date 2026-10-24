@@ -48,7 +48,7 @@ static func create(spec: Dictionary, driver := false) -> Dictionary:
 		node.transform = t
 	src.queue_free()
 	var size := Vector3(box.size.x * scale.x, box.size.y * scale.y, box.size.z * scale.z)
-	return {"visual": visual, "wheels": wheels, "size": size, "base_y": (box.position.y) * scale.y}
+	return {"visual": visual, "wheels": wheels, "size": size, "base_y": (box.position.y) * scale.y, "xf": xf}
 
 
 ## Pintura y placa sobre el modelo ya armado. Pintura: el material del color de fábrica (colors[0]) se reemplaza
@@ -62,13 +62,23 @@ static func customize(visual: Node3D, spec: Dictionary, paint: String, plate: St
 	var cols: Array = spec.get("colors", [])
 	var factory := Color(cols[0]) if not cols.is_empty() else Color(0, 0, 0, 0)
 	var painted: StandardMaterial3D
+	var glass: StandardMaterial3D
 	for n: Node in visual.find_children("*", "MeshInstance3D", true, false):
 		var mi := n as MeshInstance3D
 		for i in mi.mesh.get_surface_count():
 			var m := mi.mesh.surface_get_material(i) as StandardMaterial3D
 			if m == null:
 				continue
-			if paint != "" and not cols.is_empty() and m.albedo_texture == null and _same(m.albedo_color, factory):
+			# vidrios (#0f171e y #9fb0ba en los modelos de la web, opacos allá): translúcidos, para ver al conductor
+			if m.albedo_texture == null and (_same(m.albedo_color, Color("#0f171e")) or _same(m.albedo_color, Color("#9fb0ba"))):
+				if glass == null:
+					glass = m.duplicate()
+					glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+					glass.albedo_color = Color("#2a3b46", 0.38)
+					glass.roughness = 0.05
+					glass.metallic = 0.3
+				mi.set_surface_override_material(i, glass)
+			elif paint != "" and not cols.is_empty() and m.albedo_texture == null and _same(m.albedo_color, factory):
 				if painted == null:
 					painted = m.duplicate()
 					painted.albedo_color = Color(paint)

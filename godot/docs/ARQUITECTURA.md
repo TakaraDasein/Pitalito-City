@@ -194,6 +194,21 @@ la Alcaldía, puerta cerrada (bloquea), abrir y entrar, local real, y la escaler
   ficha (E), ayuda (H), datos técnicos (F3), cámaras (C).
 - Herramienta: `tools/menu_shots.tscn` captura la carga, cada menú y el HUD.
 
+## Sonido y vehículos (bloque 3, primera parte)
+
+- **Audio sintetizado** (`systems/audio_system.gd`, `config/audio_config.gd`): como la web, sin archivos. Motor
+  del vehículo que se maneja (seno + triángulo con tono por velocidad y filtro por acelerador; tono de ralentí y
+  máximo por vehículo, los de la web), viento, pájaros de día, insectos de noche, lluvia según el clima, y clics de
+  interfaz. Generadores a 22 kHz, bus "Mundo" con reverberación de valle, paso bajo y compresor en el maestro.
+  Volumen y ambiente en opciones. Medido: pico ≈ −15 dB manejando.
+- **Repintado del Car Kit:** como la web, se corren las UV de la carrocería a otra muestra de la paleta compartida.
+- **Conductor visible:** el personaje se sienta en el asiento medido de cada vehículo de la web, con el clip
+  Driving; los vidrios de los modelos de la web pasan a translúcidos. El Willys tiene la capota como caja maciza:
+  su interior no se ve desde afuera (limitación del modelo).
+- **Moto jugable:** el cuerpo físico se mantiene derecho con un control PD sobre el balanceo y amortiguación del
+  cabeceo; el modelo y el piloto se inclinan hacia la curva con el ángulo físico, tan(θ) = v²/(g·r). Inclinar el
+  cuerpo físico la tumbaba: VehicleWheel3D no sostiene la inclinación (medido). La prueba la maneja en curva.
+
 ## Hilos: la regla
 
 1. **En hilos** (WorkerThreadPool): leer JSON, consultar `WorldData.height()`, llenar `MeshBatch`.

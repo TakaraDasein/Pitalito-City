@@ -145,6 +145,38 @@ func _process(delta: float) -> void:
 			_main.camera_rig.pitch = -0.05
 		1200:
 			_shot("coliseo")
+		1203:
+			# moto: equilibrio en recta y en curva
+			_main._exit_vehicle()
+			_main.set_vehicle("moto")
+			var sp: Dictionary = WorldData.spawn()
+			_main.vehicle.place(sp.x, sp.z, sp.heading) # por la calle, lejos de los bolardos del parque
+			_main.player.global_position = _main.vehicle.global_position + Vector3(1.5, 0, 0)
+			_main._enter_vehicle()
+			_moto_t0 = Engine.get_physics_frames()
+			Input.action_press("move_forward")
+		1204:
+			var pf := Engine.get_physics_frames() - _moto_t0
+			if pf < 300:
+				if pf == 120:
+					Input.action_press("move_left")
+				if pf == 200:
+					_main.camera_rig.follow(_main.vehicle, 4.5, 1.2)
+					_main.camera_rig.yaw = _main.vehicle.rotation.y + PI
+					_main.camera_rig.pitch = -0.1
+				if pf == 240:
+					_shot("moto_curva")
+				_moto_min_up = minf(_moto_min_up, _main.vehicle.global_basis.y.y)
+				_moto_max_lean = maxf(_moto_max_lean, absf(_main.vehicle.lean))
+				_frame -= 1
+				return
+			Input.action_release("move_forward")
+			Input.action_release("move_left")
+			var v: Vehicle = _main.vehicle
+			_check("la moto no se cae (verticalidad mínima %.2f, %.0f km/h, inclinación máx. %.0f°)" % [_moto_min_up, v.speed_kmh(), rad_to_deg(_moto_max_lean)], _moto_min_up > 0.6 and v.speed_kmh() > 5.0)
+			_shot("moto")
+			_main._exit_vehicle()
+			_main.set_vehicle(Settings.vehicle)
 		1206:
 			_water_test()
 		1300:
@@ -171,6 +203,9 @@ var _walk_t := 0
 
 
 var _water := {}
+var _moto_t0 := 0
+var _moto_min_up := 1.0
+var _moto_max_lean := 0.0
 var _water_t0 := 0
 var _crate: RigidBody3D
 

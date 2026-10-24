@@ -198,6 +198,7 @@ func set_vehicle(type: String) -> void:
 		if _driving:
 			_set_focus(vehicle, 6.5, 2.2)
 			_audio.vehicle = vehicle
+			vehicle.seat_driver()
 	else:
 		var s := WorldData.spawn()
 		var ahead := player.global_position - player.global_basis.z * 6.0 + player.global_basis.x * 3.0
@@ -284,6 +285,7 @@ func _enter_vehicle() -> void:
 	player.global_position = vehicle.global_position + Vector3.UP * 50.0 # fuera del camino de la física
 	_set_focus(vehicle, 6.5, 2.2)
 	_audio.vehicle = vehicle
+	vehicle.seat_driver()
 	_follow_camera()
 	hud.set_on_foot(false)
 	EventBus.vehicle_entered.emit(vehicle)
@@ -292,6 +294,7 @@ func _enter_vehicle() -> void:
 func _exit_vehicle() -> void:
 	_driving = false
 	_audio.vehicle = null
+	vehicle.unseat_driver()
 	vehicle.driven = false
 	var p := vehicle.exit_point()
 	player.process_mode = Node.PROCESS_MODE_INHERIT

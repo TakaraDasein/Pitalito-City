@@ -43,6 +43,7 @@ const DESCRIPTIONS := {
 	"pickup": "Platón para el café y el mercado. Fuerte y estable.",
 	"chiva": "El bus escalera de colores. Lento, pesado y el alma del Valle de Laboyos.",
 	"motocarro": "Tres ruedas para el reparto del barrio. Corto y cabe en todas partes.",
+	"moto": "La que más se ve en Pitalito. Ligera, rápida y se mete por todo.",
 	"sedan": "Automóvil particular.", "suv": "Campero moderno.", "van": "Van del transporte intermunicipal.",
 	"truck": "Camioneta.", "delivery": "Furgón de carga.", "garbage-truck": "Recolector de basura del municipio.",
 	"ambulance": "Ambulancia.",
@@ -381,8 +382,6 @@ func _build_garage() -> void:
 	_garage_list.add_theme_constant_override("separation", 4)
 	scroll.add_child(_garage_list)
 	for t: String in VehiclesConfig.VEHICLES:
-		if t == "moto":
-			continue # dos ruedas: necesita equilibrio propio (pendiente); el tráfico sí la usa
 		var i := _garage_types.size()
 		_garage_types.push_back(t)
 		var b := _button(_garage_list, VehiclesConfig.VEHICLES[t].name, func(): _garage_choose(i))

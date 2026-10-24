@@ -52,7 +52,21 @@ func _ready() -> void:
 	await _shot("ayuda")
 	_main.hud.toggle_help()
 	# manejando, con el velocímetro
+	var sp: Dictionary = WorldData.spawn()
+	_main.vehicle.place(sp.x, sp.z, sp.heading + PI)
+	await get_tree().create_timer(0.5).timeout
 	_main._enter_vehicle()
+	_main.camera_rig.follow(_main.vehicle, 3.6, 1.2)
+	_main.camera_rig.yaw = _main.vehicle.rotation.y + PI * 0.5 # de lado, por la puerta del conductor
+	_main.camera_rig.pitch = -0.15
+	await get_tree().create_timer(1.0).timeout
+	await _shot("conductor")
+	var body: Node3D = _main.vehicle.get_node("modelo/body")
+	body.visible = false # corte: ver la postura dentro del vehículo
+	await get_tree().create_timer(0.3).timeout
+	await _shot("conductor_corte")
+	body.visible = true
+	_main._follow_camera()
 	Input.action_press("move_forward")
 	await get_tree().create_timer(3.0).timeout
 	await _shot("manejando")
