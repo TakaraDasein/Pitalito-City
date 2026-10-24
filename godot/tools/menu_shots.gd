@@ -29,6 +29,17 @@ func _ready() -> void:
 	_main._menus._paint("sedan", "#cf534f")
 	await get_tree().create_timer(1.0).timeout
 	await _shot("garaje_sedan")
+	_main._menus.open("personaje")
+	await get_tree().create_timer(1.0).timeout
+	await _shot("personaje")
+	_main._menus._char_set("cuerpo", "b")
+	_main._menus._char_set("pelo", "largo")
+	_main._menus._char_set("sombrero", false)
+	_main._menus._char_set("pelocolor", "castano")
+	_main._menus._char_set("ropa", "chaqueta")
+	_main._menus._char_set("hombreras", true)
+	await get_tree().create_timer(1.0).timeout
+	await _shot("personaje_b")
 	_main._menus.open("creditos")
 	await get_tree().create_timer(0.5).timeout
 	await _shot("creditos")

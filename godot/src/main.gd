@@ -53,6 +53,7 @@ func _ready() -> void:
 	_menus.resume_requested.connect(_resume)
 	_menus.main_menu_requested.connect(_to_menu)
 	_menus.vehicle_chosen.connect(set_vehicle)
+	_menus.look_changed.connect(_on_look_changed)
 	_menus.weather_changed.connect(func(m): sky.set_weather(m))
 	_menus.map_requested.connect(func(): _resume(); map_screen.toggle(1))
 	Settings.changed.connect(_apply_quality)
@@ -408,3 +409,12 @@ func _set_focus(node: Node3D, distance: float, height: float) -> void:
 	hud.focus = node
 	camera_rig.follow(node, distance, height)
 	EventBus.focus_changed.emit(node)
+
+
+## Nueva apariencia: el jugador se rearma, y si va manejando también el conductor sentado.
+func _on_look_changed() -> void:
+	if player:
+		player.apply_look()
+	if vehicle and is_instance_valid(vehicle) and _driving:
+		vehicle.unseat_driver()
+		vehicle.seat_driver()

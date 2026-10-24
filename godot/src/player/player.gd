@@ -37,6 +37,16 @@ func _ready() -> void:
 	floor_snap_length = 0.6
 	floor_max_angle = deg_to_rad(50)
 
+	apply_look()
+
+
+## (Re)arma el modelo con la apariencia de Settings.look: al entrar y al salir del creador de personaje.
+func apply_look() -> void:
+	var was_visible := true
+	if _model:
+		was_visible = _model.visible
+		_model.queue_free()
+		_tree = null
 	_model = CharacterModel.create()
 	if _model == null:
 		var mi := MeshInstance3D.new()
@@ -46,6 +56,7 @@ func _ready() -> void:
 		add_child(mi)
 		return
 	_model.rotation.y = PI # los modelos de Quaternius miran a +Z; en Godot "adelante" es −Z
+	_model.visible = was_visible
 	add_child(_model)
 	_setup_tree(_model.get_node("AnimationPlayer"))
 

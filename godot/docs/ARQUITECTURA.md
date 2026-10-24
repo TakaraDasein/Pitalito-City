@@ -234,6 +234,18 @@ Cuerpos base y clips de Quaternius comparten el mismo esqueleto de 65 huesos, pe
   lo animan. Sin corregir, el personaje queda acostado. Se completa cada clip con el reposo de su esqueleto.
 - El importador de Godot quita el sufijo `_Loop` y deja el clip cíclico: `Idle_Loop` → `Idle`.
 
+### Apariencia y creador de personaje
+
+`character_config.gd` es espejo de `APPEARANCE` y `ORIGENES` de la web (complexión, pelo, barba, ropa por piezas,
+capucha, hombreras, sombrero aguadeño, piel, color de pelo, y los oficios que fijan ropa y sombrero al empezar).
+`CharacterModel.create(look)` viste el cuerpo: las mallas de ropa y pelo traen el mismo esqueleto con los mismos
+nombres de huesos, así que se pasan al `Skeleton3D` del cuerpo (`skeleton = ".."`) y la piel se enlaza por
+nombre, con un solo AnimationPlayer. La piel pierde la textura de traje del paquete (tono plano con su mapa de
+normales, como la web) y con ropa se mete 3 cm por la normal (`grow` negativo) para no asomar. El sombrero es
+procedural sobre el hueso `Head`; con sombrero o capucha el pelo pasa a corto para no atravesar la tela.
+La apariencia se guarda en `Settings.look`; el menú **Personaje** (portada y pausa) la edita con vista previa en
+el estudio del garaje, y al cambiarla se rearman el jugador y el conductor sentado.
+
 **Siguiente paso recomendado:** configurar en el importador un `BoneMap` con `SkeletonProfileHumanoid` y el
 "Rest Fixer" para ambos archivos. Es la vía estándar de Godot para compartir clips entre modelos de distintas
 fuentes (Mixamo, Quaternius, propios) sin código de corrección.
@@ -285,8 +297,7 @@ edificios armados con piezas y recorribles por dentro.
 1. Estructuras con referencias del usuario: cubierta curva de celosía (foto 4, ubicación por confirmar),
    confirmar el lado de la pasarela. Hecho: ríos, puentes viales y pasarela. Hecho: Coliseo recorrible; baño y cocina con tabique propio, vidrio interior, una luz por cuarto.
 2. Garaje: pintar y emplacar (la elección ya está). Audio en opciones cuando haya audio.
-3. Personaje: creador con cuerpos, peinados y trajes (ya sincronizados), retarget con `BoneMap`, montar al
-   personaje en el vehículo (clip `Driving`), sentarse en bancas.
+3. Personaje: retarget con `BoneMap`, sentarse en bancas. (Hecho: creador de personaje, conductor en el vehículo.)
 4. Moto jugable: VehicleBody3D de dos ruedas se cae; necesita equilibrio propio.
 5. Audio (motor, ambiente, lluvia, música) y partículas de ambiente (bruma de la mañana, motas a contraluz).
 6. Combate y armas, fauna, supervivencia/zombis, facciones y bases, botín e inventario, historia y misiones,

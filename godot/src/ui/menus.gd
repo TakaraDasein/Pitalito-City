@@ -11,6 +11,7 @@ signal main_menu_requested
 signal vehicle_chosen(type: String)
 signal map_requested
 signal weather_changed(mode: int)
+signal look_changed
 
 var current_vehicle := "willys"
 
@@ -33,6 +34,11 @@ var _garage_plate: LineEdit
 var _garage_use: Button
 var _cam_pivot: Node3D
 var _drag := false
+# personaje
+var _char_view: SubViewport
+var _char_model: Node3D
+var _char_form: VBoxContainer
+var _char_origin: Label
 # opciones
 var _quality: OptionButton
 var _quality_note: Label
@@ -74,6 +80,7 @@ func _ready() -> void:
 	_build_pause()
 	_build_options()
 	_build_garage()
+	_build_character()
 	_build_credits()
 	_hints = Label.new()
 	_hints.theme_type_variation = "Small"
@@ -177,6 +184,7 @@ func _build_main() -> void:
 	col.add_theme_constant_override("separation", 8)
 	box.add_child(col)
 	_button(col, "Jugar", func(): play_requested.emit())
+	_button(col, "Personaje", func(): open("personaje"))
 	_button(col, "Garaje", func(): open("garaje"))
 	_button(col, "Opciones", func(): open("opciones"))
 	_button(col, "Créditos", func(): open("creditos"))
@@ -189,6 +197,7 @@ func _build_pause() -> void:
 	var col := _screen("pausa", "Juego en pausa", "Pausa")
 	_button(col, "Continuar", func(): resume_requested.emit())
 	_button(col, "Mapa", func(): map_requested.emit())
+	_button(col, "Personaje", func(): open("personaje"))
 	_button(col, "Garaje", func(): open("garaje"))
 	_button(col, "Opciones", func(): open("opciones"))
 	_button(col, "Menú principal", func(): main_menu_requested.emit())
@@ -294,48 +303,11 @@ func _build_garage() -> void:
 	frame.add_child(_garage_view)
 	_cam_pivot = Node3D.new()
 	_garage_view.add_child(_cam_pivot)
-	var cam := Camera3D.new()
+	var cam := _studio(_garage_view, 3.4)
 	cam.position = Vector3(0, 1.9, 8.2)
 	cam.rotation.x = -0.17
 	cam.fov = 34
 	_cam_pivot.add_child(cam)
-	var key := DirectionalLight3D.new()
-	key.rotation = Vector3(-0.8, 0.7, 0)
-	key.light_energy = 1.3
-	key.shadow_enabled = true
-	_garage_view.add_child(key)
-	var rim := DirectionalLight3D.new()
-	rim.rotation = Vector3(-0.3, -2.4, 0)
-	rim.light_energy = 0.6
-	rim.light_color = GuaduaTheme.CREMA
-	_garage_view.add_child(rim)
-	var floor_mi := MeshInstance3D.new()
-	var disc := CylinderMesh.new()
-	disc.top_radius = 3.4
-	disc.bottom_radius = 3.4
-	disc.height = 0.05
-	floor_mi.mesh = disc
-	var fm := StandardMaterial3D.new()
-	fm.albedo_color = Color("#2a1a0f")
-	fm.roughness = 0.35
-	fm.metallic = 0.2
-	floor_mi.material_override = fm
-	floor_mi.position.y = -0.03
-	_garage_view.add_child(floor_mi)
-	var env := WorldEnvironment.new()
-	env.environment = Environment.new()
-	# estudio: fondo café oscuro con un velo de niebla que funde el piso con el fondo
-	env.environment.background_mode = Environment.BG_COLOR
-	env.environment.background_color = Color("#140b06")
-	env.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.environment.ambient_light_color = Color(1, 0.93, 0.85)
-	env.environment.ambient_light_energy = 0.55
-	env.environment.tonemap_mode = Environment.TONE_MAPPER_AGX
-	env.environment.fog_enabled = true
-	env.environment.fog_light_color = Color("#140b06")
-	env.environment.fog_density = 0.06
-	env.environment.glow_enabled = true
-	_garage_view.add_child(env)
 	# columna izquierda: lista y ficha
 	var col := VBoxContainer.new()
 	col.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
@@ -523,8 +495,225 @@ func _garage_choose(i: int) -> void:
 func _garage_drag(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		_drag = event.pressed
-	elif event is InputEventMouseMotion and _drag and _garage_model:
-		_garage_model.rotate_y(event.relative.x * 0.01)
+	elif event is InputEventMouseMotion and _drag:
+		var m := _char_model if _panels.personaje.visible else _garage_model
+		if m:
+			m.rotate_y(event.relative.x * 0.01)
+
+
+## Estudio compartido (garaje y personaje): luz principal con sombra, contraluz crema, piso de disco y fondo café
+## con niebla. Devuelve la cámara sin colocar.
+func _studio(view: SubViewport, radius: float) -> Camera3D:
+	var cam := Camera3D.new()
+	var key := DirectionalLight3D.new()
+	key.rotation = Vector3(-0.8, 0.7, 0)
+	key.light_energy = 1.3
+	key.shadow_enabled = true
+	view.add_child(key)
+	var rim := DirectionalLight3D.new()
+	rim.rotation = Vector3(-0.3, -2.4, 0)
+	rim.light_energy = 0.6
+	rim.light_color = GuaduaTheme.CREMA
+	view.add_child(rim)
+	var floor_mi := MeshInstance3D.new()
+	var disc := CylinderMesh.new()
+	disc.top_radius = radius
+	disc.bottom_radius = radius
+	disc.height = 0.05
+	floor_mi.mesh = disc
+	var fm := StandardMaterial3D.new()
+	fm.albedo_color = Color("#2a1a0f")
+	fm.roughness = 0.35
+	fm.metallic = 0.2
+	floor_mi.material_override = fm
+	floor_mi.position.y = -0.03
+	view.add_child(floor_mi)
+	var env := WorldEnvironment.new()
+	env.environment = Environment.new()
+	# estudio: fondo café oscuro con un velo de niebla que funde el piso con el fondo
+	env.environment.background_mode = Environment.BG_COLOR
+	env.environment.background_color = Color("#140b06")
+	env.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.environment.ambient_light_color = Color(1, 0.93, 0.85)
+	env.environment.ambient_light_energy = 0.55
+	env.environment.tonemap_mode = Environment.TONE_MAPPER_AGX
+	env.environment.fog_enabled = true
+	env.environment.fog_light_color = Color("#140b06")
+	env.environment.fog_density = 0.06
+	env.environment.glow_enabled = true
+	view.add_child(env)
+	return cam
+
+
+# ── Personaje ─────────────────────────────────────────────────────────────────────────────────────────
+
+func _build_character() -> void:
+	var root := Control.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(root)
+	_panels["personaje"] = root
+	var frame := SubViewportContainer.new()
+	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.anchor_left = 0.4
+	frame.stretch = true
+	frame.gui_input.connect(_garage_drag)
+	root.add_child(frame)
+	_char_view = SubViewport.new()
+	_char_view.own_world_3d = true
+	_char_view.msaa_3d = Viewport.MSAA_4X
+	frame.add_child(_char_view)
+	var cam := _studio(_char_view, 1.3)
+	cam.position = Vector3(0, 1.15, 4.4)
+	cam.rotation.x = -0.06
+	cam.fov = 30
+	_char_view.add_child(cam)
+	var col := VBoxContainer.new()
+	col.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
+	col.position.x = 64
+	col.offset_top = 56
+	col.offset_bottom = -64
+	col.custom_minimum_size = Vector2(470, 0)
+	col.add_theme_constant_override("separation", 8)
+	root.add_child(col)
+	var k := Label.new()
+	k.text = "PERSONAJE"
+	k.theme_type_variation = "Caps"
+	col.add_child(k)
+	var t := Label.new()
+	t.text = "Quién eres en el valle"
+	t.theme_type_variation = "Display"
+	col.add_child(t)
+	_char_origin = Label.new()
+	_char_origin.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_char_origin.custom_minimum_size = Vector2(460, 0)
+	_char_origin.add_theme_color_override("font_color", Color(GuaduaTheme.TEXT, 0.85))
+	col.add_child(_char_origin)
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	col.add_child(scroll)
+	_char_form = VBoxContainer.new()
+	_char_form.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_char_form.add_theme_constant_override("separation", 6)
+	scroll.add_child(_char_form)
+	_section(_char_form, "Origen")
+	_choice("origen", CharacterConfig.ORIGINS, "Oficio")
+	_section(_char_form, "Cuerpo")
+	_choice("cuerpo", CharacterConfig.BODIES, "Complexión")
+	_swatches("piel", CharacterConfig.SKIN, "Piel")
+	_section(_char_form, "Cabeza")
+	_choice("pelo", CharacterConfig.HAIR, "Pelo")
+	_swatches("pelocolor", CharacterConfig.HAIR_COLOR, "Color")
+	_choice("barba", CharacterConfig.BEARD, "Barba")
+	_toggle("sombrero", "Sombrero aguadeño")
+	_toggle("capucha", "Capucha")
+	_section(_char_form, "Ropa")
+	_choice("ropa", CharacterConfig.OUTFITS, "Conjunto")
+	_toggle("hombreras", "Hombreras de cuero")
+	var bottom := HBoxContainer.new()
+	bottom.add_theme_constant_override("separation", 10)
+	col.add_child(bottom)
+	_button(bottom, "Listo", back)
+	_button(bottom, "Al azar", _char_random)
+
+
+## Fila con un selector de lista (nombre de cada opción en su ficha del catálogo).
+func _choice(key: String, catalog: Dictionary, label: String) -> void:
+	var ob := OptionButton.new()
+	ob.set_meta("key", key)
+	for id: String in catalog:
+		ob.add_item(catalog[id].name)
+		ob.set_item_metadata(ob.item_count - 1, id)
+	ob.item_selected.connect(func(i): _char_set(key, ob.get_item_metadata(i)))
+	ob.focus_entered.connect(func(): if AudioSystem.instance: AudioSystem.instance.ui_click())
+	_row(_char_form, label, ob)
+
+
+## Fila de muestras de color ([nombre, hex] por clave).
+func _swatches(key: String, catalog: Dictionary, label: String) -> void:
+	var flow := HFlowContainer.new()
+	flow.set_meta("key", key)
+	flow.add_theme_constant_override("h_separation", 6)
+	for id: String in catalog:
+		var sw := Button.new()
+		sw.custom_minimum_size = Vector2(30, 30)
+		sw.tooltip_text = catalog[id][0]
+		sw.set_meta("id", id)
+		sw.set_meta("hex", catalog[id][1])
+		sw.pressed.connect(func(): _char_set(key, id))
+		sw.focus_entered.connect(func(): if AudioSystem.instance: AudioSystem.instance.ui_click())
+		flow.add_child(sw)
+	_row(_char_form, label, flow)
+
+
+func _toggle(key: String, label: String) -> void:
+	var cb := CheckButton.new()
+	cb.set_meta("key", key)
+	cb.toggled.connect(func(on): _char_set(key, on))
+	_row(_char_form, label, cb)
+
+
+func _char_set(key: String, value: Variant) -> void:
+	if Settings.look.get(key) == value:
+		return
+	Settings.look[key] = value
+	# el origen fija la ropa y el sombrero iniciales (luego se pueden cambiar)
+	if key == "origen":
+		Settings.look.merge(CharacterConfig.ORIGINS[value].look, true)
+	Settings.save()
+	_char_refresh()
+	look_changed.emit()
+
+
+func _char_random() -> void:
+	for key: String in ["cuerpo", "piel", "pelo", "pelocolor", "barba", "ropa"]:
+		var cat: Dictionary = {"cuerpo": CharacterConfig.BODIES, "piel": CharacterConfig.SKIN, "pelo": CharacterConfig.HAIR,
+			"pelocolor": CharacterConfig.HAIR_COLOR, "barba": CharacterConfig.BEARD, "ropa": CharacterConfig.OUTFITS}[key]
+		Settings.look[key] = cat.keys().pick_random()
+	Settings.look.sombrero = randf() < 0.5
+	Settings.look.capucha = randf() < 0.15
+	Settings.look.hombreras = randf() < 0.2
+	Settings.save()
+	_char_refresh()
+	look_changed.emit()
+
+
+## Pone los controles en el valor actual y rearma el muñeco del estudio (sin perder el giro que tenía).
+func _char_refresh() -> void:
+	var look := Settings.look
+	for c: Node in _char_form.find_children("*", "", true, false):
+		if not c.has_meta("key"):
+			continue
+		var v: Variant = look.get(c.get_meta("key"))
+		if c is OptionButton:
+			for i in c.item_count:
+				if c.get_item_metadata(i) == v:
+					c.select(i)
+		elif c is CheckButton:
+			c.set_pressed_no_signal(bool(v))
+		elif c is HFlowContainer:
+			for sw: Button in c.get_children():
+				var on: bool = sw.get_meta("id") == v
+				for st in ["normal", "hover", "pressed", "focus"]:
+					var sb := StyleBoxFlat.new()
+					sb.bg_color = Color(sw.get_meta("hex"))
+					sb.set_corner_radius_all(15)
+					sb.set_border_width_all(3 if on or st != "normal" else 1)
+					sb.border_color = GuaduaTheme.CREMA if on or st != "normal" else Color(0, 0, 0, 0.6)
+					sw.add_theme_stylebox_override(st, sb)
+	var o: Dictionary = CharacterConfig.ORIGINS.get(look.origen, {})
+	_char_origin.text = "%s. %s" % [o.get("name", ""), o.get("detail", "")]
+	var yaw := 0.4
+	if _char_model:
+		yaw = _char_model.rotation.y
+		_char_model.queue_free()
+	_char_model = CharacterModel.create()
+	if _char_model:
+		_char_model.rotation.y = yaw
+		_char_view.add_child(_char_model)
+		var anim: AnimationPlayer = _char_model.get_node("AnimationPlayer")
+		anim.play(CharacterModel.clip("Idle"))
 
 
 # ── Créditos ──────────────────────────────────────────────────────────────────────────────────────────
@@ -570,6 +759,8 @@ func open(name: String, reset := false) -> void:
 		_stack.push_back(name)
 	if name == "opciones":
 		_refresh_options()
+	if name == "personaje":
+		_char_refresh()
 	if name == "garaje":
 		var i := maxi(_garage_types.find(current_vehicle), 0)
 		_garage_show(i)
@@ -613,7 +804,7 @@ func _update_hints() -> void:
 	if UiFx.gamepad:
 		_hints.text = "Cruceta: elegir   ·   A: aceptar   ·   B: volver"
 	else:
-		_hints.text = "↑ ↓ elegir   ·   Enter aceptar   ·   Esc volver" + ("   ·   arrastrar: girar el vehículo" if _panels.garaje.visible else "")
+		_hints.text = "↑ ↓ elegir   ·   Enter aceptar   ·   Esc volver" + ("   ·   arrastrar: girar el vehículo" if _panels.garaje.visible else "") + ("   ·   arrastrar: girar" if _panels.personaje.visible else "")
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -623,5 +814,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
+	if _char_model and _panels.personaje.visible and not _drag:
+		_char_model.rotate_y(delta * 0.25)
 	if _garage_model and _panels.garaje.visible and not _drag:
 		_garage_model.rotate_y(delta * 0.35)

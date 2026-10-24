@@ -36,6 +36,9 @@ var ui_scale := 1.0
 var volume := 0.8
 var ambience := 1.0
 ## Por qué se eligió la calidad (para mostrarlo en opciones): "equipo", "fps" o "manual".
+## Apariencia del personaje (claves de CharacterConfig.DEFAULT_LOOK)
+var look: Dictionary = CharacterConfig.DEFAULT_LOOK.duplicate()
+
 var quality_reason := "equipo"
 var gpu_name := ""
 ## false en las pruebas: no tocan los ajustes guardados del jugador.
@@ -58,6 +61,7 @@ func _ready() -> void:
 		ui_scale = cfg.get_value("pantalla", "escala_ui", 1.0)
 		volume = cfg.get_value("sonido", "volumen", 0.8)
 		ambience = cfg.get_value("sonido", "ambiente", 1.0)
+		look.merge(cfg.get_value("personaje", "apariencia", {}), true)
 		quality_reason = "manual" if not auto_quality else cfg.get_value("grafica", "motivo", "equipo")
 	if auto_quality and quality_reason == "equipo":
 		quality = detect()
@@ -167,4 +171,5 @@ func save() -> void:
 	cfg.set_value("pantalla", "escala_ui", ui_scale)
 	cfg.set_value("sonido", "volumen", volume)
 	cfg.set_value("sonido", "ambiente", ambience)
+	cfg.set_value("personaje", "apariencia", look)
 	cfg.save(PATH)
