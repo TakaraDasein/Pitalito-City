@@ -1,7 +1,7 @@
 extends Node
 ## Herramienta: capturas de la carga y los menús (screenshots/menu_*.png). Uso: godot res://tools/menu_shots.tscn
 ## Para no recorrer todo, se nombran las secciones que interesan: `godot res://tools/menu_shots.tscn -- personaje`
-## (garaje, personaje, menus, juego, pies, banca, subir, faros, tomar, ambiente, combate, botin, disparos, criaturas, monte, uno, situaciones, corral; varias separadas por espacio). Carga y portada se capturan siempre.
+## (garaje, personaje, menus, juego, pies, banca, subir, faros, tomar, ambiente, combate, botin, disparos, criaturas, monte, uno, situaciones, corral, flota; varias separadas por espacio). Carga y portada se capturan siempre.
 
 var _main: Node
 var _only := OS.get_cmdline_user_args()
@@ -142,6 +142,8 @@ func _ready() -> void:
 		await _situations()
 	if _want("corral"):
 		await _arena_shots()
+	if _want("flota"):
+		await _fleet_shots()
 	get_tree().quit()
 
 
@@ -304,6 +306,47 @@ func _combat_shots() -> void:
 	while Engine.get_physics_frames() - fw < 30:
 		await get_tree().physics_frame
 	print("combate: recibe — vida %.0f → %.0f, retrocede %.2f m, estado %d" % [hp, player.combat.health, Vector2(player.global_position.x - p0.x, player.global_position.z - p0.z).length(), player.combat.state])
+
+
+## Flota: cada vehículo del tráfico (los modelados en código que reemplazan al Kenney Car Kit) estacionado y de
+## tres cuartos, uno por captura (screenshots/menu_flota_<tipo>), con su tamaño medido.
+func _fleet_shots() -> void:
+	if _main.state != _main.State.PLAYING:
+		_main._start_playing()
+	_main.traffic.density = 0.0
+	for c: Dictionary in _main.traffic._cars.duplicate():
+		_main.traffic.take_car(c)
+	var player: Player = _main.player
+	var sp: Dictionary = WorldData.spawn()
+	player.place(sp.x + 20.0, sp.z + 20.0)
+	await get_tree().physics_frame
+	var cam := Camera3D.new()
+	cam.fov = 50
+	add_child(cam)
+	for type in ["sedan", "suv", "van", "truck", "delivery", "garbage-truck", "ambulance"]:
+		_main.set_vehicle(type)
+		# el anterior se retira al final del cuadro: colocado encima, la física dispara al nuevo
+		await get_tree().physics_frame
+		await get_tree().physics_frame
+		var car: Vehicle = _main.vehicle
+		car.place(sp.x, sp.z, sp.heading)
+		# al lado, el mismo como tráfico (sin puerta recortada): para comparar
+		var twin := Vehicle.create(type)
+		add_child(twin)
+		twin.place(sp.x + car.global_basis.x.x * (car.spec.width + 1.5), sp.z + car.global_basis.x.z * (car.spec.width + 1.5), sp.heading)
+		await get_tree().create_timer(1.0).timeout
+		var L: float = car.spec.length
+		var at := car.global_position
+		cam.global_position = at - car.global_basis.z * L * 0.9 + car.global_basis.x * L * 0.7 + Vector3.UP * L * 0.35
+		cam.look_at(at + Vector3.UP * 1.0)
+		cam.make_current()
+		await get_tree().create_timer(0.4).timeout
+		await _shot("flota_" + type)
+		twin.queue_free()
+		print("flota: %s — %s, ruedas %d, a %.1f m de donde se puso, altura sobre el suelo %.2f, velocidad %.1f" % [type, car.spec.name, car.get_children().filter(func(n): return n is VehicleWheel3D).size(),
+			Vector2(car.global_position.x - sp.x, car.global_position.z - sp.z).length(), car.global_position.y - WorldData.height(car.global_position.x, car.global_position.z), car.linear_velocity.length()])
+	cam.queue_free()
+	_main.camera_rig.camera.make_current()
 
 
 ## Venados (un macho con astas y dos hembras sin ellas) caminando, y el corral de barricadas de un jefe.

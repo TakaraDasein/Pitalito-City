@@ -256,36 +256,7 @@ const ARMAS = {
   registry.push({ key: 'styloo-guns', file: 'models/weapons/styloo_*.glb', bytes, count: STYLOO.glb.length, ...STYLOO });
 }
 
-// Vehículos del tráfico (Kenney Car Kit, CC0): un material por carro (atlas de paleta de 512 px compartido),
-// ≈ 2 000 triángulos y las ruedas como nodos con nombre. Sólo los que tienen sentido en Pitalito: sin karts,
-// carros de carreras, patrulla (institución real) ni bomberos. Ver src/config/vehicles.config.js.
-{
-  const KENNEY = {
-    title: 'Car Kit 3.1', author: 'Kenney', license: 'CC0 1.0',
-    licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/', home: 'https://kenney.nl/assets/car-kit',
-    url: 'https://kenney.nl/media/pages/assets/car-kit/1a312ec241-1775131960/kenney_car-kit.zip',
-    glb: ['sedan', 'suv', 'van', 'truck', 'delivery', 'garbage-truck', 'ambulance'],
-    out: 'vehicles/', usedFor: 'Automóvil, campero, van, camioneta, furgón, recolector y ambulancia del tráfico',
-  };
-  const zip = path.join(RAW, 'kenney-car-kit.zip');
-  if (!existsSync(zip)) {
-    console.log(`· descargando ${KENNEY.title}…`);
-    sh('curl', ['-sSL', '--fail', '--max-time', '600', '-o', zip, KENNEY.url]);
-  }
-  const dir = path.join(RAW, 'kenney-car-kit');
-  sh('unzip', ['-q', '-o', zip, 'Models/GLB format/*', '-d', dir]);
-  const src = path.join(dir, 'Models', 'GLB format');
-  await mkdir('public/models/vehicles/Textures', { recursive: true });
-  let bytes = 0;
-  // Los GLB apuntan a Textures/colormap.png (externa): se copia una vez y la comparten todos.
-  for (const f of [...KENNEY.glb.map((n) => `${n}.glb`), 'Textures/colormap.png']) {
-    const dest = path.join('public/models/vehicles', f);
-    await copyFile(path.join(src, f), dest);
-    bytes += statSync(dest).size;
-  }
-  console.log(`  → public/models/vehicles/: ${KENNEY.glb.length} vehículos`);
-  registry.push({ key: 'kenney-car-kit', file: 'models/vehicles/', bytes, count: KENNEY.glb.length, ...KENNEY });
-}
+// (El tráfico ya no usa el Kenney Car Kit: está modelado en código, src/entities/vehicles/models/urbanos.js.)
 
 // Kits modulares de Kenney (CC0) para la versión Godot: edificios armados pieza a pieza sobre las huellas reales
 // (paredes con puertas y ventanas cuadradas o en arco, columnas de portal, cornisas, escaleras, pisos y techos) y

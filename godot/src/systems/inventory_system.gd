@@ -2,15 +2,13 @@ class_name InventorySystem
 extends Node
 ## Mochila (port de web/src/systems/InventorySystem.js): objetos por cantidad con tope de peso
 ## (LootConfig.LOOT.max_load). Se guarda con el botín en user://, así que lo que llevas sigue ahí al volver.
-## use() aplica el efecto: hoy la vida (Combatant del jugador); hambre, sed e infección quedan en `state` para la
-## supervivencia. Las armas cuerpo a cuerpo que se cargan entran al arsenal (arsenal()).
+## use() aplica el efecto: la vida (Combatant del jugador). Sin hambre, sed ni infección (barra de vida tipo Souls). Las armas cuerpo a cuerpo que se cargan entran al arsenal (arsenal()).
 
 signal changed
 
 static var instance: InventorySystem
 
 var items: Dictionary = {}     # id → cantidad
-var state := {"hunger": 100.0, "thirst": 100.0, "infection": 0.0}
 var player: Player
 
 
@@ -22,7 +20,6 @@ func _ready() -> void:
 		for id: String in saved:
 			if LootConfig.ITEMS.has(id):
 				items[id] = int(saved[id])
-		state.merge(cfg.get_value("mochila", "estado", {}), true)
 
 
 func weight() -> float:
@@ -81,9 +78,6 @@ func use(id: String) -> bool:
 	var e: Dictionary = item.use
 	if e.has("life") and player:
 		player.combat.health = minf(float(player.combat.stats.health), player.combat.health + float(e.life))
-	for k: String in ["hunger", "thirst", "infection"]:
-		if e.has(k):
-			state[k] = clampf(float(state[k]) + float(e[k]), 0.0, 100.0)
 	remove(id)
 	if HUD.instance:
 		HUD.instance.toast("Usaste: " + String(item.name), 1.8)
@@ -101,6 +95,5 @@ func _save() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(LootConfig.LOOT.save)
 	cfg.set_value("mochila", "items", items)
-	cfg.set_value("mochila", "estado", state)
 	cfg.save(LootConfig.LOOT.save)
 	changed.emit()

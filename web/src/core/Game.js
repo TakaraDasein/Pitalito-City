@@ -44,7 +44,6 @@ import { BaseSystem } from '../systems/BaseSystem.js';
 import { TradePanel } from '../ui/TradePanel.js';
 import { FirearmSystem } from '../systems/FirearmSystem.js';
 import { precargarArmas } from '../entities/weapons/firearms.js';
-import { precargarVehiculos } from '../entities/vehicles/models/kenney.js';
 import { SurvivalSystem } from '../systems/SurvivalSystem.js';
 import { LootSystem } from '../systems/LootSystem.js';
 import { InventorySystem } from '../systems/InventorySystem.js';
@@ -126,7 +125,7 @@ export class Game {
 
     progress(0.15, 'Cargando texturas…');
     this.materials = new MaterialLibrary(this.assets);
-    await Promise.all([this.materials.load(), precargarVehiculos(this.assets)]);
+    await this.materials.load();
 
     progress(0.3, 'Levantando el relieve real del Valle de Laboyos…');
     const real = !!this.manifest.terrain;

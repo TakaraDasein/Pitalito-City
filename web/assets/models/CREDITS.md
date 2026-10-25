@@ -16,7 +16,6 @@ Regenerar con `pnpm models:fetch`.
 | outfits/ (20 archivos) | Ropa intercambiable del jugador y de las facciones, sobre el mismo esqueleto | Quaternius | CC0 1.0 | [Fuente](https://quaternius.itch.io/modular-character-outfits-fantasy) |
 | undefined (6 archivos) | Pistola, revólver, escopetas, fusil y rifle de cacería (src/config/firearms.config.js) | Quaternius | CC0 1.0 | [Fuente](https://quaternius.itch.io/50-lowpoly-guns) |
 | undefined (4 archivos) | Pistola, escopeta, fusil y rifle (src/config/firearms.config.js) | Styloo | CC0 1.0 | [Fuente](https://styloo.itch.io/guns-asset-pack) |
-| vehicles/ (7 archivos) | Automóvil, campero, van, camioneta, furgón, recolector y ambulancia del tráfico | Kenney | CC0 1.0 | [Fuente](https://kenney.nl/assets/car-kit) |
 | buildings/ (79 archivos) | Versión Godot: piezas de los edificios cercanos (paredes, vanos, columnas, escaleras, pisos, techos) | Kenney | CC0 1.0 | [Fuente](https://kenney.nl/assets/building-kit) |
 | furniture/ (140 archivos) | Versión Godot: muebles de los interiores recorribles (cocina, baño, sala, alcoba, tienda) | Kenney | CC0 1.0 | [Fuente](https://kenney.nl/assets/furniture-kit) |
 | enemies/skeleton.glb | Cuerpo de los enemigos de las facciones: comparte los 65 huesos, así hereda los 45 clips y la ropa | Generado por el proyecto sobre el armature de Quaternius | CC0 1.0 | Derivado de `base/Superhero_Male_FullBody.gltf` con `scripts/lib/make-skeleton.py` |

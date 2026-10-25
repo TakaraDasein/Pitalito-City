@@ -1,15 +1,12 @@
 class_name VehiclesConfig
 ## Catálogo de vehículos, espejo de web/src/config/vehicles.config.js (nombre, medidas, masa, velocidad, giro).
-## Dos orígenes de modelo:
-##   kenney — Kenney Car Kit (CC0, ver web/assets/models/CREDITS.md); medidas de carrocería ESTIMADAS a las que
-##            se escala el modelo.
-##   baked  — modelados a mano en la web y horneados a GLB (web/tools/bake-godot.mjs); ya vienen a escala real.
+## Todos modelados en código en la web y horneados a GLB (web/tools/bake-godot.mjs); ya vienen a escala real.
+## El tráfico (automóvil, campero, buseta, doble cabina, camión, recolector, ambulancia) está en
+## web/src/entities/vehicles/models/urbanos.js: antes era el Kenney Car Kit, genérico (cambiado el 24-10-2026).
 ## colors: pinturas del garaje (la primera es la de fábrica; vacío = color fijo, como el taxi amarillo). Las mismas
-## de la web. Los horneados cambian el material de fábrica; los de Kenney mueven las UV de la carrocería a otra
-## muestra de su paleta compartida (KENNEY_PALETTE, la de web/src/entities/vehicles/models/kenney.js).
+## de la web: se cambia el material del color de fábrica.
 ## door: puerta del conductor en el espacio del modelo de la web (z, alto; panel = hoja con bisagra, si no vano).
-## seat: dónde se sienta el conductor, en el espacio del modelo de la web (medido allá sobre cada modelo); los del
-## Car Kit no tienen: el conductor no se ve (vidrios oscuros), como en la web.
+## seat: dónde se sienta el conductor, en el espacio del modelo de la web (medido allá sobre cada modelo).
 ## step: alto del estribo de la cabina (m, ESTIMADO: el modelo no lo trae); si está, se sube en dos tiempos.
 ## engine (N) y brake son de la física de Godot (VehicleBody3D), calibrados a ojo: no hay dato.
 
@@ -20,19 +17,14 @@ const VEHICLES := {
 	"chiva": {"name": "Chiva", "source": "baked", "seat": [-0.55, 0.75, -2.05], "step": 0.38, "engine_hz": [28, 95], "colors": ["#3fae49", "#1d4e89", "#d62828", "#f2c230"], "length": 8.5, "width": 2.6, "mass": 7000.0, "max_speed": 85.0, "max_steer": 0.5},
 	"motocarro": {"name": "Motocarro", "source": "baked", "seat": [0, 0.21, -0.25], "engine_hz": [80, 240], "colors": ["#2e7d32", "#f2c230", "#1d4e89", "#c62828"], "length": 2.6, "width": 1.3, "mass": 400.0, "max_speed": 70.0, "max_steer": 0.65},
 	"moto": {"name": "Moto", "source": "baked", "seat": [0, 0.4, -0.2], "engine_hz": [70, 260], "colors": ["#1d4e89", "#c62828", "#1f1f1f", "#e9ecef", "#2e7d32"], "length": 2.0, "width": 0.7, "mass": 120.0, "max_speed": 110.0, "max_steer": 0.7},
-	"sedan": {"name": "Automóvil", "source": "kenney", "colors": ["#ffffff", "#a0a8c9", "#4f5260", "#cf534f", "#6794d9"], "length": 4.3, "width": 1.7, "height": 1.3, "mass": 1300.0, "max_speed": 120.0, "max_steer": 0.55},
-	"suv": {"name": "Campero", "source": "kenney", "colors": ["#ffffff", "#a0a8c9", "#4f5260", "#cf534f", "#6794d9", "#61cb8b"], "length": 4.4, "width": 1.8, "height": 1.55, "mass": 1300.0, "max_speed": 120.0, "max_steer": 0.55},
-	"van": {"name": "Van intermunicipal", "source": "kenney", "colors": ["#ffffff", "#a0a8c9", "#6794d9"], "length": 5.0, "width": 1.9, "height": 1.85, "mass": 1300.0, "max_speed": 120.0, "max_steer": 0.55},
-	"truck": {"name": "Camioneta", "source": "kenney", "colors": ["#ffffff", "#a0a8c9", "#4f5260", "#cf534f", "#6794d9", "#61cb8b"], "length": 5.2, "width": 1.8, "height": 1.6, "mass": 1300.0, "max_speed": 120.0, "max_steer": 0.55},
-	"delivery": {"name": "Furgón", "source": "kenney", "colors": ["#ffffff", "#61cb8b", "#6794d9", "#cf534f"], "length": 6.5, "width": 2.2, "height": 2.8, "mass": 5000.0, "max_speed": 120.0, "max_steer": 0.55},
-	"garbage-truck": {"name": "Recolector de basura", "source": "kenney", "length": 8.0, "width": 2.4, "height": 3.0, "mass": 9000.0, "max_speed": 120.0, "max_steer": 0.55},
-	"ambulance": {"name": "Ambulancia", "source": "kenney", "length": 5.8, "width": 2.0, "height": 2.5, "mass": 1300.0, "max_speed": 120.0, "max_steer": 0.55},
-}
-
-## Pinturas del Car Kit → [fila, columna del par] en su atlas de 16 × 4 muestras.
-const KENNEY_PALETTE := {
-	"#ffffff": [2, 12], "#a0a8c9": [2, 10], "#4f5260": [2, 8], "#cf534f": [1, 12], "#6794d9": [1, 14],
-	"#61cb8b": [1, 6], "#ffc044": [1, 8], "#ff7e44": [1, 10], "#b06041": [1, 0],
+	# tráfico modelado en código en la web (urbanos.js; antes el Kenney Car Kit): también se manejan
+	"sedan": {"name": "Automóvil", "source": "baked", "seat": [-0.36, 0.15, 0.05], "door": {"z": [-0.75, 0.38], "y": [0.36, 1.42], "panel": true}, "colors": ["#e9ecef", "#a0a8b0", "#4f5260", "#b3261e", "#1d4e89", "#1f1f1f"], "length": 4.3, "width": 1.7, "mass": 1300.0, "max_speed": 120.0, "max_steer": 0.55},
+	"suv": {"name": "Campero", "source": "baked", "seat": [-0.4, 0.41, -0.15], "door": {"z": [-0.85, 0.22], "y": [0.54, 1.86], "panel": true}, "colors": ["#4b5d3a", "#e9ecef", "#a0a8b0", "#4f5260", "#b3261e", "#1d4e89", "#1f1f1f"], "length": 4.4, "width": 1.8, "mass": 1900.0, "max_speed": 120.0, "max_steer": 0.55},
+	"van": {"name": "Buseta intermunicipal", "source": "baked", "seat": [-0.5, 0.6, -2.65], "door": {"z": [-2.9, -2.1], "y": [0.52, 2.55], "panel": true}, "colors": ["#f4f4f4", "#f2c230", "#1d4e89"], "length": 6.8, "width": 2.1, "mass": 4200.0, "max_speed": 100.0, "max_steer": 0.5},
+	"truck": {"name": "Camioneta doble cabina", "source": "baked", "seat": [-0.4, 0.41, -0.2], "door": {"z": [-0.88, 0.18], "y": [0.56, 1.84], "panel": true}, "colors": ["#e9ecef", "#a0a8b0", "#4f5260", "#b3261e", "#1d4e89", "#1f1f1f"], "length": 5.2, "width": 1.82, "mass": 2100.0, "max_speed": 120.0, "max_steer": 0.55},
+	"delivery": {"name": "Camión de carga", "source": "baked", "seat": [-0.5, 0.85, -2.35], "door": {"z": [-2.9, -1.9], "y": [0.67, 2.35], "panel": true}, "colors": ["#e9ecef", "#1d4e89", "#b3261e"], "length": 6.5, "width": 2.3, "mass": 5000.0, "max_speed": 95.0, "max_steer": 0.5},
+	"garbage-truck": {"name": "Recolector de basura", "source": "baked", "seat": [-0.55, 1.0, -3.05], "door": {"z": [-3.6, -2.5], "y": [0.72, 2.6], "panel": true}, "colors": ["#2e7d32"], "length": 8.0, "width": 2.4, "mass": 9000.0, "max_speed": 80.0, "max_steer": 0.45},
+	"ambulance": {"name": "Ambulancia", "source": "baked", "seat": [-0.48, 0.5, -1.25], "door": {"z": [-1.85, -0.9], "y": [0.5, 2.45], "panel": true}, "length": 5.8, "width": 2.0, "mass": 2800.0, "max_speed": 120.0, "max_steer": 0.55},
 }
 
 ## Mezcla del tráfico IA (pesos): en Pitalito abundan motos y taxis. Igual que TRAFFIC_MIX de la web.
@@ -52,7 +44,7 @@ const TRAFFIC_DESPAWN_RADIUS := 380.0
 static func spec(type: String) -> Dictionary:
 	var s: Dictionary = VEHICLES[type].duplicate()
 	s.type = type
-	# tono del motor en ralentí y a fondo (Hz), el de la web; los del Car Kit, el genérico de la web
+	# tono del motor en ralentí y a fondo (Hz), el de la web; sin dato, el genérico de la web
 	if not s.has("engine_hz"):
 		s.engine_hz = [45, 180]
 	# Física de Godot: fuerza y freno proporcionales a la masa (mismo empuje relativo para todos)

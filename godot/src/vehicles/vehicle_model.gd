@@ -1,13 +1,11 @@
 class_name VehicleModel
 ## Carga el modelo de un vehículo y lo normaliza: mirando a +Z (adelante de VehicleBody3D), a escala real y
-## centrado a lo largo. Sirve igual para el Car Kit de Kenney y para los horneados desde la web.
+## centrado a lo largo. Todos son horneados desde la web (los de la web miran a −Z: se giran).
 ## Devuelve { visual: Node3D, wheels: [{ node, front, pos, radius }], size: Vector3 }; las ruedas siguen siendo
 ## hijas de `visual` hasta que quien las use las reubique.
 
 
 static func path_of(spec: Dictionary, driver := false) -> String:
-	if spec.source == "kenney":
-		return "res://assets/models/vehicles/%s.glb" % spec.type
 	return "res://assets/models/vehicles/baked/%s%s.glb" % [spec.type, "-driver" if driver else ""]
 
 
@@ -23,10 +21,8 @@ static func create(spec: Dictionary, driver := false) -> Dictionary:
 	visual.name = "modelo"
 	var wheels := []
 	var scale := Vector3.ONE
-	var flip: bool = spec.source != "kenney" # los de la web miran a −Z
+	var flip := true # los de la web miran a −Z
 	var box := body.transform * _aabb(body)
-	if spec.source == "kenney":
-		scale = Vector3(spec.width / box.size.x, spec.height / box.size.y, spec.length / box.size.z)
 	var center_z := (box.position.z + box.size.z * 0.5) * scale.z
 	var xf := Transform3D(Basis(Vector3.UP, PI if flip else 0.0), Vector3.ZERO) * Transform3D(Basis.from_scale(scale), Vector3(0, 0, -center_z))
 
@@ -37,7 +33,6 @@ static func create(spec: Dictionary, driver := false) -> Dictionary:
 		wheels.push_back({
 			"node": w, "front": String(w.name).contains("front"), "pos": local.origin,
 			"radius": maxf(wbox.size.y * scale.y * 0.5, 0.15),
-			# Ruedas redondas aunque la carrocería se estire a lo largo (Kenney): escala (x, y, y)
 			"basis": Basis(Vector3.UP, PI if flip else 0.0) * w.basis * Basis.from_scale(Vector3(scale.x, scale.y, scale.y)),
 		})
 	for n: Node in [body] + wheels.map(func(w): return w.node):
@@ -86,6 +81,15 @@ static func add_doors(visual: Node3D, spec: Dictionary) -> Dictionary:
 		body.add_child(hinge)
 	for mi: MeshInstance3D in body.find_children("*", "MeshInstance3D", true, false):
 		if mi.get_parent() == hinge:
+			continue
+		# el vidrio es una sola malla para toda la cabina (el horneado fusiona por material): recortarlo en la puerta
+		# lo hacía desaparecer en el carro del jugador. Se deja entero (la hoja abre sin su ventana).
+		var clear := false
+		for si in mi.mesh.get_surface_count():
+			var am := mi.get_active_material(si) as BaseMaterial3D
+			if am and am.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
+				clear = true
+		if clear:
 			continue
 		var rel := _rel(mi, body)
 		var box := rel * mi.get_aabb()
@@ -177,7 +181,7 @@ void fragment() {
 	if (door_in == (door_leaf < 0.5)) { discard; }
 	vec4 c = albedo;
 	if (use_tex) { c *= texture(tex, UV); }
-	if (use_vcol) { c *= COLOR; }
+	if (use_vcol) { c.rgb *= COLOR.rgb; }  // como StandardMaterial3D: el color de vértice no toca la transparencia (el vidrio la traía en 0 y desaparecía)
 	ALBEDO = c.rgb;
 	METALLIC = metallic;
 	ROUGHNESS = roughness;
@@ -193,10 +197,6 @@ void fragment() {
 ## por una copia con el color nuevo (los demás vehículos comparten el original). Placa: el material con la textura
 ## de placa (256×128 de la web) pasa a amarillo liso y encima va el texto con Label3D, una por placa.
 static func customize(visual: Node3D, spec: Dictionary, paint: String, plate: String) -> void:
-	if spec.source == "kenney":
-		if paint != "" and VehiclesConfig.KENNEY_PALETTE.has(paint):
-			_kenney_repaint(visual.get_node_or_null("body") as MeshInstance3D, VehiclesConfig.KENNEY_PALETTE[paint])
-		return
 	var cols: Array = spec.get("colors", [])
 	var factory := Color(cols[0]) if not cols.is_empty() else Color(0, 0, 0, 0)
 	var painted: StandardMaterial3D
@@ -212,9 +212,10 @@ static func customize(visual: Node3D, spec: Dictionary, paint: String, plate: St
 				if glass == null:
 					glass = m.duplicate()
 					glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-					glass.albedo_color = Color("#2a3b46", 0.38)
-					glass.roughness = 0.05
-					glass.metallic = 0.3
+					# polarizado oscuro y con reflejo: con 0,38 las cabinas (horneadas sin interior) se leían como marcos vacíos
+					glass.albedo_color = Color("#1b2730", 0.78)
+					glass.roughness = 0.04
+					glass.metallic = 0.6
 				mi.set_surface_override_material(i, glass)
 			elif paint != "" and not cols.is_empty() and m.albedo_texture == null and _same(m.albedo_color, factory):
 				if painted == null:
@@ -227,55 +228,6 @@ static func customize(visual: Node3D, spec: Dictionary, paint: String, plate: St
 				yellow.roughness = 0.4
 				mi.set_surface_override_material(i, yellow)
 				_plate_labels(mi, i, plate)
-
-
-## Car Kit: la pintura es el par de muestras de la fila 1 con más área; sus triángulos se corren al par pedido.
-## Se arma una malla nueva (la importada la comparten todos los carros del mismo modelo).
-static func _kenney_repaint(mi: MeshInstance3D, to: Array) -> void:
-	if mi == null:
-		return
-	const COLS := 16.0
-	const ROWS := 4.0
-	var src := mi.mesh
-	var out := ArrayMesh.new()
-	for si in src.get_surface_count():
-		var arr := src.surface_get_arrays(si)
-		var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
-		var uv: PackedVector2Array = arr[Mesh.ARRAY_TEX_UV]
-		var idx: PackedInt32Array = arr[Mesh.ARRAY_INDEX]
-		var tri := func(t: int) -> Array: return [idx[t * 3], idx[t * 3 + 1], idx[t * 3 + 2]] if not idx.is_empty() else [t * 3, t * 3 + 1, t * 3 + 2]
-		var n_tri := (idx.size() if not idx.is_empty() else v.size()) / 3
-		var area := {}
-		for t in n_tri:
-			var k: Array = tri.call(t)
-			var c: Vector2 = (uv[k[0]] + uv[k[1]] + uv[k[2]]) / 3.0
-			if floori(c.y * ROWS) != 1:
-				continue
-			var col := floori(c.x * COLS) & ~1
-			area[col] = area.get(col, 0.0) + (v[k[1]] - v[k[0]]).cross(v[k[2]] - v[k[0]]).length() * 0.5
-		var best := -1
-		var best_a := 0.0
-		for col: int in area:
-			if area[col] > best_a:
-				best_a = area[col]
-				best = col
-		if best >= 0:
-			var du := (float(to[1]) - best) / COLS
-			var dv := (float(to[0]) - 1.0) / ROWS
-			var moved := {}
-			for t in n_tri:
-				var k: Array = tri.call(t)
-				var c: Vector2 = (uv[k[0]] + uv[k[1]] + uv[k[2]]) / 3.0
-				if floori(c.y * ROWS) != 1 or (floori(c.x * COLS) & ~1) != best:
-					continue
-				for vi: int in k:
-					if not moved.has(vi):
-						moved[vi] = true
-						uv[vi] += Vector2(du, dv)
-			arr[Mesh.ARRAY_TEX_UV] = uv
-		out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
-		out.surface_set_material(si, src.surface_get_material(si))
-	mi.mesh = out
 
 
 static func _same(a: Color, b: Color) -> bool:

@@ -2,7 +2,6 @@ import { Vehicle } from '../entities/vehicles/Vehicle.js';
 import { TRAFFIC_MIX, VEHICLES } from '../config/vehicles.config.js';
 import { GAME } from '../config/game.config.js';
 import { roadClass } from '../config/roads.config.js';
-import { vehiculoKenneyListo } from '../entities/vehicles/models/kenney.js';
 
 const COLORS = ['#b3261e', '#1d4e89', '#2e7d32', '#f4f4f4', '#6d4c41', '#37474f', '#c77dff', '#ff8f00'];
 const pickWeighted = (weights) => {
@@ -12,7 +11,7 @@ const pickWeighted = (weights) => {
   return Object.keys(weights)[0];
 };
 // Los modelos del kit se descargan: si alguno no llegó, sale de la mezcla en vez de romper el tráfico.
-const mezcla = () => Object.fromEntries(Object.entries(TRAFFIC_MIX).filter(([t]) => !VEHICLES[t].kenney || vehiculoKenneyListo(VEHICLES[t].kenney)));
+const mezcla = () => TRAFFIC_MIX;
 const LENTOS = new Set(['chiva', 'motocarro', 'delivery', 'garbage-truck']);
 
 // Tráfico IA: vehículos cinemáticos que recorren el grafo vial por el carril derecho,

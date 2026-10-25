@@ -7,6 +7,8 @@ uniform sampler2D imagery : source_color, filter_linear_mipmap_anisotropic, repe
 uniform sampler2D detail : filter_linear_mipmap, repeat_enable;
 uniform bool has_imagery = false;
 uniform bool use_detail = false;
+// 0 seco … 1 aguacero (SkySystem.wet vía MaterialLibrary.set_wet)
+global uniform float ground_wet;
 
 varying vec3 world_pos;
 
@@ -23,6 +25,15 @@ void fragment() {
 		float b = texture(detail, world_pos.xz / 13.0).r;
 		col *= mix(1.0, (a * 2.0) * (0.75 + b * 0.5), fade * 0.8);
 	}
+	// Mojado: más oscuro y liso; los charcos (ESTIMADO: manchas de ruido grueso, sin dato de dónde se encharca)
+	// quedan casi como espejo y los toma el SSR del preset Alta.
+	float rough = 0.95;
+	if (ground_wet > 0.01) {
+		float b2 = texture(detail, world_pos.xz / 9.0).r;
+		float puddle = smoothstep(0.38, 0.30, b2) * smoothstep(0.35, 0.9, ground_wet);
+		col *= 1.0 - ground_wet * 0.28 - puddle * 0.15;
+		rough = mix(mix(0.95, 0.55, ground_wet), 0.04, puddle);
+	}
 	ALBEDO = col;
-	ROUGHNESS = 0.95;
+	ROUGHNESS = rough;
 }

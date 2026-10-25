@@ -11,11 +11,11 @@ const LEVELS := ["baja", "media", "alta"]
 ## Qué cambia cada nivel. render_scale: resolución 3D; shadows: tamaño del mapa de sombras y distancia; stream:
 ## radio de tiles; detail: radio de edificios armados; furniture: alcance de muebles; lights: luces interiores.
 const PRESETS := {
-	"baja": {"render_scale": 0.67, "shadow_size": 1024, "shadow_dist": 80.0, "ssao": false, "glow": false, "msaa": 0,
+	"baja": {"render_scale": 0.67, "shadow_size": 1024, "shadow_dist": 80.0, "ssao": false, "ssr": false, "glow": false, "msaa": 0,
 		"stream": 2, "detail": 0, "furniture": 40.0, "lights": 4, "tile_vis": 650.0},
-	"media": {"render_scale": 0.85, "shadow_size": 2048, "shadow_dist": 150.0, "ssao": false, "glow": true, "msaa": 0,
+	"media": {"render_scale": 0.85, "shadow_size": 2048, "shadow_dist": 150.0, "ssao": false, "ssr": false, "glow": true, "msaa": 0,
 		"stream": 3, "detail": 1, "furniture": 60.0, "lights": 8, "tile_vis": 900.0},
-	"alta": {"render_scale": 1.0, "shadow_size": 4096, "shadow_dist": 250.0, "ssao": true, "glow": true, "msaa": 2,
+	"alta": {"render_scale": 1.0, "shadow_size": 4096, "shadow_dist": 250.0, "ssao": true, "ssr": true, "glow": true, "msaa": 2,
 		"stream": 3, "detail": 1, "furniture": 70.0, "lights": 12, "tile_vis": 1100.0},
 }
 
@@ -154,6 +154,13 @@ func apply_to(viewport: Viewport, env: Environment, sun: DirectionalLight3D) -> 
 	RenderingServer.directional_shadow_atlas_set_size(p.shadow_size, true)
 	sun.directional_shadow_max_distance = p.shadow_dist
 	env.ssao_enabled = p.ssao
+	# Reflejos en pantalla: charcos, vidrios y carros. Solo en superficies opacas (no en el río ni en las calzadas
+	# semitransparentes, que reflejan el cielo por su cuenta).
+	env.ssr_enabled = p.ssr
+	env.ssr_max_steps = 48
+	env.ssr_fade_in = 0.15
+	env.ssr_fade_out = 2.0
+	env.ssr_depth_tolerance = 0.4
 	env.glow_enabled = p.glow
 
 

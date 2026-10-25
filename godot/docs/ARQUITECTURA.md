@@ -28,7 +28,7 @@ construye en tiempo de carga:
 | Qué | Origen en la web | Sale como |
 |---|---|---|
 | 22 texturas (fachadas con locales y letreros, ventanas encendidas, lámina, adoquín, relojes, vitrales…) | `ProceduralTextures.js` (canvas) | `assets/textures/procedural/*.png` |
-| 6 vehículos modelados a mano (Willys, taxi, platón, chiva, motocarro, moto), con y sin conductor | `entities/vehicles/models/` | `assets/models/vehicles/baked/*.glb` |
+| 13 vehículos modelados a mano en la web (Willys, taxi, platón, chiva, motocarro, moto y el tráfico de urbanos.js: automóvil, campero, buseta, doble cabina, camión, recolector, ambulancia), con y sin conductor | `entities/vehicles/models/` | `assets/models/vehicles/baked/*.glb` |
 | 8 hitos (Parque, Catedral y Torre, Alcaldía, Coliseo, Concha, Villa Olímpica, Patinódromo, Terminal) | `world/landmarks/` | `assets/models/landmarks/*.glb` + `landmarks.json` (exclusiones) |
 
 Reescribir ~2.500 líneas de modelado y dibujo en GDScript duplicaría el trabajo y las dos versiones se

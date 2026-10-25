@@ -85,6 +85,9 @@ func _ready() -> void:
 		wheel.damping_compression = 2.0
 		wheel.damping_relaxation = 3.0
 		wheel.wheel_friction_slip = 3.5
+		# tope de fuerza de cada resorte: el de Godot (6000 N) no aguanta un camión (5–9 t: 12 000–22 000 N por
+		# rueda) y la carrocería se hundía hasta el suelo. Tres veces su parte del peso, para los baches.
+		wheel.suspension_max_force = maxf(6000.0, float(spec.mass) * 9.8 / m.wheels.size() * 3.0)
 		add_child(wheel)
 		var node: Node3D = w.node
 		node.reparent(wheel, false)

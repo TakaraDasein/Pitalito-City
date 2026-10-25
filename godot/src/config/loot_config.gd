@@ -9,21 +9,23 @@ class_name LootConfig
 ##   · las armas cuerpo a cuerpo son objetos (`melee`): el machete y las manos vienen de serie; peinilla, garrote,
 ##     azadón y rejo hay que encontrarlos o quitárselos a los Restos (DROPS), y entonces entran al arsenal (X, Z)
 
-## Objetos. weight en kg; use = efecto (life, hunger, thirst, infection: estos tres los usará la supervivencia).
+## Objetos. weight en kg; use = efecto: solo vida (sin hambre, sed ni infección: la supervivencia es la barra de
+## vida, como en Souls; decisión del usuario del 24-10-2026). Comer y beber curan un poco: hambre × 0,5 y sed × 0,4
+## de las cifras de la web pasaron a vida.
 const ITEMS := {
 	"venda": {"name": "Venda", "weight": 0.1, "use": {"life": 15}, "detail": "Para cortes y arañazos."},
 	"botiquin": {"name": "Botiquín", "weight": 1.2, "use": {"life": 50}, "detail": "Gasas, yodo, esparadrapo."},
 	"analgesico": {"name": "Analgésicos", "weight": 0.05, "use": {"life": 8}, "detail": "Acetaminofén."},
-	"antibiotico": {"name": "Antibiótico", "weight": 0.05, "use": {"infection": -40}, "detail": "Contra la infección de una mordida."},
-	"suero": {"name": "Suero oral", "weight": 0.5, "use": {"thirst": 35, "life": 5}, "detail": "Sales de rehidratación."},
-	"agua": {"name": "Botella de agua", "weight": 0.6, "use": {"thirst": 40}, "detail": "600 ml."},
-	"gaseosa": {"name": "Gaseosa", "weight": 0.4, "use": {"thirst": 25, "hunger": 5}},
-	"enlatado": {"name": "Enlatado", "weight": 0.4, "use": {"hunger": 30}, "detail": "Atún o fríjoles."},
-	"arroz": {"name": "Arroz (libra)", "weight": 0.5, "use": {"hunger": 20}},
-	"panela": {"name": "Panela", "weight": 0.5, "use": {"hunger": 20, "thirst": -5}, "detail": "Del trapiche."},
-	"cafe": {"name": "Café de Pitalito", "weight": 0.5, "use": {"hunger": 5}, "detail": "Origen: valle de Laboyos."},
-	"fruta": {"name": "Fruta", "weight": 0.3, "use": {"hunger": 12, "thirst": 8}, "detail": "Granadilla, lulo, mora."},
-	"pan": {"name": "Pan", "weight": 0.2, "use": {"hunger": 15}},
+	"antibiotico": {"name": "Antibiótico", "weight": 0.05, "use": {"life": 20}, "detail": "Para las heridas que se infectan."},
+	"suero": {"name": "Suero oral", "weight": 0.5, "use": {"life": 19}, "detail": "Sales de rehidratación."},
+	"agua": {"name": "Botella de agua", "weight": 0.6, "use": {"life": 16}, "detail": "600 ml."},
+	"gaseosa": {"name": "Gaseosa", "weight": 0.4, "use": {"life": 12}},
+	"enlatado": {"name": "Enlatado", "weight": 0.4, "use": {"life": 15}, "detail": "Atún o fríjoles."},
+	"arroz": {"name": "Arroz (libra)", "weight": 0.5, "use": {"life": 10}},
+	"panela": {"name": "Panela", "weight": 0.5, "use": {"life": 10}, "detail": "Del trapiche."},
+	"cafe": {"name": "Café de Pitalito", "weight": 0.5, "use": {"life": 2}, "detail": "Origen: valle de Laboyos."},
+	"fruta": {"name": "Fruta", "weight": 0.3, "use": {"life": 9}, "detail": "Granadilla, lulo, mora."},
+	"pan": {"name": "Pan", "weight": 0.2, "use": {"life": 8}},
 	"vela": {"name": "Velas", "weight": 0.2, "detail": "Luz de noche."},
 	"linterna": {"name": "Linterna", "weight": 0.4, "detail": "Luz de noche."},
 	"pilas": {"name": "Pilas", "weight": 0.1},

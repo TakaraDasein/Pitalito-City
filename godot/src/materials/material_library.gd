@@ -207,6 +207,7 @@ static func set_night(f: float) -> void:
 
 ## Lluvia: superficies mojadas más oscuras y brillantes.
 static func set_wet(w: float) -> void:
+	RenderingServer.global_shader_parameter_set("ground_wet", w) # suelo satelital (imagery.gdshader)
 	for key: String in WET:
 		var m := get_material(key) as StandardMaterial3D
 		if not m.has_meta("dry"):

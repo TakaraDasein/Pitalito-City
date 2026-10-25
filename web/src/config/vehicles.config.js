@@ -96,26 +96,38 @@ export const VEHICLES = {
   },
 };
 
-// Tráfico con modelos del Kenney Car Kit (CC0). Sólo tráfico: no tienen interior, así que el jugador no se sube.
-// `kenney`: archivo en public/models/vehicles/. Medidas (length, width, height de la carrocería, m) ESTIMADAS
-// para vehículos comunes en Colombia; el modelo se escala a ellas. `colors` sale de PALETA_KENNEY
-// (src/entities/vehicles/models/kenney.js): sólo valen esos hex. Vacío = el color de fábrica del kit.
-const kenney = (name, kenneyFile, dims, colors, fisica) => ({
-  name, model: kenneyFile, kenney: kenneyFile, traffic: true, ...dims, colors,
+// Tráfico de la ciudad, modelado en código (src/entities/vehicles/models/urbanos.js; antes el Kenney Car Kit,
+// genérico, cambiado el 24-10-2026 para poder afinarlo). Tipos de las calles del Huila sin marca ni logo. Todos con
+// asiento y puerta del conductor: también se pueden manejar. Medidas ESTIMADAS para la clase.
+const urbano = (name, model, { seat, door, dims, colors, fisica = {}, description }) => ({
+  name, model, traffic: true, seat, door, description, ...dims, colors,
   maxSpeed: 120, reverseSpeed: 25, accel: 8, brake: 15, drag: 0.0026, rolling: 0.32,
   wheelBase: dims.length * 0.6, maxSteer: 0.55, grip: 8, driftGrip: 1.5,
   radius: dims.width * 0.6, wheelRadius: 0.32, mass: 1300,
   engine: { idle: 45, max: 180, type: 'sawtooth' }, ...fisica,
 });
-const PARTICULAR = ['#ffffff', '#a0a8c9', '#4f5260', '#cf534f', '#6794d9'];
+const PARTICULAR = ['#e9ecef', '#a0a8b0', '#4f5260', '#b3261e', '#1d4e89', '#1f1f1f'];
 Object.assign(VEHICLES, {
-  sedan: kenney('Automóvil', 'sedan', { length: 4.3, width: 1.7, height: 1.3 }, PARTICULAR),
-  suv: kenney('Campero', 'suv', { length: 4.4, width: 1.8, height: 1.55 }, [...PARTICULAR, '#61cb8b']),
-  van: kenney('Van intermunicipal', 'van', { length: 5.0, width: 1.9, height: 1.85 }, ['#ffffff', '#a0a8c9', '#6794d9']),
-  truck: kenney('Camioneta', 'truck', { length: 5.2, width: 1.8, height: 1.6 }, [...PARTICULAR, '#61cb8b']),
-  delivery: kenney('Furgón', 'delivery', { length: 6.5, width: 2.2, height: 2.8 }, ['#ffffff', '#61cb8b', '#6794d9', '#cf534f'], { mass: 5000 }),
-  'garbage-truck': kenney('Recolector de basura', 'garbage-truck', { length: 8, width: 2.4, height: 3.0 }, [], { mass: 9000 }),
-  ambulance: kenney('Ambulancia', 'ambulance', { length: 5.8, width: 2.0, height: 2.5 }, []),
+  sedan: urbano('Automóvil', 'sedan', { seat: [-0.36, 0.15, 0.05], door: { z: [-0.75, 0.38], y: [0.36, 1.42], panel: true },
+    dims: { length: 4.3, width: 1.7, height: 1.42 }, colors: PARTICULAR, description: 'Sedán compacto de cuatro puertas.' }),
+  suv: urbano('Campero', 'campero', { seat: [-0.4, 0.41, -0.15], door: { z: [-0.85, 0.22], y: [0.54, 1.86], panel: true },
+    dims: { length: 4.4, width: 1.8, height: 1.86 }, colors: ['#4b5d3a', ...PARTICULAR], fisica: { mass: 1900, wheelRadius: 0.38 },
+    description: '4x4 cuadrado de monte, con defensa y parrilla.' }),
+  van: urbano('Buseta intermunicipal', 'buseta', { seat: [-0.5, 0.6, -2.65], door: { z: [-2.9, -2.1], y: [0.52, 2.55], panel: true },
+    dims: { length: 6.8, width: 2.1, height: 2.55 }, colors: ['#f4f4f4', '#f2c230', '#1d4e89'], fisica: { mass: 4200, maxSpeed: 100, wheelRadius: 0.42 },
+    description: 'La de las rutas al resto del Huila.' }),
+  truck: urbano('Camioneta doble cabina', 'doblecabina', { seat: [-0.4, 0.41, -0.2], door: { z: [-0.88, 0.18], y: [0.56, 1.84], panel: true },
+    dims: { length: 5.2, width: 1.82, height: 1.84 }, colors: PARTICULAR, fisica: { mass: 2100, wheelRadius: 0.4 },
+    description: 'Doble cabina con platón corto: la de trabajo de las fincas.' }),
+  delivery: urbano('Camión de carga', 'furgon', { seat: [-0.5, 0.85, -2.35], door: { z: [-2.9, -1.9], y: [0.67, 2.35], panel: true },
+    dims: { length: 6.5, width: 2.3, height: 3.1 }, colors: ['#e9ecef', '#1d4e89', '#b3261e'], fisica: { mass: 5000, maxSpeed: 95, wheelRadius: 0.46 },
+    description: 'Cabina chata con furgón de aluminio.' }),
+  'garbage-truck': urbano('Recolector de basura', 'recolector', { seat: [-0.55, 1.0, -3.05], door: { z: [-3.6, -2.5], y: [0.72, 2.6], panel: true },
+    dims: { length: 8.0, width: 2.4, height: 2.75 }, colors: ['#2e7d32'], fisica: { mass: 9000, maxSpeed: 80, wheelRadius: 0.52 },
+    description: 'Compactador del aseo municipal.' }),
+  ambulance: urbano('Ambulancia', 'ambulancia', { seat: [-0.48, 0.5, -1.25], door: { z: [-1.85, -0.9], y: [0.5, 2.45], panel: true },
+    dims: { length: 5.8, width: 2.0, height: 2.45 }, colors: [], fisica: { mass: 2800, wheelRadius: 0.38 },
+    description: 'Van alta con franjas y barra de luces.' }),
 });
 
 // Orden en el garaje
