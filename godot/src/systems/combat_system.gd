@@ -62,7 +62,8 @@ func _enemies_of(c: Combatant, max_dist: float) -> Array:
 	var out := []
 	var p := c.body.global_position
 	for o in combatants:
-		if o == c or not o.is_alive() or o.team == c.team:
+		# quien va en un vehículo no está a pie: no es blanco de golpes (el cuerpo queda escondido)
+		if o == c or not o.is_alive() or o.team == c.team or not o.body.visible:
 			continue
 		var d := Vector2(o.body.global_position.x - p.x, o.body.global_position.z - p.z).length()
 		if d <= max_dist:
@@ -153,8 +154,13 @@ func _strike(c: Combatant) -> void:
 	var fwd := _forward(c)
 	var p := c.body.global_position
 	var hit_any := false
-	for e: Array in _enemies_of(c, w.reach):
+	# el alcance se cuenta hasta el costado del blanco, no hasta su centro (al Coloso, de 1,6 m de radio, no se le
+	# podía pegar con el machete)
+	for e: Array in _enemies_of(c, float(w.reach) + 1.6):
 		var o: Combatant = e[0]
+		var radius: float = o.body.get("hit_radius") if o.body.get("hit_radius") != null else 0.3
+		if float(e[1]) > float(w.reach) + radius:
+			continue
 		var to := o.body.global_position - p
 		to.y = 0.0
 		if to.length() > 0.01 and to.normalized().angle_to(fwd) > float(w.arc):

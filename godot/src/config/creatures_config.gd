@@ -22,6 +22,7 @@ class_name CreaturesConfig
 ##     hacia atrás: la coz), effect: howl (llama a los de su bando y les da prisa) · summon (trae jauría) ·
 ##     teleport (se deshace en hojarasca y aparece detrás) · flash (la pantalla ciega: aturde) · shoot (dispara su
 ##     arma de fuego) · eat (se cura comiendo, lejos del jugador)
+##   variants: variantes del mismo modelo (hide = mallas que esconde; el resto pisa la ficha)
 ##   spawn: dónde aparece (CreatureSystem). habitat: finca (lejos de la cabecera y con pocos árboles), monte
 ##     (árboles a 40 m ≥ forest), monte_hondo (más árboles y a menos de `river` m de un río), base (lo pone
 ##     FactionSystem); night/day; group; chance por intento; max a la vez
@@ -56,7 +57,9 @@ const CREATURES := {
 			{"id": "astas", "proc": "charge", "damage": 18.0, "reach": 2.0, "arc": 0.6, "windup": 0.45, "active": 0.3, "recover": 0.8, "poise": 40.0, "stamina": 25.0,
 				"range": [2.0, 9.0], "cooldown": 4.0, "weight": 1.0, "dash": 6.0, "push": 5.0},
 		],
-		"spawn": {"habitat": "monte", "forest": 14, "day": true, "group": [1, 2], "chance": 0.2, "max": 2},
+		# la hembra: el mismo modelo sin astas, no ataca nunca (solo huye); salen un macho y una o dos hembras
+		"variants": {"hembra": {"name": "Venada del monte", "hide": ["Deer_Antler"], "defend": false, "attacks": [], "height": 2.0}},
+		"spawn": {"habitat": "monte", "forest": 14, "day": true, "group": [2, 3], "mix": ["", "hembra"], "chance": 0.2, "max": 3},
 		"lod": {}},
 	"lobo": {"name": "Lobo de la jauría", "file": "mito/lobo.glb", "role": "mito", "height": 0.85, "humanoid": false, "matte": true,
 		"clips": {"idle": "Wolf_Howl", "walk": "Wolf_WalkFast_F", "run": "Wolf_WalkFast_F", "howl": "Wolf_Howl"},
@@ -187,5 +190,14 @@ const SPAWN := {"every": 6.0, "radius": [35.0, 70.0], "despawn": 140.0, "finca_f
 ## Bases de los Restos (CombatConfig.ZONES): su jefe en el centro, dentro de un corral de barricadas, y saqueadores.
 const BOSSES := {"filo-norte": "jefa-agris", "quebrada-honda": "jefe-elefante", "camino-viejo": "jefe-tvman"}
 const RAIDERS_PER_ZONE := 2
-## Corral del jefe: barricadas del Kenney Building Kit (CC0) en círculo (radio m, piezas) con un hueco de entrada.
-const ARENA := {"radius": 14.0, "pieces": 16, "gap": 2, "model": "res://assets/models/buildings/barricade-window-a.glb"}
+## Corral del jefe: cerca de guadua en círculo (radio m), varas cada `spacing` m de `height` m con dos amarres, y un
+## hueco de entrada de `gap` m. Las barricadas del kit salían como tablones estirados y torcidos. ESTIMADO.
+const ARENA := {"radius": 14.0, "spacing": 0.32, "height": 2.2, "pole": 0.06, "gap": 4.0, "color": "#a98b4f", "tie": "#6e5a33"}
+
+## Equilibrio (medido con tools/menu_shots -- situaciones: la Señora y el Pantalla mataban al jugador en 6 s sin que
+## alcanzara a responder, y un saqueador le quitaba 70 de vida desarmado):
+##   boss_damage: multiplica el daño de los jefes y la Madremonte
+##   rest: respiro después de cada ataque (s) en que solo rodea — la ventana para pegarle, como en Souls
+##   npc_gun_damage: los saqueadores disparan el mismo fusil, con este factor de daño
+const BALANCE := {"boss_damage": 0.65, "rest": {"boss": [0.8, 1.6], "normal": [0.25, 0.7]}, "npc_gun_damage": 0.5}
+

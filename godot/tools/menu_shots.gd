@@ -1,7 +1,7 @@
 extends Node
 ## Herramienta: capturas de la carga y los menús (screenshots/menu_*.png). Uso: godot res://tools/menu_shots.tscn
 ## Para no recorrer todo, se nombran las secciones que interesan: `godot res://tools/menu_shots.tscn -- personaje`
-## (garaje, personaje, menus, juego, pies, banca, subir, faros, tomar, ambiente, combate, botin, disparos, criaturas, monte, uno; varias separadas por espacio). Carga y portada se capturan siempre.
+## (garaje, personaje, menus, juego, pies, banca, subir, faros, tomar, ambiente, combate, botin, disparos, criaturas, monte, uno, situaciones, corral; varias separadas por espacio). Carga y portada se capturan siempre.
 
 var _main: Node
 var _only := OS.get_cmdline_user_args()
@@ -138,6 +138,10 @@ func _ready() -> void:
 		await _monte_shots()
 	if _want("uno"):
 		await _one_by_one()
+	if _want("situaciones"):
+		await _situations()
+	if _want("corral"):
+		await _arena_shots()
 	get_tree().quit()
 
 
@@ -302,6 +306,140 @@ func _combat_shots() -> void:
 	print("combate: recibe — vida %.0f → %.0f, retrocede %.2f m, estado %d" % [hp, player.combat.health, Vector2(player.global_position.x - p0.x, player.global_position.z - p0.z).length(), player.combat.state])
 
 
+## Venados (un macho con astas y dos hembras sin ellas) caminando, y el corral de barricadas de un jefe.
+func _arena_shots() -> void:
+	if _main.state != _main.State.PLAYING:
+		_main._start_playing()
+	var player: Player = _main.player
+	var cs: CreatureSystem = _main.creatures
+	cs.set_process(false)
+	var sp: Dictionary = WorldData.spawn()
+	player.place(sp.x, sp.z, sp.heading)
+	await get_tree().create_timer(1.0).timeout
+	var fwd := -player.global_basis.z
+	var right := player.global_basis.x
+	var herd := []
+	for i in 3:
+		var d: Creature = cs.spawn("venado-monte", player.global_position + fwd * 8.0 + right * (i - 1) * 3.0, "" if i == 0 else "hembra")
+		d.rotation.y = player.rotation.y + PI * 0.5
+		herd.push_back(d)
+	var cam := Camera3D.new()
+	cam.fov = 50
+	add_child(cam)
+	cam.global_position = player.global_position - fwd * 1.0 + Vector3.UP * 2.0
+	cam.look_at(player.global_position + fwd * 8.0 + Vector3.UP * 1.0)
+	cam.make_current()
+	await get_tree().create_timer(2.0).timeout
+	await _shot("corral_venados")
+	print("corral: venados — %s" % [herd.map(func(d): return "%s (%s)" % [d.spec.name, d.spec.get("attacks", []).size()])])
+	for d in herd:
+		d.queue_free()
+	# corral: una zona falsa a 30 m
+	var z := {"id": "prueba", "x": player.global_position.x + fwd.x * 30.0, "z": player.global_position.z + fwd.z * 30.0, "radius": 50.0}
+	_main.factions._arena(z)
+	var boss: Creature = cs.spawn("jefa-agris", Vector3(z.x, 0, z.z))
+	cam.global_position = Vector3(z.x, 0, z.z) - fwd * 26.0 + Vector3.UP * 12.0
+	cam.global_position.y += WorldData.height(z.x, z.z)
+	cam.look_at(Vector3(z.x, WorldData.height(z.x, z.z), z.z))
+	await get_tree().create_timer(1.5).timeout
+	await _shot("corral_jefa")
+	boss.queue_free()
+	cam.queue_free()
+	_main.camera_rig.camera.make_current()
+	cs.set_process(true)
+
+
+## Situaciones: cada criatura contra el jugador en ocho casos (desarmado, armado, cubriéndose, atacando, huyendo,
+## rodando, lejos, en vehículo), 6 s cada uno. Imprime los estados que tomó, el daño que hizo y recibió y quién
+## cayó. Para equilibrar las cifras (CreaturesConfig) y ver que la decisión de cada una tiene sentido.
+func _situations() -> void:
+	if _main.state != _main.State.PLAYING:
+		_main._start_playing()
+	seed(21)
+	var player: Player = _main.player
+	var cs: CreatureSystem = _main.creatures
+	cs.set_process(false)
+	var sp: Dictionary = WorldData.spawn()
+	var only: Array = Array(_only).filter(func(a): return CreaturesConfig.CREATURES.has(a))
+	var kinds: Array = only if not only.is_empty() else CreaturesConfig.CREATURES.keys()
+	var cases := ["desarmado", "armado", "cubriendose", "atacando", "huyendo", "rodando", "lejos", "vehiculo"]
+	for kind: String in kinds:
+		for case: String in cases:
+			player.place(sp.x, sp.z, sp.heading)
+			await get_tree().physics_frame
+			if _main._driving:
+				_main._exit_vehicle()
+			player.combat.revive()
+			player.combat._invulnerable = 0.0
+			player.set_armed(case != "desarmado")
+			var fwd := -player.global_basis.z
+			var d := 40.0 if case == "lejos" else 5.0
+			var c: Creature = cs.spawn(kind, player.global_position + fwd * d)
+			if c == null:
+				print("situación: falta %s" % kind)
+				break
+			c.rotation.y = player.rotation.y + PI
+			if case == "vehiculo":
+				_main.vehicle.place(player.global_position.x, player.global_position.z, player.rotation.y)
+				await get_tree().physics_frame
+				_main.skip_mount = true
+				_main._enter_vehicle()
+				_main.skip_mount = false
+			var states := {}
+			var dealt := 0.0
+			var p0 := player.combat.health
+			var c0: float = c.self_c.health
+			var start := player.global_position
+			var f0 := Engine.get_physics_frames()
+			while Engine.get_physics_frames() - f0 < 360:
+				await get_tree().physics_frame
+				if not is_instance_valid(c):
+					break
+				states[c.state] = states.get(c.state, 0) + 1
+				var pc := player.combat
+				if not pc.is_alive() or not c.self_c.is_alive():
+					break
+				var to := c.global_position - player.global_position
+				to.y = 0.0
+				match case:
+					"cubriendose":
+						player.rotation.y = atan2(-to.x, -to.z)
+						if not pc.guarding and pc.state == Combatant.State.IDLE:
+							pc.set_guard(true)
+					"atacando":
+						player.rotation.y = atan2(-to.x, -to.z)
+						if to.length() > 1.6:
+							player.global_position += to.normalized() * 3.5 / 60.0
+						elif not pc.is_busy() and pc.stamina >= float(pc.weapon.stamina):
+							player._attack()
+					"huyendo":
+						var away := -to.normalized()
+						player.rotation.y = atan2(-away.x, -away.z)
+						player.global_position += away * 6.0 / 60.0
+					"rodando":
+						player.rotation.y = atan2(-to.x, -to.z)
+						if c.self_c.state == Combatant.State.ATTACK and c.self_c.phase == "windup" and c.self_c._timer < 0.15 and not pc.is_busy():
+							pc.roll(-to.normalized().cross(Vector3.UP))
+			if is_instance_valid(c):
+				dealt = c0 - c.self_c.health
+			var moved := Vector2(player.global_position.x - start.x, player.global_position.z - start.z).length()
+			var st := ""
+			for k in states:
+				st += "%s:%d " % [k, states[k]]
+			print("situación %-13s %-12s daño al jugador %3.0f · daño a la criatura %3.0f · %s%s · estados %s" % [kind, case, p0 - player.combat.health, dealt,
+				"JUGADOR CAE " if not player.combat.is_alive() else "", "CRIATURA CAE" if is_instance_valid(c) and not c.self_c.is_alive() else "", st])
+			if _main._driving:
+				_main._exit_vehicle()
+			if is_instance_valid(c):
+				c.queue_free()
+			for o in cs._alive:
+				if is_instance_valid(o):
+					o.queue_free()
+			await get_tree().physics_frame
+			moved = moved
+	cs.set_process(true)
+
+
 ## Uno a uno: cada criatura frente al jugador (armado), cada uno de sus ataques forzado a su distancia. Imprime si
 ## salió, el daño al jugador, el estado y el efecto; captura el momento del golpe (screenshots/menu_uno_<id>_<ataque>).
 func _one_by_one() -> void:
@@ -354,6 +492,21 @@ func _one_by_one() -> void:
 					cam.make_current()
 					await _shot("uno_%s_%s" % [kind, a.id])
 				await get_tree().physics_frame
+			# hacia dónde mira el modelo de verdad: de la cadera a la cabeza, contra el rumbo hacia el jugador
+			var sk: Skeleton3D = c.find_children("*", "Skeleton3D", true, false)[0]
+			var hb := -1
+			var hd := -1
+			for bi in sk.get_bone_count():
+				var bn := sk.get_bone_name(bi).to_lower()
+				if hb < 0 and ("hip" in bn or "pelvis" in bn):
+					hb = bi
+				if hd < 0 and "head" in bn:
+					hd = bi
+			var look := (sk.global_transform * sk.get_bone_global_pose(hd).origin) - (sk.global_transform * sk.get_bone_global_pose(hb).origin) if hb >= 0 and hd >= 0 else Vector3.ZERO
+			var toward := player.global_position - c.global_position
+			look.y = 0.0
+			toward.y = 0.0
+			print("uno: %-14s %-10s cabeza hacia el jugador=%.2f" % [kind, a.id, look.normalized().dot(toward.normalized())])
 			print("uno: %-14s %-10s salió=%s · daño al jugador %.0f · animación %s · efecto %s" % [kind, a.id, ok, h0 - player.combat.health,
 				a.get("clip", a.get("proc", "-")), a.get("effect", "-")])
 			_main.camera_rig.camera.make_current()

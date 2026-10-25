@@ -62,8 +62,10 @@ func _process(delta: float) -> void:
 		var a := randf() * TAU
 		var r := randf_range(cfg.radius[0], cfg.radius[1])
 		var center := p + Vector3(cos(a), 0, sin(a)) * r
+		# grupos con variantes (el venado: un macho con astas y el resto hembras)
+		var mix: Array = rule.get("mix", [])
 		for i in n:
-			spawn(kind, center + Vector3(randf_range(-3, 3), 0, randf_range(-3, 3)))
+			spawn(kind, center + Vector3(randf_range(-3, 3), 0, randf_range(-3, 3)), String(mix[mini(i, mix.size() - 1)]) if not mix.is_empty() else "")
 
 
 ## ¿Hay un río a menos de `radius` m? (12 rumbos a tres distancias contra WaterSystem)
@@ -84,10 +86,10 @@ func _count(kind: String) -> int:
 
 
 ## Pone una criatura en (x, z) sobre el relieve (también lo usan FactionSystem y las pruebas). null sin modelo.
-func spawn(kind: String, at: Vector3) -> Creature:
+func spawn(kind: String, at: Vector3, variant := "") -> Creature:
 	if not ResourceLoader.exists(CreaturesConfig.DIR + String(CreaturesConfig.CREATURES[kind].file)):
 		return null
-	var c := Creature.create(kind, Vector3(at.x, WorldData.height(at.x, at.z) + 0.3, at.z))
+	var c := Creature.create(kind, Vector3(at.x, WorldData.height(at.x, at.z) + 0.3, at.z), variant)
 	add_child(c)
 	_alive.push_back(c)
 	return c

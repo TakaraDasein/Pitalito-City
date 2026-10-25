@@ -26,7 +26,7 @@ func _ready() -> void:
 
 ## shooter: Combatant que dispara · from: de donde sale el rayo (la cámara del jugador) · dir: normalizada ·
 ## muzzle: boca del arma (fogonazo) · precision: multiplica la dispersión. Devuelve true si le dio a alguien.
-func shoot(shooter: Combatant, from: Vector3, dir: Vector3, id: String, muzzle: Vector3, precision := 1.0) -> bool:
+func shoot(shooter: Combatant, from: Vector3, dir: Vector3, id: String, muzzle: Vector3, precision := 1.0, damage_mult := 1.0) -> bool:
 	var f: Dictionary = FirearmsConfig.FIREARMS[id]
 	var hits := {}   # Combatant → {damage, zone}
 	for p in int(f.pellets):
@@ -40,7 +40,7 @@ func shoot(shooter: Combatant, from: Vector3, dir: Vector3, id: String, muzzle: 
 	var cs := CombatSystem.instance
 	for c: Combatant in hits:
 		var g: Dictionary = hits[c]
-		var res := c.take_hit(float(g.damage), float(FirearmsConfig.HIT.poise), g.zone)
+		var res := c.take_hit(float(g.damage) * damage_mult, float(FirearmsConfig.HIT.poise), g.zone)
 		if res.is_empty():
 			continue
 		# el tiro empuja en la dirección del disparo, más cuanto más daño (la escopeta tumba)

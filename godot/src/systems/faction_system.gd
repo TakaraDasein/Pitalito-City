@@ -82,39 +82,82 @@ func _extras(z: Dictionary, p: Vector3, d: float) -> void:
 	_raiders[z.id] = list
 
 
-## Corral del jefe: barricadas (Kenney, CC0) en círculo alrededor del centro de la zona, con un hueco de entrada
-## hacia el jugador que llega. Sólidas (capa 1). Se arma una vez por zona y queda.
+## Corral del jefe: cerca de guadua en círculo alrededor del centro de la zona, con un hueco de entrada. Una malla
+## por pieza (MultiMesh: varas y amarres) y colisión por tramos de 2 m. Se arma una vez por zona y queda.
 var _arenas := {}
 func _arena(z: Dictionary) -> void:
 	var a: Dictionary = CreaturesConfig.ARENA
-	if _arenas.has(z.id) or not ResourceLoader.exists(a.model):
+	if _arenas.has(z.id):
 		return
 	var root := Node3D.new()
 	root.name = "corral_" + String(z.id)
 	add_child(root)
 	_arenas[z.id] = root
-	var scene: PackedScene = load(a.model)
-	var n := int(a.pieces)
-	var entry := randi() % n
+	var r := float(a.radius)
+	var entry := randf() * TAU
+	var gap_ang := float(a.gap) / r
+	var n := int(TAU * r / float(a.spacing))
+	var poles := []
 	for i in n:
-		if absi(i - entry) < int(a.gap) / 2 + 1 and int(a.gap) > 0:
-			continue
 		var ang := i * TAU / n
-		var at := Vector3(z.x + cos(ang) * float(a.radius), 0, z.z + sin(ang) * float(a.radius))
-		var piece: Node3D = scene.instantiate()
-		piece.position = Vector3(at.x, WorldData.height(at.x, at.z), at.z)
-		piece.rotation.y = -ang + PI * 0.5
-		piece.scale = Vector3.ONE * (TAU * float(a.radius) / n) / 1.0
-		root.add_child(piece)
+		if absf(angle_difference(ang, entry)) < gap_ang * 0.5:
+			continue
+		var p := Vector3(z.x + cos(ang) * r, 0, z.z + sin(ang) * r)
+		p.y = WorldData.height(p.x, p.z)
+		# altura y grosor algo distintos: no hay dos varas iguales
+		var h := float(a.height) * randf_range(0.85, 1.1)
+		poles.push_back(Transform3D(Basis().scaled(Vector3(1, h / float(a.height), 1)).rotated(Vector3.UP, randf() * TAU), p + Vector3.UP * h * 0.5))
+	var pole := CylinderMesh.new()
+	pole.top_radius = float(a.pole) * 0.85
+	pole.bottom_radius = float(a.pole)
+	pole.height = float(a.height)
+	pole.radial_segments = 6
+	_mm(root, pole, poles, Color(a.color))
+	# dos amarres horizontales (tramos rectos entre varas cada ~2 m)
+	var ties := []
+	var segs := int(TAU * r / 2.0)
+	for i in segs:
+		var a0 := i * TAU / segs
+		var a1 := (i + 1) * TAU / segs
+		var mid := (a0 + a1) * 0.5
+		if absf(angle_difference(mid, entry)) < gap_ang * 0.5 + 0.05:
+			continue
+		var p0 := Vector3(z.x + cos(a0) * r, 0, z.z + sin(a0) * r)
+		var p1 := Vector3(z.x + cos(a1) * r, 0, z.z + sin(a1) * r)
+		p0.y = WorldData.height(p0.x, p0.z)
+		p1.y = WorldData.height(p1.x, p1.z)
+		var dir := p1 - p0
+		var len := dir.length()
+		for hy in [0.5, 1.5]:
+			var c: Vector3 = (p0 + p1) * 0.5 + Vector3.UP * float(hy)
+			var b := Basis.looking_at(dir.normalized(), Vector3.UP).scaled(Vector3(1, 1, len))
+			ties.push_back(Transform3D(b, c))
+		# colisión del tramo
 		var body := StaticBody3D.new()
 		body.collision_layer = 1
 		var cs := CollisionShape3D.new()
 		var box := BoxShape3D.new()
-		box.size = Vector3(1.0, 1.0, 0.15)
+		box.size = Vector3(0.2, float(a.height), len)
 		cs.shape = box
-		cs.position.y = 0.5
 		body.add_child(cs)
-		piece.add_child(body)
+		body.transform = Transform3D(Basis.looking_at(dir.normalized(), Vector3.UP), (p0 + p1) * 0.5 + Vector3.UP * float(a.height) * 0.5)
+		root.add_child(body)
+	var tie := BoxMesh.new()
+	tie.size = Vector3(0.05, 0.05, 1.0)
+	_mm(root, tie, ties, Color(a.tie))
+
+
+func _mm(root: Node3D, mesh: Mesh, xforms: Array, color: Color) -> void:
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = mesh
+	mm.instance_count = xforms.size()
+	for i in xforms.size():
+		mm.set_instance_transform(i, xforms[i])
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = mm
+	mmi.material_override = MaterialLibrary.plain(color, 0.8)
+	root.add_child(mmi)
 
 
 ## Pone un enemigo en `at` (también lo usan las pruebas).

@@ -4,8 +4,11 @@ class_name CreatureModel
 ## orienta hacia −Z y le cuelga un AnimationPlayer: los humanoides con la biblioteca del juego, los demás con sus
 ## clips propios. Devuelve {root, anim, clips} o {} si falta el archivo (no se versionan).
 
-static func create(id: String) -> Dictionary:
+## `variant`: CreaturesConfig.CREATURES[id].variants (p. ej. la hembra del venado: sin astas). Esconde sus mallas.
+static func create(id: String, variant := "") -> Dictionary:
 	var c: Dictionary = CreaturesConfig.CREATURES.get(id, {})
+	if variant != "":
+		c = c.merged(c.get("variants", {}).get(variant, {}), true)
 	var path: String = CreaturesConfig.DIR + String(c.get("file", ""))
 	if c.is_empty() or not ResourceLoader.exists(path):
 		return {}
@@ -36,8 +39,14 @@ static func create(id: String) -> Dictionary:
 		model.position.y = -lo * s
 	# las mallas con piel de Sketchfab traen su caja en otra escala que lo que se dibuja: sin margen, Godot las
 	# recortaba como si estuvieran fuera de cámara (el saqueador no se veía)
+	# con piel: caja propia del tamaño de la criatura, en el espacio de la malla (las de FBX vienen en centímetros
+	# con escala 0,01: su caja quedaba lejos y Godot no dibujaba el cuerpo del venado, solo sus astas)
 	for mi: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
 		mi.extra_cull_margin = float(c.height) * 2.0
+		if mi.skin:
+			var sc := maxf(_rel(mi, root).basis.get_scale().x, 0.00001)
+			var r := float(c.height) * 2.0 / sc
+			mi.custom_aabb = AABB(Vector3(-r, -r, -r), Vector3(r, r, r) * 2.0)
 	# hacia dónde mira: de la cadera a la cabeza en reposo (no todos miran igual: el Hojarasquín viene hacia −Z y
 	# los demás hacia +Z; con un giro fijo atacaba de espaldas). En Godot adelante es −Z.
 	var face := PI
@@ -61,7 +70,9 @@ static func create(id: String) -> Dictionary:
 		if hips >= 0 and head >= 0:
 			var d := (xf * sk.get_bone_global_rest(head)).origin - (xf * sk.get_bone_global_rest(hips)).origin
 			if Vector2(d.x, d.z).length() > 0.001 and not c.get("humanoid", false):
-				face = atan2(d.x, d.z) # gira el modelo para que ese rumbo quede en −Z
+				# girar θ alrededor de Y lleva (x, z) a (x cosθ + z senθ, −x senθ + z cosθ): para que el rumbo de la
+				# cabeza quede en −Z, θ = atan2(x, z) + π (sin el + π quedaban todos de espaldas: atacaban con la cola)
+				face = atan2(d.x, d.z) + PI
 		break
 	model.rotation.y = float(c.get("face", face))
 	var anim: AnimationPlayer
@@ -84,6 +95,16 @@ static func create(id: String) -> Dictionary:
 		if anim and anim.has_animation(full):
 			clips[role] = full
 			anim.get_animation(full).loop_mode = Animation.LOOP_LINEAR if role in ["idle", "walk", "run"] else Animation.LOOP_NONE
+	# mallas colgadas de un hueso (las astas del venado): Blender las guarda desde la PUNTA del hueso y Godot las
+	# engancha desde su BASE; el desplazamiento era el largo del hueso y las astas quedaban 9 m adelante, flotando
+	for ba: BoneAttachment3D in model.find_children("*", "BoneAttachment3D", true, false):
+		for mi in ba.get_children():
+			if mi is MeshInstance3D and not (mi as MeshInstance3D).skin:
+				(mi as MeshInstance3D).position = Vector3.ZERO
+	var v: Dictionary = c.get("variants", {}).get(variant, {})
+	for part: String in v.get("hide", []):
+		for mi: MeshInstance3D in model.find_children(part + "*", "MeshInstance3D", true, false):
+			mi.visible = false
 	if anim and clips.has("idle"):
 		anim.play(clips.idle)
 	return {"root": root, "anim": anim, "clips": clips, "spec": c, "width": width * model.scale.x}

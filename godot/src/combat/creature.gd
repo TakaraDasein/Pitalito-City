@@ -15,11 +15,13 @@ const LAYER := 8
 const MASK := 1 | 2 | 4 | 8 | 16
 
 var id := ""
+var variant := ""               # "" o una de spec.variants (la hembra del venado)
 var spec: Dictionary
 var self_c: Combatant
 var target: Combatant
 var dist := INF
 var home := Vector3.ZERO
+var hit_radius := 0.3           # radio del cuerpo: el alcance de los golpes se cuenta hasta aquí (CombatSystem)
 var state := "idle"            # idle · walk · run · attack · hit · dead (para depurar y las pruebas)
 
 var _m: Dictionary             # CreatureModel.create
@@ -50,12 +52,15 @@ var _reload_t := 0.0
 var _burst := 0
 var _next_shot := 0.0
 var _next_hop := 0.0
+var _rest_until := 0.0
 
 
-static func create(kind: String, at: Vector3) -> Creature:
+static func create(kind: String, at: Vector3, variant := "") -> Creature:
 	var c := Creature.new()
 	c.id = kind
-	c.spec = CreaturesConfig.CREATURES[kind]
+	c.variant = variant
+	var base: Dictionary = CreaturesConfig.CREATURES[kind]
+	c.spec = base.merged(base.get("variants", {}).get(variant, {}), true) if variant != "" else base
 	c.position = at
 	c.home = at
 	c.rotation.y = randf() * TAU
@@ -67,7 +72,7 @@ func _ready() -> void:
 	collision_mask = MASK
 	_lod = CreaturesConfig.LOD_DEFAULT.merged(spec.get("lod", {}), true)
 	var h := float(spec.height)
-	_m = CreatureModel.create(id)
+	_m = CreatureModel.create(id, variant)
 	var shape := CollisionShape3D.new()
 	var capsule := CapsuleShape3D.new()
 	# radio por el ancho real del esqueleto (los cuadrúpedos y el Hojarasquín son mucho más anchos que una persona:
@@ -76,6 +81,7 @@ func _ready() -> void:
 	capsule.radius = clampf(h * 0.18, 0.25, 0.5) if spec.get("humanoid", false) else clampf(w * 0.3, 0.25, 1.6)
 	capsule.height = maxf(h, capsule.radius * 2.0)
 	shape.shape = capsule
+	hit_radius = capsule.radius
 	shape.position.y = capsule.height * 0.5
 	add_child(shape)
 	floor_snap_length = 0.6
@@ -250,6 +256,8 @@ func _start(a: Dictionary) -> bool:
 		if a.has(k):
 			combo.push_back(a[k])
 	var w := a.merged({"name": a.id, "model": "", "combo": combo}, true)
+	if is_boss():
+		w.damage = float(w.damage) * float(CreaturesConfig.BALANCE.boss_damage)
 	if a.get("area", false):
 		w.arc = PI
 	self_c.set_custom_weapon(String(a.id), w)
@@ -280,6 +288,10 @@ func _physics_process(delta: float) -> void:
 		if c.state == Combatant.State.ATTACK:
 			move = _attacking(delta)
 		elif not c.is_busy():
+			if not _move.is_empty():
+				# acaba de terminar un ataque: respiro (rodea sin atacar)
+				var r: Array = CreaturesConfig.BALANCE.rest.boss if is_boss() else CreaturesConfig.BALANCE.rest.normal
+				_rest_until = _time + randf_range(float(r[0]), float(r[1]))
 			_move = {}
 			var b: String = spec.behavior
 			var armed: bool = target != null and target.body.get("armed") == true
@@ -400,7 +412,7 @@ func _fire_burst() -> void:
 		_shots_left -= 1
 		var muzzle := global_position + Vector3.UP * 1.4 - global_basis.z * 0.6
 		var aim := (target.body.global_position + Vector3.UP * 1.2 - muzzle).normalized()
-		FirearmSystem.instance.shoot(self_c, muzzle, aim, gun, muzzle, float(spec.get("aim_error", 3.0)))
+		FirearmSystem.instance.shoot(self_c, muzzle, aim, gun, muzzle, float(spec.get("aim_error", 3.0)), float(CreaturesConfig.BALANCE.npc_gun_damage))
 		if i < n - 1:
 			await get_tree().create_timer(maxf(float(f.rate), 0.14)).timeout
 			if not is_instance_valid(self) or not self_c.is_alive():
@@ -455,6 +467,11 @@ func _hostile(delta: float) -> Array:
 	rotation.y = lerp_angle(rotation.y, atan2(-to.x, -to.z), minf(1.0, delta * 6.0))
 	var cs := CombatSystem.instance
 	var my_turn := cs.take_turn(self_c) if cs and not is_boss() else true
+	if _time < _rest_until:
+		if spec.get("moves_by", "") == "hojarasca":
+			return [Vector3.ZERO, false]   # no camina: en su respiro se queda quieto, acechando
+		# respiro: rodea al jugador a la distancia de su golpe
+		return [to.normalized().cross(Vector3.UP) * float(spec.speed) * 0.7 + to.normalized() * clampf(dist - 2.5, -1.0, 1.0), false]
 	if my_turn:
 		var a := _choose()
 		if not a.is_empty() and _start(a):
