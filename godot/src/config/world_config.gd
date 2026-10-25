@@ -17,6 +17,11 @@ const TERRAIN_FAR_RANGE := 26000.0
 ## Bloques de relieve con colisión alrededor del foco (radio en bloques).
 const TERRAIN_COLLISION_RADIUS := 1
 
+## Árboles con modelo alrededor del foco (NearTrees; solo Godot, la web no lo tiene): radio (m) y cuánto se mueve
+## el foco antes de rearmarlos. Más lejos, el árbol procedural.
+const NEAR_TREE_RADIUS := 90.0
+const NEAR_TREE_STEP := 12.0
+
 ## Altura de las calzadas sobre el relieve (m).
 const ROAD_LIFT := 0.12
 ## Distancia a la que dejan de dibujarse edificios y árboles de un tile (m).

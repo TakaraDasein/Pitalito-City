@@ -18,6 +18,7 @@ Regenerar con `pnpm models:fetch`.
 | undefined (4 archivos) | Pistola, escopeta, fusil y rifle (src/config/firearms.config.js) | Styloo | CC0 1.0 | [Fuente](https://styloo.itch.io/guns-asset-pack) |
 | buildings/ (79 archivos) | Versión Godot: piezas de los edificios cercanos (paredes, vanos, columnas, escaleras, pisos, techos) | Kenney | CC0 1.0 | [Fuente](https://kenney.nl/assets/building-kit) |
 | furniture/ (140 archivos) | Versión Godot: muebles de los interiores recorribles (cocina, baño, sala, alcoba, tienda) | Kenney | CC0 1.0 | [Fuente](https://kenney.nl/assets/furniture-kit) |
+| nature/ (3 archivos) | Versión Godot: árboles frondosos y samanes cercanos (copa con hojas recortadas) | Quaternius | CC0 1.0 | [Fuente](https://quaternius.itch.io/stylized-nature-megakit) |
 | enemies/skeleton.glb | Cuerpo de los enemigos de las facciones: comparte los 65 huesos, así hereda los 45 clips y la ropa | Generado por el proyecto sobre el armature de Quaternius | CC0 1.0 | Derivado de `base/Superhero_Male_FullBody.gltf` con `scripts/lib/make-skeleton.py` |
 
 ## Pendientes de descarga manual

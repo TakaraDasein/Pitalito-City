@@ -11,8 +11,10 @@ var _tiles: Dictionary = {}    # Vector2i → Node3D
 var _pending: Dictionary = {}  # Vector2i → id de tarea
 var _done: Array = []          # [key, Dictionary de resultados]
 var _mutex := Mutex.new()
+const TREE_TINTS := [Color("#ffffff"), Color("#e6f0d8"), Color("#d4e4c4"), Color("#f4ffe8"), Color("#c8dab8"), Color("#dfe8c0")]
 var _tree_meshes: Dictionary
 var _tree_points: Dictionary = {} # Vector2i → PackedVector2Array: dónde hay árboles (para el ambiente)
+var _tree_items: Dictionary = {}  # Vector2i → { forma: [[Transform3D, tinte], …] } (para NearTrees)
 var _pole_mesh: Mesh
 var _lens_mesh: Mesh
 
@@ -21,6 +23,10 @@ func _ready() -> void:
 	_tree_meshes = TreeBuilder.make_meshes()
 	_pole_mesh = SignalBuilder.make_pole_mesh()
 	_lens_mesh = SignalBuilder.make_lens_mesh()
+	var near := NearTrees.new()
+	near.name = "ArbolesCercanos"
+	near.world = self
+	add_child(near)
 
 
 func _process(_delta: float) -> void:
@@ -44,6 +50,7 @@ func _process(_delta: float) -> void:
 			_tiles[key].queue_free()
 			_tiles.erase(key)
 			_tree_points.erase(key)
+			_tree_items.erase(key)
 			EventBus.tile_unloaded.emit(key)
 
 	_mutex.lock()
@@ -54,6 +61,23 @@ func _process(_delta: float) -> void:
 		WorkerThreadPool.wait_for_task_completion(_pending[item[0]])
 		_pending.erase(item[0])
 		_instantiate(item[0], item[1])
+
+
+## Árboles de las formas `kinds` a menos de `radius` m de `c`: [[Transform3D, tinte], …].
+func trees_within(c: Vector2, radius: float, kinds: Array) -> Array:
+	var out := []
+	var r2 := radius * radius
+	var k := WorldData.tile_key(c.x, c.y)
+	var span := int(ceil(radius / 250.0))
+	for dz in range(-span, span + 1):
+		for dx in range(-span, span + 1):
+			var t: Dictionary = _tree_items.get(k + Vector2i(dx, dz), {})
+			for kind: String in kinds:
+				for item: Array in t.get(kind, []):
+					var o: Vector3 = item[0].origin
+					if Vector2(o.x, o.z).distance_squared_to(c) < r2:
+						out.push_back(item)
+	return out
 
 
 ## Árboles cargados a menos de `radius` m de (x, z): el TileProfile.contar('arboles') de la web.
@@ -159,21 +183,34 @@ func _instantiate(key: Vector2i, r: Dictionary) -> void:
 		for xf: Transform3D in trees[kind]:
 			pts.push_back(Vector2(xf.origin.x, xf.origin.z))
 	_tree_points[key] = pts
+	var items := {}
 	for kind: String in trees:
 		var xforms: Array = trees[kind]
 		if xforms.is_empty():
 			continue
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_colors = true
 		mm.mesh = _tree_meshes[kind]
 		mm.instance_count = xforms.size()
 		for i in xforms.size():
-			mm.set_instance_transform(i, xforms[i])
+			var xf: Transform3D = xforms[i]
+			mm.set_instance_transform(i, xf)
+			# Tinte por árbol, los mismos de la web (VegetationBuilder TINTS), estable por posición
+			var h := absi(int(xf.origin.x * 7.0) * 31 + int(xf.origin.z * 7.0))
+			var tint: Color = TREE_TINTS[h % TREE_TINTS.size()]
+			mm.set_instance_color(i, tint)
+			if kind != "palm":
+				if not items.has(kind):
+					items[kind] = []
+				items[kind].push_back([xf, tint])
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = mm
 		mmi.material_override = MaterialLibrary.get_material("tree")
+		mmi.set_instance_shader_parameter("has_near", 0.0 if kind == "palm" else 1.0)
 		mmi.visibility_range_end = float(Settings.preset().tile_vis)
 		root.add_child(mmi)
+	_tree_items[key] = items
 	EventBus.tile_loaded.emit(key)
 
 

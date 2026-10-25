@@ -303,6 +303,37 @@ for (const KIT of [
   registry.push({ file: `models/${KIT.out}`, bytes, count, ...KIT });
 }
 
+// Árboles de cerca para la versión Godot (Quaternius, CC0). La versión gratuita del kit no trae palmas: esas
+// siguen procedurales. Solo los tres árboles comunes más livianos (3,2–4,1 k triángulos); de lejos se ve el
+// árbol procedural (godot/src/world/builders/tree_builder.gd).
+{
+  const NATURE = {
+    key: 'nature-megakit', title: 'Stylized Nature MegaKit (Standard)', author: 'Quaternius', license: 'CC0 1.0',
+    licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
+    home: 'https://quaternius.itch.io/stylized-nature-megakit', itch: 'https://quaternius.itch.io/stylized-nature-megakit',
+    pick: ['CommonTree_3', 'CommonTree_4', 'CommonTree_5'],
+    textures: ['Bark_NormalTree.png', 'Bark_NormalTree_Normal.png', 'Leaves_NormalTree_C.png'],
+    out: 'nature/', usedFor: 'Versión Godot: árboles frondosos y samanes cercanos (copa con hojas recortadas)',
+  };
+  const zip = path.join(RAW, 'nature.zip');
+  if (!existsSync(zip)) {
+    console.log(`· descargando ${NATURE.title}…`);
+    sh('curl', ['-sSL', '--fail', '--max-time', '600', '-o', zip, (await itchFileUrl(NATURE.itch)).url]);
+  }
+  const src = path.join(RAW, 'nature/glTF');
+  // el zip trae los archivos en solo lectura: se descomprime una vez
+  if (!existsSync(src)) sh('unzip', ['-q', zip, 'glTF/*', '-d', path.join(RAW, 'nature')]);
+  const dest = path.join('public/models', NATURE.out);
+  await mkdir(dest, { recursive: true });
+  let bytes = 0;
+  for (const f of [...NATURE.pick.flatMap((n) => [`${n}.gltf`, `${n}.bin`]), ...NATURE.textures]) {
+    await copyFile(path.join(src, f), path.join(dest, f));
+    bytes += statSync(path.join(dest, f)).size;
+  }
+  console.log(`  → ${dest}: ${NATURE.pick.length} árboles`);
+  registry.push({ file: `models/${NATURE.out}`, bytes, count: NATURE.pick.length, ...NATURE });
+}
+
 // Derivados: se generan después, porque necesitan los descargados.
 for (const [key, d] of Object.entries(DERIVADOS)) {
   const from = path.join(OUT, d.from);

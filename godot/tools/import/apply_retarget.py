@@ -66,7 +66,9 @@ def main() -> int:
                 text = text.replace("nodes/import_as_skeleton_bones=false", "nodes/import_as_skeleton_bones=true")
             text = re.sub(r"_subresources=\{.*?\n\}(?=\n[a-z])|_subresources=\{\}", lambda _m: sub, text, count=1, flags=re.S)
         else:
-            text = '[remap]\n\nimporter="scene"\nimporter_version=1\n\n[params]\n\n' + sub + "\n"
+            # sin .import previo (rsync --delete lo borró): también hay que pedir los huesos sueltos como Skeleton3D
+            bones = "nodes/import_as_skeleton_bones=true\n" if skel == "Skeleton3D" else ""
+            text = '[remap]\n\nimporter="scene"\nimporter_version=1\n\n[params]\n\n' + bones + sub + "\n"
         imp.write_text(text)
         done += 1
     print(f"retarget humanoide en {done} archivos")

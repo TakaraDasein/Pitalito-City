@@ -147,10 +147,14 @@ static func _make(key: String) -> Material:
 			m.roughness = 0.05
 			m.metallic = 0.4
 			return m
-		"tree", "signal_pole":
+		"tree":
+			var sm := ShaderMaterial.new()
+			sm.shader = preload("res://src/world/tree.gdshader")
+			return sm
+		"signal_pole":
 			var m := _vertex_colored(StandardMaterial3D.new())
-			m.roughness = 0.9 if key == "tree" else 0.5
-			m.metallic = 0.0 if key == "tree" else 0.3
+			m.roughness = 0.5
+			m.metallic = 0.3
 			return m
 		"particle", "particle_glow", "particle_leaf", "particle_mist":
 			# partículas de ambiente: color por vértice (la rampa de cada familia), sin luz, siempre de frente;
@@ -208,6 +212,7 @@ static func set_night(f: float) -> void:
 ## Lluvia: superficies mojadas más oscuras y brillantes.
 static func set_wet(w: float) -> void:
 	RenderingServer.global_shader_parameter_set("ground_wet", w) # suelo satelital (imagery.gdshader)
+	RenderingServer.global_shader_parameter_set("tree_wind", 0.6 + w * 0.9) # el aguacero llega con ventarrón
 	for key: String in WET:
 		var m := get_material(key) as StandardMaterial3D
 		if not m.has_meta("dry"):

@@ -84,8 +84,11 @@ La web tuvo que construir a mano mucho de lo que Godot trae. Esa es la ganancia 
 | Cámara que no atraviesa paredes | Rayos a mano en `CameraSystem.js` | `SpringArm3D` |
 | Mezcla de animaciones | `AnimationGraph.js` propio | `AnimationTree`: máquina de estados + `BlendSpace1D` por velocidad |
 | Niveles de detalle | `CityLOD.js` | `visibility_range_end` (HLOD nativo); relieve con nivel cercano y lejano |
-| Árboles | `InstancedMesh` + shader de viento | `MultiMeshInstance3D` por tile y forma |
+| Árboles | `InstancedMesh` + shader de viento | `MultiMeshInstance3D` por tile y forma, mismas formas que la web (palma con hojas, samán con ramas); `tree.gdshader`: viento (global `tree_wind`, sube con la lluvia), tinte por árbol, copa abollada y oscurecida por debajo, luz a través de las hojas. A menos de 90 m (`WorldConfig.NEAR_TREE_RADIUS`), frondosos y samanes con modelo de Quaternius (Stylized Nature MegaKit, CC0) en `near_trees.gd`: se rearma al moverse el foco y publica el círculo en la global `tree_near`, donde el procedural se esconde. Palmas siempre procedurales (el kit gratuito no las trae) |
 | Niebla, tono, SSAO, glow | `PostFX.js` propio | `WorldEnvironment` (AgX, SSAO, glow, niebla con perspectiva aérea) |
+| Reflejos | — | SSR del `Environment` en Alta (solo superficies opacas: suelo satelital, carros, vidrios); el río y las calzadas, semitransparentes, reflejan el cielo |
+| Suelo de cerca | — | a menos de 60 m, `imagery.gdshader` clasifica cada píxel de la foto por su color (verde → pasto, gris → pavimento, resto → tierra; ESTIMADO) y le suma el grano y la normal de la textura CC0 correspondiente (`assets/textures/grass|ground|asphalt`), sin cambiar el color de la foto |
+| Suelo mojado | — | global de shader `ground_wet` (= `SkySystem.wet`): el suelo satelital se oscurece y aparecen charcos casi espejo (ubicación ESTIMADA por ruido) |
 | Oclusión | — | `occlusion_culling` activado (falta hornear oclusores, ver pendientes) |
 | Entrada con mando | `InputSystem.js` con filtros para gamepads "fantasma" | Mapa de acciones del proyecto con zona muerta |
 | Estilo de la interfaz | CSS | Un `Theme` (`GuaduaTheme`) heredado por todos los Control |

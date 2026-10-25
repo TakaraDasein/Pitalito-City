@@ -39,6 +39,21 @@ import/blender/enabled=false
 
 [shader_globals]
 
+tree_near={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+tree_wind={
+"type": "float",
+"value": 0.6
+}
+
+ground_wet={
+"type": "float",
+"value": 0.0
+}
+
 signal_time={
 "type": "float",
 "value": 0.0

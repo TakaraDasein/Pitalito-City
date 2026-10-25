@@ -21,6 +21,8 @@ var _tiles: Array[Dictionary] = []  # por nivel: "x_y" → MeshInstance3D
 var _queue: Array = []              # [nivel, tx, ty, material] pendientes de descarga
 var _free_http: Array[HTTPRequest] = []
 var _detail: Texture2D
+## Texturas PBR de cerca (ambientCG / Poly Haven, CC0; ver web/docs/DATOS.md): pasto, tierra y pavimento.
+var _pbr: Dictionary = {}
 var _timer := 0.0
 
 
@@ -41,6 +43,9 @@ func _ready() -> void:
 	tex.seamless = true
 	tex.generate_mipmaps = true
 	_detail = tex
+	for kind: String in ["grass", "ground", "asphalt"]:
+		_pbr[kind + "_color"] = load("res://assets/textures/%s/color.jpg" % kind)
+		_pbr[kind + "_normal"] = load("res://assets/textures/%s/normal.jpg" % kind)
 
 
 static func lon2x(lon: float, z: int) -> float:
@@ -115,6 +120,8 @@ func _make_tile(li: int, tx: int, ty: int) -> MeshInstance3D:
 	mat.shader = preload("res://src/world/imagery.gdshader")
 	mat.set_shader_parameter("detail", _detail)
 	mat.set_shader_parameter("use_detail", z >= 18)
+	for k: String in _pbr:
+		mat.set_shader_parameter(k, _pbr[k])
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.material_override = mat
